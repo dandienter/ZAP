@@ -1,0 +1,86 @@
+"""
+NalarAI - Core Cognitive Fault Localization (CFL) Engine
+Memverifikasi invarian logika aljabar langkah demi langkah.
+"""
+
+import sympy as sp
+from .parser import parse_step_to_symbolic
+from .classifier import classify_misconception_robust
+from .counter_example import synthesize_counter_example
+
+def steps_equivalent(prev: sp.Expr | sp.Eq, nxt: sp.Expr | sp.Eq, var: sp.Symbol = sp.Symbol('x')) -> bool | None:
+    """
+    Memvalidasi ekuivalensi matematis antara dua langkah berurutan:
+    - True  : Langkah valid
+    - False : Langkah tidak ekuivalen / galat terdeteksi
+    - None  : Tidak dapat diputuskan secara pasti (ConditionSet / di luar domain)
+    """
+    # Kasus 1: Kedua langkah adalah Persamaan (sp.Eq)
+    if isinstance(prev, sp.Eq) and isinstance(nxt, sp.Eq):
+        s1 = sp.solveset(prev.lhs - prev.rhs, var, domain=sp.S.Reals)
+        s2 = sp.solveset(nxt.lhs - nxt.rhs, var, domain=sp.S.Reals)
+
+        # Jika salah satu menghasilkan ConditionSet, jangan paksa vonis
+        if isinstance(s1, sp.ConditionSet) or isinstance(s2, sp.ConditionSet):
+            return None
+
+        return s1 == s2
+
+    # Kasus 2: Kedua langkah adalah Ekspresi Aljabar Biasa (sp.Expr)
+    if not isinstance(prev, sp.Eq) and not isinstance(nxt, sp.Eq):
+        return sp.simplify(nxt - prev) == 0
+
+    # Kasus 3: Transisi ekspresi fungsi f(x) = E1 ke f(x) = E2
+    if isinstance(prev, sp.Eq) and isinstance(nxt, sp.Eq):
+        if prev.lhs == nxt.lhs:
+            return sp.simplify(nxt.rhs - prev.rhs) == 0
+
+    return False
+
+
+def isolate_first_fault_breakpoint(raw_lines: list[str], target_var: str = 'x') -> tuple[int, dict]:
+    """
+    Mengevaluasi baris-baris aljabar siswa dan mengisolasi titik patah logika pertama.
+    """
+    var = sp.Symbol(target_var)
+    parsed_steps = []
+
+    for idx, line in enumerate(raw_lines):
+        try:
+            sym_obj = parse_step_to_symbolic(line)
+            parsed_steps.append((sym_obj, line))
+        except Exception as err:
+            return idx, {
+                "status": "PARSING_ERROR",
+                "fault_line": idx + 1,
+                "message": f"Format baris {idx + 1} tidak dapat diurai: {err}"
+            }
+
+    for i in range(len(parsed_steps) - 1):
+        prev_obj, prev_raw = parsed_steps[i]
+        nxt_obj, nxt_raw = parsed_steps[i + 1]
+
+        equiv = steps_equivalent(prev_obj, nxt_obj, var=var)
+
+        if equiv is False:
+            fault_idx = i + 1
+            misconception = classify_misconception_robust(prev_obj, nxt_obj, var)
+            counter_ex = synthesize_counter_example(prev_obj, nxt_obj, var)
+
+            return fault_idx, {
+                "status": "FAULT_DETECTED",
+                "fault_line": fault_idx + 1,
+                "prev_line": prev_raw,
+                "fault_line_str": nxt_raw,
+                "misconception_type": misconception,
+                "counter_example": counter_ex
+            }
+        elif equiv is None:
+            # Langkah berisiko / di luar cakupan evaluasi otomatis
+            return i + 1, {
+                "status": "UNDECIDABLE_STEP",
+                "fault_line": i + 2,
+                "note": "Langkah ini memerlukan verifikasi manual (domain tak tentu)."
+            }
+
+    return -1, {"status": "ALL_STEPS_VALID"}

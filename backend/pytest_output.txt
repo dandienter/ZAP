@@ -1,0 +1,16 @@
+============================= test session starts =============================
+platform win32 -- Python 3.15.1, pytest-9.2.0, pluggy-1.7.0 -- C:\Python315\python.exe
+rootdir: C:\Users\wakhidpangestu\orca\projects\logicodix\backend
+plugins: anyio-4.15.1
+collecting ... collected 8 items
+
+tests/test_cfl_engine.py::TestCFLEngine::test_polynomial_expansion_fault_detected PASSED [ 12%]
+tests/test_cfl_engine.py::TestCFLEngine::test_equation_valid_transposition PASSED [ 25%]
+tests/test_cfl_engine.py::TestCFLEngine::test_equation_invalid_transposition PASSED [ 37%]
+tests/test_cfl_engine.py::TestCFLEngine::test_root_loss_detection PASSED [ 50%]
+tests/test_cfl_engine.py::TestCFLEngine::test_undecidable_condition_set PASSED [ 62%]
+tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_preserves_socratic_context PASSED [ 75%]
+tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_censors_explicit_declaration PASSED [ 87%]
+tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_masks_kunci_declaration_with_final_solution PASSED [100%]
+
+============================== 8 passed in 1.52s ==============================
