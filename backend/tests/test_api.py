@@ -95,13 +95,18 @@ class TestNalarAIAPI:
         assert all(line["is_valid"] is True for line in data["transcription"]["lines"])
 
     def test_diagnose_rejects_empty_steps(self):
-        """Memverifikasi payload tanpa baris aljabar ditolak dengan HTTP 422."""
-        payload = {
-            "confirmed_steps": [],
-            "target_variable": "x"
-        }
-        response = client.post("/api/v1/diagnose", json=payload)
-        assert response.status_code == 422
+        """Memverifikasi payload tanpa baris aljabar, empty dict, atau whitespace ditolak dengan HTTP 422."""
+        # 1. confirmed_steps kosong
+        response1 = client.post("/api/v1/diagnose", json={"confirmed_steps": [], "target_variable": "x"})
+        assert response1.status_code == 422
+
+        # 2. Payload kosong total {}
+        response2 = client.post("/api/v1/diagnose", json={})
+        assert response2.status_code == 422
+
+        # 3. lines berisi spasi kosong
+        response3 = client.post("/api/v1/diagnose", json={"lines": ["   ", ""]})
+        assert response3.status_code == 422
 
     def test_diagnose_rejects_code_injection_payload(self):
         """
@@ -172,3 +177,38 @@ class TestNalarAIAPI:
         assert response.status_code == 422
         error_detail = response.json()["detail"]
         assert "tidak dapat diurai" in error_detail or "di luar whitelist" in error_detail
+
+    def test_legacy_target_var_is_honored(self):
+        """
+        Memverifikasi bahwa field 'target_var' benar-benar dihormati dan tidak ter-overwrite
+        oleh default variabel 'x' saat klien mengirim variabel lain seperti 'y'.
+        """
+        payload = {
+            "lines": [
+                "(y + 3)^2 - 4",
+                "y^2 + 9 - 4",
+                "y^2 + 5"
+            ],
+            "target_var": "y"
+        }
+        response = client.post("/api/v1/diagnose", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        # Memastikan target variable yang digunakan oleh CFL engine dan counter example adalah 'y'
+        assert data["diagnosis"]["counter_example"]["test_variable"] == "y"
+
+    def test_diagnose_rejects_dos_huge_exponent(self):
+        """
+        Memverifikasi bahwa payload dengan eksponen bertingkat atau raksasa (9^9^9)
+        ditolak secara instan dengan HTTP 422 tanpa menyebabkan pembekuan proses.
+        """
+        payload = {
+            "confirmed_steps": [
+                "9^9^9"
+            ],
+            "target_variable": "x"
+        }
+        response = client.post("/api/v1/diagnose", json=payload)
+        assert response.status_code == 422
+        assert "melebihi batas aman" in response.json()["detail"]

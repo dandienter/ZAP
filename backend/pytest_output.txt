@@ -2,25 +2,28 @@
 platform win32 -- Python 3.15.1, pytest-9.2.0, pluggy-1.7.0 -- C:\Python315\python.exe
 rootdir: C:\Users\wakhidpangestu\orca\projects\logicodix
 plugins: anyio-4.15.1
-collecting ... collected 18 items
+collecting ... collected 21 items
 
-tests/test_api.py::TestNalarAIAPI::test_health_check PASSED              [  5%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_polynomial_expansion_fault PASSED [ 11%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_valid_transposition PASSED [ 16%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_empty_steps PASSED [ 22%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_code_injection_payload PASSED [ 27%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_undecidable_condition_set PASSED [ 33%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_accepts_legacy_fields_lines_and_target_var PASSED [ 38%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_malicious_latex_payload PASSED [ 44%]
-tests/test_cfl_engine.py::TestCFLEngine::test_polynomial_expansion_fault_detected PASSED [ 50%]
-tests/test_cfl_engine.py::TestCFLEngine::test_equation_valid_transposition PASSED [ 55%]
+tests/test_api.py::TestNalarAIAPI::test_health_check PASSED              [  4%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_polynomial_expansion_fault PASSED [  9%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_valid_transposition PASSED [ 14%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_empty_steps PASSED [ 19%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_code_injection_payload PASSED [ 23%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_undecidable_condition_set PASSED [ 28%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_accepts_legacy_fields_lines_and_target_var PASSED [ 33%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_malicious_latex_payload PASSED [ 38%]
+tests/test_api.py::TestNalarAIAPI::test_legacy_target_var_is_honored PASSED [ 42%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_dos_huge_exponent PASSED [ 47%]
+tests/test_cfl_engine.py::TestCFLEngine::test_polynomial_expansion_fault_detected PASSED [ 52%]
+tests/test_cfl_engine.py::TestCFLEngine::test_equation_valid_transposition PASSED [ 57%]
 tests/test_cfl_engine.py::TestCFLEngine::test_equation_invalid_transposition PASSED [ 61%]
 tests/test_cfl_engine.py::TestCFLEngine::test_root_loss_detection PASSED [ 66%]
-tests/test_cfl_engine.py::TestCFLEngine::test_undecidable_condition_set PASSED [ 72%]
-tests/test_cfl_engine.py::TestCFLEngine::test_parser_rejects_code_injection PASSED [ 77%]
-tests/test_cfl_engine.py::TestCFLEngine::test_latex_fallback_rejects_non_math_commands PASSED [ 83%]
-tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_preserves_socratic_context PASSED [ 88%]
-tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_censors_explicit_declaration PASSED [ 94%]
+tests/test_cfl_engine.py::TestCFLEngine::test_undecidable_condition_set PASSED [ 71%]
+tests/test_cfl_engine.py::TestCFLEngine::test_parser_rejects_code_injection PASSED [ 76%]
+tests/test_cfl_engine.py::TestCFLEngine::test_latex_fallback_rejects_non_math_commands PASSED [ 80%]
+tests/test_cfl_engine.py::TestCFLEngine::test_parser_rejects_dangerous_nested_and_huge_exponents PASSED [ 85%]
+tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_preserves_socratic_context PASSED [ 90%]
+tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_censors_explicit_declaration PASSED [ 95%]
 tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_masks_kunci_declaration_with_final_solution PASSED [100%]
 
-============================= 18 passed in 0.80s ==============================
+============================= 21 passed in 1.83s ==============================

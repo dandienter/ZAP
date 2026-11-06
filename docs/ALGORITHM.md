@@ -16,25 +16,23 @@ Algoritma inti NalarAI diorganisasikan dalam modul Python terpisah:
 
 ## 2. SPESIFIKASI ALGORITMA INTI
 
-### 2.1 Sanitasi Keamanan Parser & Penolakan LaTeX Non-Matematika
+### 2.1 Sanitasi Keamanan Parser, LaTeX Whitelist, dan Mitigasi DoS
 
-SymPy `parse_expr` secara internal memanggil `eval()`. Untuk menjamin keamanan server, NalarAI menerapkan pemisahan ketat:
-1. **Parser tidak memanggil `eval` pada input di luar whitelist:**
-   Input teks aljabar disaring ketat melalui whitelist identifier `ALLOWED_NAMES` dan karakter aljabar `ALLOWED_CHARS`. Jika tidak lolos whitelist dan tidak memuat notasi LaTeX (`\`), input langsung ditolak dengan `ValueError`.
-2. **Perintah LaTeX non-matematika ditolak:**
-   Jalur fallback `parse_latex` dilindungi dengan regex penolak perintah non-matematika berbahaya (`\input`, `\write18`, `\include`, `\catcode`, `\openin`, dsb.).
+SymPy `parse_expr` secara internal tetap memanggil `eval()`. Whitelist ketat membatasi karakter dan nama agar input berbahaya ditolak sebelum dievaluasi oleh SymPy:
+1. **Parser hanya memanggil `parse_expr` jika input lolos whitelist:**
+   Input teks aljabar disaring ketat melalui whitelist identifier `ALLOWED_NAMES` dan karakter aljabar standar. Jika tidak lolos whitelist dan tidak memuat notasi LaTeX (`\`), input langsung ditolak dengan `ValueError`.
+2. **Jalur fallback LaTeX dibatasi secara ketat:**
+   Jalur fallback `parse_latex` hanya dipanggil jika lolos fungsi `_is_safe_latex`, di mana seluruh perintah LaTeX harus berada di dalam `ALLOWED_LATEX_CMDS` (`frac`, `sqrt`, `cdot`, `sin`, dsb.). Perintah non-matematika berbahaya (`\input`, `\write18`, `\include`, `\catcode`, `\openin`, dsb.) langsung ditolak.
+3. **Pencegahan Denial of Service (Anti-DoS Exponent Limiter):**
+   Fungsi `_has_dangerous_exponents` menolak pangkat bertingkat ($9^{9^9}$, $x^{2^3}$) dan eksponen numerik di atas 100 secara instan (< 1 ms), mencegah serangan yang membekukan thread server.
 
 ```python
-ALLOWED_NAMES = {
-    "x", "y", "z", "a", "b", "c", "d", "m", "n", "t",
-    "sin", "cos", "tan", "sqrt", "log", "exp", "pi", "E"
-}
-ALLOWED_CHARS = re.compile(r"^[0-9A-Za-z\s+\-*/^().=,]*$")
+ALLOWED_FUNCS = {"sin", "cos", "tan", "sqrt", "log", "exp"}
+ALLOWED_VARS = {"x", "y", "z", "a", "b", "c", "d", "m", "n", "t"}
+ALLOWED_CONSTS = {"pi", "E"}
+ALLOWED_LATEX_CMDS = {"frac", "sqrt", "cdot", "times", "sin", "cos", "tan", "log", "exp", "pm"}
 
-DISALLOWED_LATEX_COMMANDS = re.compile(
-    r"\\(?:input|include|write(?:\d+)?|openin|openout|read|catcode|def|let|newcommand|renewcommand|csname|special|directlua|url|href|system)(?![a-zA-Z])",
-    re.IGNORECASE
-)
+ALLOWED_NAMES = ALLOWED_VARS | ALLOWED_FUNCS | ALLOWED_CONSTS
 ```
 
 Dengan arsitektur ini, payload injeksi Python (`__import__`, `eval`, `open`, `__builtins__`) maupun exploit LaTeX (`\input{/etc/passwd}`) ditolak mentah-mentah sebelum kalkulasi dijalankan.
@@ -94,7 +92,7 @@ False
 True
 ```
 
-### 3.2 Eksekusi Pytest Lengkap (18/18 Lulus, 0 Warning):
+### 3.2 Eksekusi Pytest Lengkap (21/21 Lulus, 0 Warning):
 ```bash
 $ cd backend
 $ python -m pytest -v -p no:cacheprovider tests/ -W default
@@ -102,26 +100,29 @@ $ python -m pytest -v -p no:cacheprovider tests/ -W default
 platform win32 -- Python 3.15.1, pytest-9.2.0, pluggy-1.7.0 -- C:\Python315\python.exe
 rootdir: C:\Users\wakhidpangestu\orca\projects\logicodix
 plugins: anyio-4.15.1
-collecting ... collected 18 items
+collecting ... collected 21 items
 
-tests/test_api.py::TestNalarAIAPI::test_health_check PASSED              [  5%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_polynomial_expansion_fault PASSED [ 11%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_valid_transposition PASSED [ 16%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_empty_steps PASSED [ 22%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_code_injection_payload PASSED [ 27%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_undecidable_condition_set PASSED [ 33%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_accepts_legacy_fields_lines_and_target_var PASSED [ 38%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_malicious_latex_payload PASSED [ 44%]
-tests/test_cfl_engine.py::TestCFLEngine::test_polynomial_expansion_fault_detected PASSED [ 50%]
-tests/test_cfl_engine.py::TestCFLEngine::test_equation_valid_transposition PASSED [ 55%]
+tests/test_api.py::TestNalarAIAPI::test_health_check PASSED              [  4%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_polynomial_expansion_fault PASSED [  9%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_valid_transposition PASSED [ 14%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_empty_steps PASSED [ 19%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_code_injection_payload PASSED [ 23%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_undecidable_condition_set PASSED [ 28%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_accepts_legacy_fields_lines_and_target_var PASSED [ 33%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_malicious_latex_payload PASSED [ 38%]
+tests/test_api.py::TestNalarAIAPI::test_legacy_target_var_is_honored PASSED [ 42%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_dos_huge_exponent PASSED [ 47%]
+tests/test_cfl_engine.py::TestCFLEngine::test_polynomial_expansion_fault_detected PASSED [ 52%]
+tests/test_cfl_engine.py::TestCFLEngine::test_equation_valid_transposition PASSED [ 57%]
 tests/test_cfl_engine.py::TestCFLEngine::test_equation_invalid_transposition PASSED [ 61%]
 tests/test_cfl_engine.py::TestCFLEngine::test_root_loss_detection PASSED [ 66%]
-tests/test_cfl_engine.py::TestCFLEngine::test_undecidable_condition_set PASSED [ 72%]
-tests/test_cfl_engine.py::TestCFLEngine::test_parser_rejects_code_injection PASSED [ 77%]
-tests/test_cfl_engine.py::TestCFLEngine::test_latex_fallback_rejects_non_math_commands PASSED [ 83%]
-tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_preserves_socratic_context PASSED [ 88%]
-tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_censors_explicit_declaration PASSED [ 94%]
+tests/test_cfl_engine.py::TestCFLEngine::test_undecidable_condition_set PASSED [ 71%]
+tests/test_cfl_engine.py::TestCFLEngine::test_parser_rejects_code_injection PASSED [ 76%]
+tests/test_cfl_engine.py::TestCFLEngine::test_latex_fallback_rejects_non_math_commands PASSED [ 80%]
+tests/test_cfl_engine.py::TestCFLEngine::test_parser_rejects_dangerous_nested_and_huge_exponents PASSED [ 85%]
+tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_preserves_socratic_context PASSED [ 90%]
+tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_censors_explicit_declaration PASSED [ 95%]
 tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_masks_kunci_declaration_with_final_solution PASSED [100%]
 
-============================= 18 passed in 0.87s ==============================
+============================= 21 passed in 1.83s ==============================
 ```

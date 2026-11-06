@@ -138,6 +138,22 @@ class TestCFLEngine:
             with pytest.raises(ValueError):
                 parse_step_to_symbolic(payload)
 
+    def test_parser_rejects_dangerous_nested_and_huge_exponents(self):
+        r"""
+        Kasus 8: Uji Pertahanan Anti-DoS.
+        Memverifikasi bahwa parser menolak eksponen raksasa dan pangkat bertingkat
+        seperti 9^9^9, x^{99999999}, dan x^2^3 sebelum memicu pembekuan server (freeze).
+        """
+        dos_payloads = [
+            "9^9^9",
+            r"x^{99999999}",
+            "x^2^3",
+            "x^105"
+        ]
+        for payload in dos_payloads:
+            with pytest.raises(ValueError):
+                parse_step_to_symbolic(payload)
+
 
 class TestZeroAnswerGuardrail:
 

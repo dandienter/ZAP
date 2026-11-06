@@ -45,7 +45,7 @@ class DiagnoseRequest(BaseModel):
         description="Alias backward-compatible untuk confirmed_steps"
     )
     target_variable: str | None = Field(
-        default="x",
+        default=None,
         max_length=5,
         description="Variabel aljabar utama (misal: 'x', 'y', 'a')"
     )
@@ -138,8 +138,8 @@ def diagnose_student_scratchpad(request: DiagnoseRequest):
         )
 
     session_id = f"sess_{uuid.uuid4().hex[:8]}"
-    chosen_var = request.target_variable if request.target_variable is not None else (request.target_var or "x")
-    target_var = chosen_var.strip() or "x"
+    chosen_var = (request.target_variable or request.target_var or "x").strip() or "x"
+    target_var = chosen_var
 
     # Jalankan Symbolic CFL Engine
     fault_idx, diag = isolate_first_fault_breakpoint(raw_steps, target_var=target_var)
