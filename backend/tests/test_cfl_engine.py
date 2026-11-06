@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from cfl import (
     isolate_first_fault_breakpoint,
     steps_equivalent,
+    parse_step_to_symbolic,
     RobustZeroAnswerGuardrail
 )
 
@@ -112,12 +113,28 @@ class TestCFLEngine:
         assert diag["status"] == "UNDECIDABLE_STEP"
         assert diag["fault_line"] == 2
 
+    def test_parser_rejects_code_injection(self):
+        """
+        Kasus 6: Uji Keamanan Anti-RCE.
+        Memverifikasi bahwa SymPy parser menolak sintaks Python berbahaya (eval escape)
+        seperti __import__('os'), exec(), atau pemanggilan fungsi berbahaya lainnya.
+        """
+        malicious_payloads = [
+            "__import__('os').system('echo hi')",
+            "eval('1+1')",
+            "open('passwords.txt')",
+            "__builtins__"
+        ]
+        for payload in malicious_payloads:
+            with pytest.raises(ValueError):
+                parse_step_to_symbolic(payload)
+
 
 class TestZeroAnswerGuardrail:
 
     def test_guardrail_preserves_socratic_context(self):
         """
-        Kasus 6: Uji regresi - memastikan 'Jika x = 2', 'baris ke-2', dan
+        Kasus 7: Uji regresi - memastikan 'Jika x = 2', 'baris ke-2', dan
         'Hasil dari substitusi adalah 25' TIDAK tersensor meskipun kunci jawaban akhir bernilai 2.
         """
         socratic_prompt = (

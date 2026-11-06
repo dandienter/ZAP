@@ -1,21 +1,44 @@
-# ALGORITMA DIAGNOSTIK KOGNITIF & SYMPY REASONING ENGINE (V2.3 VERIFIED)
+# ALGORITMA DIAGNOSTIK KOGNITIF & SYMPY REASONING ENGINE (V2.4 VERIFIED)
 
 ---
 
-## 1. STRUKTUR PAKET `backend/cfl`
+## 1. STRUKTUR PAKET `backend/cfl` & API GATEWAY
 
 Algoritma inti NalarAI diorganisasikan dalam modul Python terpisah:
-* [`backend/cfl/parser.py`](backend/cfl/parser.py): Mengurai string ekspresi maupun persamaan dengan dukungan *implicit multiplication* (`2x` ➔ `2*x`) dan LaTeX.
+* [`backend/cfl/parser.py`](backend/cfl/parser.py): Mengurai string ekspresi maupun persamaan dengan dukungan *implicit multiplication* (`2x` ➔ `2*x`) dan LaTeX, dilengkapi sanitasi whitelist anti-RCE untuk memblokir eksploitasi `eval()` pada `parse_expr`.
 * [`backend/cfl/cfl_engine.py`](backend/cfl/cfl_engine.py): Memvalidasi kontinuitas kebenaran aljabar menggunakan kombinasi `sp.solveset(domain=sp.S.Reals)` (persamaan) dan `sp.simplify` (ekspresi). Menangani kondisi `ConditionSet` sebagai `UNDECIDABLE_STEP`.
 * [`backend/cfl/classifier.py`](backend/cfl/classifier.py): Mengklasifikasikan miskonsepsi: `DISTRIBUTIVE_EXPANSION_ILLUSION`, `SIGN_INVERSION_OR_TRANSPOSITION_ERROR`, dan `ROOT_LOSS` (kehilangan akar).
 * [`backend/cfl/counter_example.py`](backend/cfl/counter_example.py): Menyintesis nilai integer kontra-contoh minimal tanpa bergantung pada fallback.
 * [`backend/cfl/guardrail.py`](backend/cfl/guardrail.py): Menyaring kebocoran kunci jawaban deklaratif dan pola `final_solution` tanpa merusak konteks instruksional Sokrates.
+* [`backend/main.py`](backend/main.py): Endpoint FastAPI (`POST /api/v1/diagnose`) yang mengorkestrasi CFL engine, menyusun kontra-contoh terstruktur, dan menerapkan guardrail.
 
 ---
 
 ## 2. SPESIFIKASI ALGORITMA INTI
 
-### 2.1 Ekuivalensi Persamaan & Ekspresi (`steps_equivalent`)
+### 2.1 Sanitasi Anti-RCE & Parser Aljabar Aman (`_is_plain_algebra`)
+
+SymPy `parse_expr` menggunakan fungsi bawaan Python `eval()`. Untuk mencegah serangan Remote Code Execution (RCE) via HTTP endpoint, input disaring ketat melalui whitelist karakter dan identifier:
+
+```python
+ALLOWED_NAMES = {
+    "x", "y", "z", "a", "b", "c", "d", "m", "n", "t",
+    "sin", "cos", "tan", "sqrt", "log", "exp", "pi", "E"
+}
+ALLOWED_CHARS = re.compile(r"^[0-9A-Za-z\s+\-*/^().=,]*$")
+
+def _is_plain_algebra(text: str) -> bool:
+    if len(text) > 200 or not ALLOWED_CHARS.match(text):
+        return False
+    identifiers = re.findall(r"[A-Za-z]+", text)
+    return all(name in ALLOWED_NAMES for name in identifiers)
+```
+
+Input berbahaya seperti `__import__('os').system(...)` langsung gagal pada verifikasi whitelist dan dialihkan ke `parse_latex` (yang berbasis antlr gramatikal tanpa `eval`), kemudian memicu penolakan aman (`HTTP 422`).
+
+---
+
+### 2.2 Ekuivalensi Persamaan & Ekspresi (`steps_equivalent`)
 
 ```python
 import sympy as sp
@@ -41,7 +64,7 @@ def steps_equivalent(prev: sp.Expr | sp.Eq, nxt: sp.Expr | sp.Eq, var: sp.Symbol
 
 ---
 
-### 2.2 Klasifikasi Kehilangan Akar (`ROOT_LOSS`)
+### 2.3 Klasifikasi Kehilangan Akar (`ROOT_LOSS`)
 
 ```python
 if isinstance(prev_obj, sp.Eq) and isinstance(faulty_obj, sp.Eq):
@@ -68,24 +91,31 @@ False
 True
 ```
 
-### 3.2 Eksekusi Pytest Lengkap (8/8 Lulus):
+### 3.2 Eksekusi Pytest Lengkap (15/15 Lulus):
 ```bash
 $ cd backend
-$ python -m pytest -v tests/test_cfl_engine.py
+$ python -m pytest -v -p no:cacheprovider tests/
 ============================= test session starts =============================
 platform win32 -- Python 3.15.1, pytest-9.2.0, pluggy-1.7.0 -- C:\Python315\python.exe
-rootdir: C:\Users\wakhidpangestu\orca\projects\logicodix\backend
+rootdir: C:\Users\wakhidpangestu\orca\projects\logicodix
 plugins: anyio-4.15.1
-collecting ... collected 8 items
+collecting ... collected 15 items
 
-tests/test_cfl_engine.py::TestCFLEngine::test_polynomial_expansion_fault_detected PASSED [ 12%]
-tests/test_cfl_engine.py::TestCFLEngine::test_equation_valid_transposition PASSED [ 25%]
-tests/test_cfl_engine.py::TestCFLEngine::test_equation_invalid_transposition PASSED [ 37%]
-tests/test_cfl_engine.py::TestCFLEngine::test_root_loss_detection PASSED [ 50%]
-tests/test_cfl_engine.py::TestCFLEngine::test_undecidable_condition_set PASSED [ 62%]
-tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_preserves_socratic_context PASSED [ 75%]
-tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_censors_explicit_declaration PASSED [ 87%]
-tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_masks_kunci_declaration_with_final_solution PASSED [100%]
+backend/tests/test_api.py::TestNalarAIAPI::test_health_check PASSED      [  6%]
+backend/tests/test_api.py::TestNalarAIAPI::test_diagnose_polynomial_expansion_fault PASSED [ 13%]
+backend/tests/test_api.py::TestNalarAIAPI::test_diagnose_valid_transposition PASSED [ 20%]
+backend/tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_empty_steps PASSED [ 26%]
+backend/tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_code_injection_payload PASSED [ 33%]
+backend/tests/test_api.py::TestNalarAIAPI::test_diagnose_undecidable_condition_set PASSED [ 40%]
+backend/tests/test_cfl_engine.py::TestCFLEngine::test_polynomial_expansion_fault_detected PASSED [ 46%]
+backend/tests/test_cfl_engine.py::TestCFLEngine::test_equation_valid_transposition PASSED [ 53%]
+backend/tests/test_cfl_engine.py::TestCFLEngine::test_equation_invalid_transposition PASSED [ 60%]
+backend/tests/test_cfl_engine.py::TestCFLEngine::test_root_loss_detection PASSED [ 66%]
+backend/tests/test_cfl_engine.py::TestCFLEngine::test_undecidable_condition_set PASSED [ 73%]
+backend/tests/test_cfl_engine.py::TestCFLEngine::test_parser_rejects_code_injection PASSED [ 80%]
+backend/tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_preserves_socratic_context PASSED [ 86%]
+backend/tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_censors_explicit_declaration PASSED [ 93%]
+backend/tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_masks_kunci_declaration_with_final_solution PASSED [100%]
 
-============================== 8 passed in 1.52s ==============================
+======================== 15 passed, 1 warning in 2.59s ========================
 ```
