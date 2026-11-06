@@ -1,7 +1,7 @@
 """
 NalarAI - Robust Mathematical Step Parser
 Mendukung input LaTeX maupun notasi aljabar teks dengan implicit multiplication (2x -> 2*x).
-Dilengkapi sanitasi whitelist anti-RCE untuk mencegah code injection pada parse_expr.
+Dilengkapi sanitasi whitelist ketat untuk memblokir eksekusi eval() dan perintah LaTeX non-matematika.
 """
 
 import re
@@ -15,67 +15,84 @@ from sympy.parsing.sympy_parser import (
 
 TRANSFORMATIONS = standard_transformations + (implicit_multiplication_application, convert_xor)
 
-# Whitelist nama variabel dan fungsi matematika yang diizinkan untuk parse_expr
-ALLOWED_NAMES = {
-    "x", "y", "z", "a", "b", "c", "d", "m", "n", "t",
-    "sin", "cos", "tan", "sqrt", "log", "exp", "pi", "E"
-}
+# Whitelist nama variabel, fungsi matematika, dan konstanta yang diizinkan
+ALLOWED_FUNCS = {"sin", "cos", "tan", "sqrt", "log", "exp"}
+ALLOWED_VARS = {"x", "y", "z", "a", "b", "c", "d", "m", "n", "t"}
+ALLOWED_CONSTS = {"pi", "E"}
+ALLOWED_LATEX_CMDS = {"frac", "sqrt", "cdot", "times", "sin", "cos", "tan", "log", "exp", "pm"}
 
-# Whitelist karakter aljabar standar
-ALLOWED_CHARS = re.compile(r"^[0-9A-Za-z\s+\-*/^().=,]*$")
-
-# Perintah LaTeX non-matematika berbahaya (file ingestion, shell execution, macro expansion)
-DISALLOWED_LATEX_COMMANDS = re.compile(
-    r"\\(?:input|include|write(?:\d+)?|openin|openout|read|catcode|def|let|newcommand|renewcommand|csname|special|directlua|url|href|system)(?![a-zA-Z])",
-    re.IGNORECASE
-)
+ALLOWED_NAMES = ALLOWED_VARS | ALLOWED_FUNCS | ALLOWED_CONSTS
 
 
 def _is_plain_algebra(text: str) -> bool:
     """
-    Validasi keamanan: Memastikan teks hanya berupa notasi aljabar aman
-    dan hanya memuat nama identifier yang ada di whitelist sebelum diserahkan ke parse_expr.
-    Mencegah Remote Code Execution (RCE) via Python eval() di SymPy.
+    Validasi keamanan teks aljabar biasa:
+    - Menolak karakter berbahaya (_, kutip, backtick, titik-koma, backslash).
+    - Memastikan hanya memuat karakter aljabar standar.
+    - Memastikan seluruh identifier ada di whitelist variabel, fungsi, atau konstanta.
     """
-    if len(text) > 200 or not ALLOWED_CHARS.match(text):
+    if len(text) > 200 or "_" in text or re.search(r"[\"'`;\\]", text):
+        return False
+    if not re.fullmatch(r"[0-9A-Za-z\s+\-*/^().=,]*", text):
         return False
     identifiers = re.findall(r"[A-Za-z]+", text)
+    return all(name in ALLOWED_NAMES for name in identifiers)
+
+
+def _is_safe_latex(text: str) -> bool:
+    """
+    Validasi keamanan input LaTeX:
+    - Menolak underscore, kutip, titik-koma, dollar, backtick.
+    - Wajib memuat simbol backslash '\\'.
+    - Seluruh perintah LaTeX (\\cmd) harus terdaftar di ALLOWED_LATEX_CMDS.
+    - Karakter harus berada dalam subset aljabar dan grouping LaTeX valid.
+    - Seluruh identifier sisa (di luar perintah LaTeX) harus terdaftar di ALLOWED_NAMES.
+    """
+    if len(text) > 200 or "_" in text or re.search(r"[\"'`;$]", text):
+        return False
+    if "\\" not in text:
+        return False
+    commands = re.findall(r"\\([A-Za-z0-9]+)", text)
+    if not commands or not all(cmd in ALLOWED_LATEX_CMDS for cmd in commands):
+        return False
+    if not re.fullmatch(r"[0-9A-Za-z\s+\-*/^().=,{}\\[\]]*", text):
+        return False
+    # Bersihkan perintah LaTeX yang diizinkan untuk memeriksa identifier tersisa
+    stripped = text
+    for cmd in ALLOWED_LATEX_CMDS:
+        stripped = stripped.replace(f"\\{cmd}", "")
+    identifiers = re.findall(r"[A-Za-z]+", stripped)
     return all(name in ALLOWED_NAMES for name in identifiers)
 
 
 def parse_single_side(side_str: str) -> sp.Expr:
     """
     Mengurai satu sisi ekspresi matematika:
-    1. Memblokir perintah LaTeX non-matematika berbahaya.
-    2. Jika notasi aljabar teks aman (whitelist), gunakan parse_expr (implicit multiplication).
-    3. Jika memuat perintah LaTeX ('\\'), gunakan parse_latex (bebas eval).
-    4. Jika bukan keduanya, tolak sebagai ekspresi tidak valid.
+    1. Jika aljabar teks aman (whitelist), gunakan parse_expr (implicit multiplication).
+    2. Jika notasi LaTeX aman (whitelist), gunakan parse_latex (bebas eval).
+    3. Jika tidak lolos salah satu whitelist, lemparkan ValueError secara deterministik.
     """
     cleaned = side_str.strip()
     if not cleaned:
         raise ValueError("Ekspresi matematika tidak boleh kosong.")
-        
-    # 1. Blokir perintah LaTeX non-matematika berbahaya
-    if DISALLOWED_LATEX_COMMANDS.search(cleaned):
-        raise ValueError(f"Perintah LaTeX non-matematika tidak diizinkan: '{side_str}'")
-    
-    # 2. Notasi aljabar teks aman (misal: 2x + 3, (x+3)^2, sin(x))
+
+    # 1. Jalur aljabar teks biasa aman
     if _is_plain_algebra(cleaned):
         try:
             return parse_expr(cleaned, transformations=TRANSFORMATIONS)
-        except Exception:
-            pass
-            
-    # 3. Notasi LaTeX matematika terstruktur (wajib memuat simbol '\')
-    if "\\" in cleaned:
+        except Exception as err:
+            raise ValueError(f"Gagal mengurai aljabar '{side_str}': {err}")
+
+    # 2. Jalur LaTeX matematika terstruktur aman
+    if "\\" in cleaned and _is_safe_latex(cleaned):
         try:
             from sympy.parsing.latex import parse_latex
             return parse_latex(cleaned)
         except Exception as err:
             raise ValueError(f"Gagal mengurai ekspresi LaTeX '{side_str}': {err}")
 
-    # 4. Bukan aljabar aman dan bukan LaTeX resmi
-    raise ValueError(f"Ekspresi tidak valid atau memuat identifier/simbol di luar ketentuan: '{side_str}'")
+    # 3. Ditolak jika berada di luar whitelist
+    raise ValueError(f"Ekspresi tidak valid atau di luar whitelist aljabar: '{side_str}'")
 
 
 def parse_step_to_symbolic(line_str: str) -> sp.Eq | sp.Expr:

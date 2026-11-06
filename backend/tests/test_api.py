@@ -171,4 +171,4 @@ class TestNalarAIAPI:
         response = client.post("/api/v1/diagnose", json=payload)
         assert response.status_code == 422
         error_detail = response.json()["detail"]
-        assert "tidak diizinkan" in error_detail or "Gagal mengurai" in error_detail
+        assert "tidak dapat diurai" in error_detail or "di luar whitelist" in error_detail

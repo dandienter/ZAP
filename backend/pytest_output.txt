@@ -23,4 +23,4 @@ tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_preserves_socr
 tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_censors_explicit_declaration PASSED [ 94%]
 tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_masks_kunci_declaration_with_final_solution PASSED [100%]
 
-============================= 18 passed in 0.87s ==============================
+============================= 18 passed in 0.80s ==============================
