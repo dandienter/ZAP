@@ -136,3 +136,39 @@ class TestNalarAIAPI:
         data = response.json()
         assert data["diagnosis"]["status"] == "UNDECIDABLE_STEP"
         assert data["diagnosis"]["has_fault"] is False
+
+    def test_diagnose_accepts_legacy_fields_lines_and_target_var(self):
+        """
+        Memverifikasi fleksibilitas backward-compatibility payload
+        menggunakan field 'lines' dan 'target_var' sebagai pengganti confirmed_steps.
+        """
+        payload = {
+            "lines": [
+                "(x + 3)^2 - 4",
+                "x^2 + 9 - 4",
+                "x^2 + 5"
+            ],
+            "target_var": "x"
+        }
+        response = client.post("/api/v1/diagnose", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["diagnosis"]["first_fault_line"] == 2
+        assert data["diagnosis"]["fault_type"] == "DISTRIBUTIVE_EXPANSION_ILLUSION"
+
+    def test_diagnose_rejects_malicious_latex_payload(self):
+        r"""
+        Memverifikasi bahwa payload dengan perintah LaTeX non-matematika
+        seperti \input{/etc/passwd} ditolak dengan HTTP 422.
+        """
+        payload = {
+            "confirmed_steps": [
+                r"\input{/etc/passwd}"
+            ],
+            "target_variable": "x"
+        }
+        response = client.post("/api/v1/diagnose", json=payload)
+        assert response.status_code == 422
+        error_detail = response.json()["detail"]
+        assert "tidak diizinkan" in error_detail or "Gagal mengurai" in error_detail

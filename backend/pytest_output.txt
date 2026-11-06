@@ -2,22 +2,25 @@
 platform win32 -- Python 3.15.1, pytest-9.2.0, pluggy-1.7.0 -- C:\Python315\python.exe
 rootdir: C:\Users\wakhidpangestu\orca\projects\logicodix
 plugins: anyio-4.15.1
-collecting ... collected 15 items
+collecting ... collected 18 items
 
-backend/tests/test_api.py::TestNalarAIAPI::test_health_check PASSED      [  6%]
-backend/tests/test_api.py::TestNalarAIAPI::test_diagnose_polynomial_expansion_fault PASSED [ 13%]
-backend/tests/test_api.py::TestNalarAIAPI::test_diagnose_valid_transposition PASSED [ 20%]
-backend/tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_empty_steps PASSED [ 26%]
-backend/tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_code_injection_payload PASSED [ 33%]
-backend/tests/test_api.py::TestNalarAIAPI::test_diagnose_undecidable_condition_set PASSED [ 40%]
-backend/tests/test_cfl_engine.py::TestCFLEngine::test_polynomial_expansion_fault_detected PASSED [ 46%]
-backend/tests/test_cfl_engine.py::TestCFLEngine::test_equation_valid_transposition PASSED [ 53%]
-backend/tests/test_cfl_engine.py::TestCFLEngine::test_equation_invalid_transposition PASSED [ 60%]
-backend/tests/test_cfl_engine.py::TestCFLEngine::test_root_loss_detection PASSED [ 66%]
-backend/tests/test_cfl_engine.py::TestCFLEngine::test_undecidable_condition_set PASSED [ 73%]
-backend/tests/test_cfl_engine.py::TestCFLEngine::test_parser_rejects_code_injection PASSED [ 80%]
-backend/tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_preserves_socratic_context PASSED [ 86%]
-backend/tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_censors_explicit_declaration PASSED [ 93%]
-backend/tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_masks_kunci_declaration_with_final_solution PASSED [100%]
+tests/test_api.py::TestNalarAIAPI::test_health_check PASSED              [  5%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_polynomial_expansion_fault PASSED [ 11%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_valid_transposition PASSED [ 16%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_empty_steps PASSED [ 22%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_code_injection_payload PASSED [ 27%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_undecidable_condition_set PASSED [ 33%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_accepts_legacy_fields_lines_and_target_var PASSED [ 38%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_malicious_latex_payload PASSED [ 44%]
+tests/test_cfl_engine.py::TestCFLEngine::test_polynomial_expansion_fault_detected PASSED [ 50%]
+tests/test_cfl_engine.py::TestCFLEngine::test_equation_valid_transposition PASSED [ 55%]
+tests/test_cfl_engine.py::TestCFLEngine::test_equation_invalid_transposition PASSED [ 61%]
+tests/test_cfl_engine.py::TestCFLEngine::test_root_loss_detection PASSED [ 66%]
+tests/test_cfl_engine.py::TestCFLEngine::test_undecidable_condition_set PASSED [ 72%]
+tests/test_cfl_engine.py::TestCFLEngine::test_parser_rejects_code_injection PASSED [ 77%]
+tests/test_cfl_engine.py::TestCFLEngine::test_latex_fallback_rejects_non_math_commands PASSED [ 83%]
+tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_preserves_socratic_context PASSED [ 88%]
+tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_censors_explicit_declaration PASSED [ 94%]
+tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_masks_kunci_declaration_with_final_solution PASSED [100%]
 
-======================== 15 passed, 1 warning in 2.59s ========================
+============================= 18 passed in 0.87s ==============================

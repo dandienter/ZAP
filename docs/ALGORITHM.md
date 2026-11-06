@@ -1,24 +1,28 @@
-# ALGORITMA DIAGNOSTIK KOGNITIF & SYMPY REASONING ENGINE (V2.4 VERIFIED)
+# ALGORITMA DIAGNOSTIK KOGNITIF & SYMPY REASONING ENGINE (V2.5 VERIFIED)
 
 ---
 
 ## 1. STRUKTUR PAKET `backend/cfl` & API GATEWAY
 
 Algoritma inti NalarAI diorganisasikan dalam modul Python terpisah:
-* [`backend/cfl/parser.py`](backend/cfl/parser.py): Mengurai string ekspresi maupun persamaan dengan dukungan *implicit multiplication* (`2x` ➔ `2*x`) dan LaTeX, dilengkapi sanitasi whitelist anti-RCE untuk memblokir eksploitasi `eval()` pada `parse_expr`.
+* [`backend/cfl/parser.py`](backend/cfl/parser.py): Mengurai string ekspresi maupun persamaan dengan dukungan *implicit multiplication* (`2x` ➔ `2*x`) dan LaTeX. Memastikan parser tidak memanggil `eval` pada input di luar whitelist dan perintah LaTeX non-matematika ditolak.
 * [`backend/cfl/cfl_engine.py`](backend/cfl/cfl_engine.py): Memvalidasi kontinuitas kebenaran aljabar menggunakan kombinasi `sp.solveset(domain=sp.S.Reals)` (persamaan) dan `sp.simplify` (ekspresi). Menangani kondisi `ConditionSet` sebagai `UNDECIDABLE_STEP`.
 * [`backend/cfl/classifier.py`](backend/cfl/classifier.py): Mengklasifikasikan miskonsepsi: `DISTRIBUTIVE_EXPANSION_ILLUSION`, `SIGN_INVERSION_OR_TRANSPOSITION_ERROR`, dan `ROOT_LOSS` (kehilangan akar).
 * [`backend/cfl/counter_example.py`](backend/cfl/counter_example.py): Menyintesis nilai integer kontra-contoh minimal tanpa bergantung pada fallback.
 * [`backend/cfl/guardrail.py`](backend/cfl/guardrail.py): Menyaring kebocoran kunci jawaban deklaratif dan pola `final_solution` tanpa merusak konteks instruksional Sokrates.
-* [`backend/main.py`](backend/main.py): Endpoint FastAPI (`POST /api/v1/diagnose`) yang mengorkestrasi CFL engine, menyusun kontra-contoh terstruktur, dan menerapkan guardrail.
+* [`backend/main.py`](backend/main.py): Endpoint FastAPI (`POST /api/v1/diagnose`) yang mengorkestrasi CFL engine, menerima payload fleksibel (`confirmed_steps`/`lines`), menyusun kontra-contoh terstruktur, dan menerapkan guardrail.
 
 ---
 
 ## 2. SPESIFIKASI ALGORITMA INTI
 
-### 2.1 Sanitasi Anti-RCE & Parser Aljabar Aman (`_is_plain_algebra`)
+### 2.1 Sanitasi Keamanan Parser & Penolakan LaTeX Non-Matematika
 
-SymPy `parse_expr` menggunakan fungsi bawaan Python `eval()`. Untuk mencegah serangan Remote Code Execution (RCE) via HTTP endpoint, input disaring ketat melalui whitelist karakter dan identifier:
+SymPy `parse_expr` secara internal memanggil `eval()`. Untuk menjamin keamanan server, NalarAI menerapkan pemisahan ketat:
+1. **Parser tidak memanggil `eval` pada input di luar whitelist:**
+   Input teks aljabar disaring ketat melalui whitelist identifier `ALLOWED_NAMES` dan karakter aljabar `ALLOWED_CHARS`. Jika tidak lolos whitelist dan tidak memuat notasi LaTeX (`\`), input langsung ditolak dengan `ValueError`.
+2. **Perintah LaTeX non-matematika ditolak:**
+   Jalur fallback `parse_latex` dilindungi dengan regex penolak perintah non-matematika berbahaya (`\input`, `\write18`, `\include`, `\catcode`, `\openin`, dsb.).
 
 ```python
 ALLOWED_NAMES = {
@@ -27,14 +31,13 @@ ALLOWED_NAMES = {
 }
 ALLOWED_CHARS = re.compile(r"^[0-9A-Za-z\s+\-*/^().=,]*$")
 
-def _is_plain_algebra(text: str) -> bool:
-    if len(text) > 200 or not ALLOWED_CHARS.match(text):
-        return False
-    identifiers = re.findall(r"[A-Za-z]+", text)
-    return all(name in ALLOWED_NAMES for name in identifiers)
+DISALLOWED_LATEX_COMMANDS = re.compile(
+    r"\\(?:input|include|write(?:\d+)?|openin|openout|read|catcode|def|let|newcommand|renewcommand|csname|special|directlua|url|href|system)(?![a-zA-Z])",
+    re.IGNORECASE
+)
 ```
 
-Input berbahaya seperti `__import__('os').system(...)` langsung gagal pada verifikasi whitelist dan dialihkan ke `parse_latex` (yang berbasis antlr gramatikal tanpa `eval`), kemudian memicu penolakan aman (`HTTP 422`).
+Dengan arsitektur ini, payload injeksi Python (`__import__`, `eval`, `open`, `__builtins__`) maupun exploit LaTeX (`\input{/etc/passwd}`) ditolak mentah-mentah sebelum kalkulasi dijalankan.
 
 ---
 
@@ -91,31 +94,34 @@ False
 True
 ```
 
-### 3.2 Eksekusi Pytest Lengkap (15/15 Lulus):
+### 3.2 Eksekusi Pytest Lengkap (18/18 Lulus, 0 Warning):
 ```bash
 $ cd backend
-$ python -m pytest -v -p no:cacheprovider tests/
+$ python -m pytest -v -p no:cacheprovider tests/ -W default
 ============================= test session starts =============================
 platform win32 -- Python 3.15.1, pytest-9.2.0, pluggy-1.7.0 -- C:\Python315\python.exe
 rootdir: C:\Users\wakhidpangestu\orca\projects\logicodix
 plugins: anyio-4.15.1
-collecting ... collected 15 items
+collecting ... collected 18 items
 
-backend/tests/test_api.py::TestNalarAIAPI::test_health_check PASSED      [  6%]
-backend/tests/test_api.py::TestNalarAIAPI::test_diagnose_polynomial_expansion_fault PASSED [ 13%]
-backend/tests/test_api.py::TestNalarAIAPI::test_diagnose_valid_transposition PASSED [ 20%]
-backend/tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_empty_steps PASSED [ 26%]
-backend/tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_code_injection_payload PASSED [ 33%]
-backend/tests/test_api.py::TestNalarAIAPI::test_diagnose_undecidable_condition_set PASSED [ 40%]
-backend/tests/test_cfl_engine.py::TestCFLEngine::test_polynomial_expansion_fault_detected PASSED [ 46%]
-backend/tests/test_cfl_engine.py::TestCFLEngine::test_equation_valid_transposition PASSED [ 53%]
-backend/tests/test_cfl_engine.py::TestCFLEngine::test_equation_invalid_transposition PASSED [ 60%]
-backend/tests/test_cfl_engine.py::TestCFLEngine::test_root_loss_detection PASSED [ 66%]
-backend/tests/test_cfl_engine.py::TestCFLEngine::test_undecidable_condition_set PASSED [ 73%]
-backend/tests/test_cfl_engine.py::TestCFLEngine::test_parser_rejects_code_injection PASSED [ 80%]
-backend/tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_preserves_socratic_context PASSED [ 86%]
-backend/tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_censors_explicit_declaration PASSED [ 93%]
-backend/tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_masks_kunci_declaration_with_final_solution PASSED [100%]
+tests/test_api.py::TestNalarAIAPI::test_health_check PASSED              [  5%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_polynomial_expansion_fault PASSED [ 11%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_valid_transposition PASSED [ 16%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_empty_steps PASSED [ 22%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_code_injection_payload PASSED [ 27%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_undecidable_condition_set PASSED [ 33%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_accepts_legacy_fields_lines_and_target_var PASSED [ 38%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_malicious_latex_payload PASSED [ 44%]
+tests/test_cfl_engine.py::TestCFLEngine::test_polynomial_expansion_fault_detected PASSED [ 50%]
+tests/test_cfl_engine.py::TestCFLEngine::test_equation_valid_transposition PASSED [ 55%]
+tests/test_cfl_engine.py::TestCFLEngine::test_equation_invalid_transposition PASSED [ 61%]
+tests/test_cfl_engine.py::TestCFLEngine::test_root_loss_detection PASSED [ 66%]
+tests/test_cfl_engine.py::TestCFLEngine::test_undecidable_condition_set PASSED [ 72%]
+tests/test_cfl_engine.py::TestCFLEngine::test_parser_rejects_code_injection PASSED [ 77%]
+tests/test_cfl_engine.py::TestCFLEngine::test_latex_fallback_rejects_non_math_commands PASSED [ 83%]
+tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_preserves_socratic_context PASSED [ 88%]
+tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_censors_explicit_declaration PASSED [ 94%]
+tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_masks_kunci_declaration_with_final_solution PASSED [100%]
 
-======================== 15 passed, 1 warning in 2.59s ========================
+============================= 18 passed in 0.87s ==============================
 ```

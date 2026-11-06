@@ -36,15 +36,23 @@ app.add_middleware(
 # ==========================================
 
 class DiagnoseRequest(BaseModel):
-    confirmed_steps: list[str] = Field(
-        ...,
-        min_length=1,
+    confirmed_steps: list[str] | None = Field(
+        default=None,
         description="Daftar baris matematika hasil ekstraksi/konfirmasi coretan siswa"
     )
-    target_variable: str = Field(
+    lines: list[str] | None = Field(
+        default=None,
+        description="Alias backward-compatible untuk confirmed_steps"
+    )
+    target_variable: str | None = Field(
         default="x",
         max_length=5,
         description="Variabel aljabar utama (misal: 'x', 'y', 'a')"
+    )
+    target_var: str | None = Field(
+        default=None,
+        max_length=5,
+        description="Alias backward-compatible untuk target_variable"
     )
     image: str | None = Field(
         default=None,
@@ -121,7 +129,8 @@ def diagnose_student_scratchpad(request: DiagnoseRequest):
     - Menghasilkan kontra-contoh aritmetika terkecil.
     - Menyusun petunjuk Sokrates berpegang teguh pada Robust Zero-Answer Guardrail.
     """
-    raw_steps = [s.strip() for s in request.confirmed_steps if s.strip()]
+    steps_input = request.confirmed_steps if request.confirmed_steps is not None else (request.lines or [])
+    raw_steps = [s.strip() for s in steps_input if s.strip()]
     if not raw_steps:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -129,7 +138,8 @@ def diagnose_student_scratchpad(request: DiagnoseRequest):
         )
 
     session_id = f"sess_{uuid.uuid4().hex[:8]}"
-    target_var = request.target_variable.strip() or "x"
+    chosen_var = request.target_variable if request.target_variable is not None else (request.target_var or "x")
+    target_var = chosen_var.strip() or "x"
 
     # Jalankan Symbolic CFL Engine
     fault_idx, diag = isolate_first_fault_breakpoint(raw_steps, target_var=target_var)

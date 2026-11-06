@@ -24,6 +24,12 @@ ALLOWED_NAMES = {
 # Whitelist karakter aljabar standar
 ALLOWED_CHARS = re.compile(r"^[0-9A-Za-z\s+\-*/^().=,]*$")
 
+# Perintah LaTeX non-matematika berbahaya (file ingestion, shell execution, macro expansion)
+DISALLOWED_LATEX_COMMANDS = re.compile(
+    r"\\(?:input|include|write(?:\d+)?|openin|openout|read|catcode|def|let|newcommand|renewcommand|csname|special|directlua|url|href|system)(?![a-zA-Z])",
+    re.IGNORECASE
+)
+
 
 def _is_plain_algebra(text: str) -> bool:
     """
@@ -39,24 +45,37 @@ def _is_plain_algebra(text: str) -> bool:
 
 def parse_single_side(side_str: str) -> sp.Expr:
     """
-    Mengurai satu sisi ekspresi matematika.
-    Jika lolos sanitasi aljabar aman, gunakan parse_expr (mendukung implicit multiplication).
-    Jika tidak lolos (misal notasi LaTeX murni), dialihkan ke parse_latex (bebas eval).
-    Jika keduanya gagal, lemparkan ValueError.
+    Mengurai satu sisi ekspresi matematika:
+    1. Memblokir perintah LaTeX non-matematika berbahaya.
+    2. Jika notasi aljabar teks aman (whitelist), gunakan parse_expr (implicit multiplication).
+    3. Jika memuat perintah LaTeX ('\\'), gunakan parse_latex (bebas eval).
+    4. Jika bukan keduanya, tolak sebagai ekspresi tidak valid.
     """
     cleaned = side_str.strip()
+    if not cleaned:
+        raise ValueError("Ekspresi matematika tidak boleh kosong.")
+        
+    # 1. Blokir perintah LaTeX non-matematika berbahaya
+    if DISALLOWED_LATEX_COMMANDS.search(cleaned):
+        raise ValueError(f"Perintah LaTeX non-matematika tidak diizinkan: '{side_str}'")
     
+    # 2. Notasi aljabar teks aman (misal: 2x + 3, (x+3)^2, sin(x))
     if _is_plain_algebra(cleaned):
         try:
             return parse_expr(cleaned, transformations=TRANSFORMATIONS)
         except Exception:
             pass
             
-    try:
-        from sympy.parsing.latex import parse_latex
-        return parse_latex(cleaned)
-    except Exception as err:
-        raise ValueError(f"Gagal mengurai ekspresi '{side_str}': {err}")
+    # 3. Notasi LaTeX matematika terstruktur (wajib memuat simbol '\')
+    if "\\" in cleaned:
+        try:
+            from sympy.parsing.latex import parse_latex
+            return parse_latex(cleaned)
+        except Exception as err:
+            raise ValueError(f"Gagal mengurai ekspresi LaTeX '{side_str}': {err}")
+
+    # 4. Bukan aljabar aman dan bukan LaTeX resmi
+    raise ValueError(f"Ekspresi tidak valid atau memuat identifier/simbol di luar ketentuan: '{side_str}'")
 
 
 def parse_step_to_symbolic(line_str: str) -> sp.Eq | sp.Expr:

@@ -129,6 +129,15 @@ class TestCFLEngine:
             with pytest.raises(ValueError):
                 parse_step_to_symbolic(payload)
 
+    def test_latex_fallback_rejects_non_math_commands(self):
+        r"""
+        Kasus 7: Memverifikasi jalur fallback LaTeX menolak perintah non-matematika berbahaya
+        seperti \input{} atau \write18{} tanpa eksekusi.
+        """
+        for payload in [r"\input{/etc/passwd}", r"\write18{echo hi}"]:
+            with pytest.raises(ValueError):
+                parse_step_to_symbolic(payload)
+
 
 class TestZeroAnswerGuardrail:
 
