@@ -1,0 +1,101 @@
+# NalarAI — Cognitive Debugger for Student Scratchpads
+
+[![Logicodix 2026](https://img.shields.io/badge/LOGICODIX-2026-6366F1?style=for-the-badge&logo=codeforces&logoColor=white)](https://github.com/[your-team]/nalar-ai)
+[![Subtheme](https://img.shields.io/badge/Subtheme-Smart_%26_Fun_Education-10B981?style=for-the-badge)](https://github.com/[your-team]/nalar-ai)
+[![License: MIT](https://img.shields.io/badge/License-MIT-38BDF8?style=for-the-badge)](LICENSE)
+[![Localhost Ready](https://img.shields.io/badge/Localhost-Offline_Tested-F59E0B?style=for-the-badge)](https://github.com/[your-team]/nalar-ai)
+[![Pytest Passing](https://img.shields.io/badge/Pytest-8%2F8_Passing-10B981?style=for-the-badge)](backend/tests/test_cfl_engine.py)
+
+> **"Don't give them the answer. Debug how they think."**  
+> NalarAI adalah sistem diagnostik kognitif yang membedah cacat logika berpikir siswa langsung dari foto kertas buram (orat-oretan tangan) mereka, memadukan Vision-Language Model dengan mesin aljabar simbolik deterministik (**SymPy**).
+
+---
+
+## 🌟 Mengapa NalarAI Berbeda?
+
+| Fitur / Pendekatan | Answer Engines Umum (Photomath, ChatGPT) | NalarAI (Cognitive Debugger) |
+| :--- | :--- | :--- |
+| **Objek Input** | Foto soal bersih dari buku cetak | Foto kertas buram orat-oretan tangan siswa |
+| **Keluaran Sistem** | Rumus jadi & jawaban akhir instan | Diagnosa titik patah logika & pertanyaan Sokrates |
+| **Dampak Kognitif** | *Cognitive Bypassing* (Siswa pasif menyalin) | Melatih daya kritis & *Aha! moment* mandiri |
+| **Validasi Hitung** | Rawan halusinasi komputasi numerik AI | Deterministik berbasis SymPy (`solveset` & `simplify`) |
+| **Kebijakan Etika** | Membocorkan jawaban tugas sekolah | **Zero-Answer Policy Guardrail** |
+
+---
+
+## 🏗️ Arsitektur Sistem
+
+NalarAI menggunakan arsitektur **Hybrid Perceptual-Symbolic Reasoning**:
+1. **Perceptual Layer:** Multimodal Vision Model (Gemini 2.0 / Qwen2-VL lokal) membaca tulisan tangan menjadi urutan ekspresi LaTeX terstruktur.
+2. **Human-in-the-Loop Safeguard:** Antarmuka konfirmasi cepat bagi siswa untuk memastikan simbol matematika terbaca presisi sebelum kalkulasi dijalankan.
+3. **Deterministic Layer (`backend/cfl`):** Modul Python berbasis **SymPy** yang memverifikasi ekuivalensi bentuk aljabar dan himpunan solusi persamaan secara deterministik, serta mengenali kondisi tak tentu (`ConditionSet`).
+4. **Socratic Scaffolding Layer:** Menghasilkan kontra-contoh konkret (*counter-examples*) dan pemicu pertanyaan refleksi kognitif tanpa membocorkan kunci jawaban.
+
+```
+[ Kertas Buram ] ➔ [ OpenCV Preprocessing ] ➔ [ VLM Transcription ] ➔ [ Konfirmasi Siswa ] ➔ [ SymPy CFL Engine ] ➔ [ Socratic Console ]
+```
+
+---
+
+## 🧪 Hasil Uji Otomatis (Pytest Verification)
+
+Rangkaian pengujian unit di [`backend/tests/test_cfl_engine.py`](backend/tests/test_cfl_engine.py) telah diverifikasi dan mencakup 8 skenario inti:
+* ✅ **Ekspansi Kuadrat:** Mendeteksi hilangnya suku perkalian silang pada $(x+3)^2 - 4$ (kontra-contoh terhitung: $21 \neq 9$).
+* ✅ **Persamaan Linear Valid:** Memvalidasi manipulasi ruas $2x + 3 = 7 \rightarrow 2x = 4 \rightarrow x = 2$.
+* ✅ **Persamaan Linear Galat:** Mendeteksi kesalahan tanda saat pindah ruas $2x + 3 = 7 \rightarrow 2x = 10$.
+* ✅ **Deteksi Kehilangan Akar:** Mendeteksi hilangnya akar negatif pada $x^2 = 4 \rightarrow x = 2$ (`ROOT_LOSS`).
+* ✅ **Penanganan ConditionSet:** Menangani persamaan transendental $\sin(x) = x$ secara aman sebagai `UNDECIDABLE_STEP`.
+* ✅ **Regresi Guardrail:** Memastikan kalimat `"Jika x = 2"`, `"baris ke-2"`, dan `"Hasil dari substitusi adalah 25"` tidak tersensor.
+* ✅ **Pencegahan Kebocoran Jawaban:** Menyaring pernyataan deklaratif `"jawaban akhirnya adalah x = 2"`.
+* ✅ **Masking Kunci Eksplisit:** Menguji penyaringan pada `"Kunci adalah 5"` tanpa merusak frasa `"baris ke-5"`.
+
+```bash
+$ cd backend
+$ python -m pytest -v tests/test_cfl_engine.py
+============================== 8 passed in 1.52s ==============================
+```
+
+---
+
+## 🚀 Panduan Menjalankan di Localhost
+
+### 1. Setup Backend & Menjalankan Unit Tests (Python 3.11+)
+```bash
+cd backend
+python -m venv venv
+
+# Windows:
+.\venv\Scripts\activate
+# Linux/macOS:
+source venv/bin/activate
+
+pip install -r requirements.txt
+python -m pytest -v tests/test_cfl_engine.py
+```
+
+### 2. Setup Frontend (Next.js 14)
+```bash
+cd frontend
+npm install
+npm run dev
+# Buka http://localhost:3000
+```
+
+---
+
+## 📚 Dokumentasi Lengkap Proyek
+
+* 📄 [Proposal Lengkap Hackathon (`docs/PROPOSAL.md`)](docs/PROPOSAL.md) — Krisis PISA, paradoks kertas buram, dan pemetaan rubrik Logicodix 2026.
+* ⚙️ [Spesifikasi Arsitektur Sistem (`docs/ARCHITECTURE.md`)](docs/ARCHITECTURE.md) — Arsitektur hybrid, kontrak REST API, alur konfirmasi transkripsi, dan prinsip minimisasi data UU PDP.
+* 🧮 [Algoritma Diagnostik & SymPy Engine (`docs/ALGORITHM.md`)](docs/ALGORITHM.md) — Pseudocode CFL Engine, pemisahan ekspresi vs persamaan, dan Robust Zero-Answer Guardrail.
+* 🎨 [Design System "Cognitive Diff" (`docs/DESIGN_SYSTEM.md`)](docs/DESIGN_SYSTEM.md) — Desain non-hukuman, palet Amber/Slate, scaffolding bertingkat, dan KaTeX renderer.
+* 🎤 [Naskah Pitching 7 Menit & Storyboard Video (`docs/PITCH_AND_DEMO_SCRIPT.md`)](docs/PITCH_AND_DEMO_SCRIPT.md) — Panduan presentasi panggung babak final dan contekan tanya-jawab juri.
+
+---
+
+## ⚖️ Privasi & Etika (UU PDP No. 27/2022)
+* Mengadopsi prinsip minimisasi data (*data minimization*): bebas dari pengumpulan identitas pribadi siswa (Zero-PII).
+* Citra kertas buram diproses secara lokal *in-memory* dan tidak disimpan permanen di peladen.
+* Mengutamakan edukasi reflektif dan pemikiran kritis mandiri.
+
+Didistribusikan di bawah Lisensi [MIT](LICENSE).
