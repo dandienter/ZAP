@@ -1,6 +1,6 @@
 ============================= test session starts =============================
 platform win32 -- Python 3.15.1, pytest-9.2.0, pluggy-1.7.0 -- C:\Python315\python.exe
-rootdir: C:\Users\wakhidpangestu\orca\projects\logicodix
+rootdir: C:\Users\wakhidpangestu\orca\projects\logicodix\backend
 plugins: anyio-4.15.1
 collecting ... collected 22 items
 
@@ -27,4 +27,4 @@ tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_preserves_socr
 tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_censors_explicit_declaration PASSED [ 95%]
 tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_masks_kunci_declaration_with_final_solution PASSED [100%]
 
-============================= 22 passed in 1.63s ==============================
+============================= 22 passed in 1.80s ==============================

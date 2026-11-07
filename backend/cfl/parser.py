@@ -131,6 +131,8 @@ def parse_single_side(side_str: str) -> sp.Expr:
             )
         try:
             return parse_expr(cleaned, transformations=TRANSFORMATIONS)
+        except AssertionError:
+            raise
         except Exception as err:
             raise ValueError(f"Gagal mengurai aljabar '{side_str}': {err}")
 
@@ -142,6 +144,8 @@ def parse_single_side(side_str: str) -> sp.Expr:
             )
         try:
             return parse_latex(cleaned)
+        except AssertionError:
+            raise
         except Exception as err:
             raise ValueError(f"Gagal mengurai ekspresi LaTeX '{side_str}': {err}")
 

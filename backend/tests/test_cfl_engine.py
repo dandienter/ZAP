@@ -163,8 +163,8 @@ class TestCFLEngine:
     def test_dangerous_inputs_never_reach_sympy(self, monkeypatch):
         """
         Kasus 9: Verifikasi Intersepsi Monkeypatch.
-        Membuktikan secara deterministik bahwa input berbahaya/DoS ditolak pada tahap
-        pra-parse (whitelist & exponent check) dan tidak pernah menyentuh parse_expr atau parse_latex SymPy.
+        Membuktikan secara deterministik bahwa lima payload uji tidak mencapai SymPy
+        karena ditolak pada tahap pra-parse (whitelist & exponent check).
         """
         import cfl.parser as P
         def boom(*a, **k):
