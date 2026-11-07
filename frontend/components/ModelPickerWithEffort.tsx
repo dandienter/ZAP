@@ -31,40 +31,40 @@ export interface AIModel {
 
 export const AVAILABLE_MODELS: AIModel[] = [
   {
-    id: "sympy-cfl",
-    name: "SymPy CFL Engine",
-    shortName: "SymPy CFL",
-    provider: "Deterministic Symbolic Kernel",
-    badge: "Official Spec",
-    costInput: "$0.00 / 1K steps",
-    contextWindow: "Unlimited Depth",
-    latency: "< 2ms",
-    description: "Evaluasi simbolik murni deterministik. 100% anti-halusinasi komputasi dengan isolasi breakpoint kesalahan & pembuktian kontra-contoh.",
-    icon: Cpu,
+    id: "gemini-2.0-flash",
+    name: "Gemini 2.0 Flash (Turbo)",
+    shortName: "Gemini 2.0",
+    provider: "Google DeepMind (Ultra Fast ~300ms)",
+    badge: "Tercepat & Pintar",
+    costInput: "Turbo",
+    contextWindow: "1M tokens",
+    latency: "< 350ms",
+    description: "Model flagship generasi terbaru Google yang paling kencang, responsif, dan cerdas dengan memori percakapan penuh.",
+    icon: Zap,
   },
   {
-    id: "gemini-hybrid",
-    name: "Gemini 2.0 Flash + CFL",
-    shortName: "Gemini Hybrid",
-    provider: "Multimodal Vision + SymPy",
-    badge: "Vision VLM",
-    costInput: "$0.0001 / 1K tokens",
-    contextWindow: "1M tokens",
-    latency: "~1.2s",
-    description: "Transkripsi foto kertas buram tulisan tangan siswa ke format LaTeX sebelum diverifikasi oleh kernel SymPy.",
+    id: "gemini-1.5-pro",
+    name: "Gemini 1.5 Pro (Deep Math)",
+    shortName: "Gemini 1.5 Pro",
+    provider: "Google DeepMind (Penalaran Mendalam)",
+    badge: "Analitis Tinggi",
+    costInput: "Standard",
+    contextWindow: "2M tokens",
+    latency: "~1.5s",
+    description: "Model dengan penalaran matematika paling mendalam untuk pembuktian konsep aljabar dan sains tingkat lanjut.",
     icon: Layers,
   },
   {
-    id: "qwen-local",
-    name: "Qwen2-VL 7B Local",
-    shortName: "Qwen2 Local",
-    provider: "On-Premise / Ollama NPU",
-    badge: "Offline UU PDP",
-    costInput: "$0.00 (Self-Hosted)",
-    contextWindow: "32K tokens",
-    latency: "~2.4s",
-    description: "Model vision-language lokal offline untuk privasi data siswa maksimal tanpa koneksi internet.",
-    icon: ShieldCheck,
+    id: "sympy-cfl",
+    name: "SymPy CFL Engine (Offline)",
+    shortName: "SymPy 0ms",
+    provider: "Deterministic Symbolic Kernel",
+    badge: "Instant 0ms",
+    costInput: "$0.00 (Offline)",
+    contextWindow: "Unlimited Depth",
+    latency: "< 2ms",
+    description: "Evaluasi simbolik murni deterministik lokal tanpa cloud. 100% anti-halusinasi dan tanpa kuota API.",
+    icon: Cpu,
   },
 ];
 
@@ -89,7 +89,10 @@ export default function ModelPickerWithEffort({
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("nalar_gemini_api_key") || "";
+      const stored =
+        localStorage.getItem("logicomath_gemini_api_key") ||
+        localStorage.getItem("nalar_gemini_api_key") ||
+        "";
       setSavedKey(stored);
       setApiKeyInput(stored);
     }
@@ -98,6 +101,7 @@ export default function ModelPickerWithEffort({
   const handleSaveApiKey = () => {
     if (typeof window !== "undefined") {
       const trimmed = apiKeyInput.trim();
+      localStorage.setItem("logicomath_gemini_api_key", trimmed);
       localStorage.setItem("nalar_gemini_api_key", trimmed);
       setSavedKey(trimmed);
       setKeySavedToast(true);
@@ -152,7 +156,7 @@ export default function ModelPickerWithEffort({
               <Layers className="w-3.5 h-3.5 text-zinc-300" />
               <span>Model Reasoning</span>
             </span>
-            <span className="font-mono text-[10px] text-zinc-400">NalarAI 2.2</span>
+            <span className="font-mono text-[10px] text-zinc-400">LogicoMath 2.2</span>
           </div>
 
           {/* Model Options List */}

@@ -43,19 +43,29 @@ export async function POST(req: Request) {
       );
     }
 
-    const { message, activeProblem, apiKey, modelId } = body;
+    const { message, conversationHistory, activeProblem, apiKey, modelId } = body;
 
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Pesan tidak boleh kosong" }, { status: 400 });
     }
 
-    // 1. Tanggapi sapaan singkat secara instan (0 ms latency) tanpa menunggu round-trip cloud
+    // 1. Jika pengguna memilih mesin SymPy lokal, langsung gunakan respons instan (0 ms latency)
+    if (modelId === "sympy-cfl") {
+      const socraticReply = generateSocraticFallbackResponse(message, activeProblem);
+      return NextResponse.json({
+        reply: socraticReply,
+        model: "SymPy CFL Engine (Local Deterministic 0ms)",
+        source: "local-sympy",
+      });
+    }
+
+    // 2. Tanggapi sapaan pembuka singkat secara instan jika belum ada riwayat percakapan
     const lower = message.toLowerCase().trim();
     const isQuickGreeting =
       /^(hai|halo|pagi|siang|malam|sore|assalamu|permisi|tes|ping|woi|hei|hi|hello)\b/i.test(lower) &&
       lower.split(/\s+/).length <= 3;
 
-    if (isQuickGreeting) {
+    if (isQuickGreeting && (!conversationHistory || conversationHistory.length === 0)) {
       const quickReply = generateSocraticFallbackResponse(message, activeProblem);
       return NextResponse.json({
         reply: quickReply,
@@ -70,15 +80,21 @@ export async function POST(req: Request) {
       process.env.GOOGLE_API_KEY?.trim() ||
       "";
 
-    // 2. Coba panggil Google Gemini API jika API Key tersedia
+    // 3. Panggil Google Gemini API dengan memori percakapan penuh
     if (effectiveApiKey) {
       try {
-        const geminiResult = await callGeminiAPI(message, effectiveApiKey, activeProblem, modelId);
+        const geminiResult = await callGeminiAPI(
+          message,
+          effectiveApiKey,
+          conversationHistory,
+          activeProblem,
+          modelId
+        );
         
         if (geminiResult.text) {
           return NextResponse.json({
             reply: geminiResult.text,
-            model: `${geminiResult.modelUsed || "Gemini 1.5 Flash"} (Cloud API)`,
+            model: `${geminiResult.modelUsed || "Gemini 2.0 Flash"} (Cloud API)`,
             source: "gemini-api",
           });
         }
@@ -99,7 +115,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // 2. Gunakan Built-in Socratic Cognitive Agent (Zero-Latency, Offline-Ready)
+    // 4. Gunakan Built-in Socratic Cognitive Agent (Zero-Latency, Offline-Ready)
     const socraticReply = generateSocraticFallbackResponse(message, activeProblem);
 
     return NextResponse.json({
@@ -116,25 +132,24 @@ export async function POST(req: Request) {
   }
 }
 
-// In-memory cache model tercepat untuk zero-latency direct routing
-let cachedWorkingModel = "gemini-1.5-flash";
-
 /**
  * Panggilan ultra-cepat ke Google Gemini REST API (v1beta).
- * Jalur Cepat (Zero-Hop): Memanggil gemini-1.5-flash secara langsung tanpa round-trip ListModels.
- * Jalur Adaptif (Slow Fallback): Hanya dipanggil jika model default tidak tersedia.
+ * Mendukung memori percakapan (multi-turn conversationHistory),
+ * model Gemini 2.0 Flash (tercepat & tercerdas), Gemini 1.5 Pro,
+ * serta failover dengan batas timeout ketat (< 5.5 detik) agar tidak lagging.
  */
 async function callGeminiAPI(
   userMessage: string,
   apiKey: string,
+  conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
   activeProblem?: ActiveProblemContext | null,
   modelId?: string
 ): Promise<GeminiCallResult> {
-  let systemInstructionText = `Anda adalah LogicoMath, asisten diagnostik kognitif dan tutor aljabar Sokrates untuk siswa SMA di Indonesia.
+  let systemInstructionText = `Anda adalah LogicoMath, asisten diagnostik kognitif dan tutor aljabar cerdas untuk siswa di Indonesia.
 PRINSIP UTAMA (RUBRIK LOGICODIX 2026):
-1. ZERO-ANSWER POLICY: JANGAN PERNAH memberikan jawaban akhir atau mengerjakan PR siswa secara langsung.
-2. METODE SOKRATES: Bimbing siswa dengan pertanyaan reflektif, analogi intuitif (misal: model luas geometri untuk kuadrat suku dua), dan uji angka nyata (kontra-contoh).
-3. BAHASA: Gunakan bahasa Indonesia yang ramah, hangat, menyemangati, dan mudah dipahami anak sekolah.
+1. ZERO-ANSWER POLICY: JANGAN PERNAH memberikan jawaban akhir atau mengerjakan PR aljabar siswa secara langsung. Bimbing siswa untuk menemukan solusinya sendiri.
+2. METODE SOKRATES & PEDAGOGIS: Bimbing siswa dengan pertanyaan reflektif, analogi intuitif (misal: model luas geometri untuk kuadrat suku dua), dan uji angka nyata (kontra-contoh).
+3. MEMORI PERCAKAPAN: Jaga konteks percakapan secara utuh. Ingat nama pengguna, pertanyaan sebelumnya, dan topik yang telah dibahas dalam sesi ini. Jika siswa bertanya hal umum di luar matematika (seperti fenomena sains atau fisika), jawab dengan ramah, berpengetahuan luas, cerdas, dan kontekstual.
 4. FORMAT: Gunakan Markdown bersih dan notasi KaTeX ($...$ untuk inline, $$...$$ untuk baris formula).`;
 
   if (activeProblem && activeProblem.steps && activeProblem.steps.length > 0) {
@@ -147,143 +162,67 @@ ${activeProblem.counterExample?.contradiction_statement ? `- Kontra-contoh aritm
 Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentang kesalahannya atau bingung cara memperbaikinya.`;
   }
 
+  // 1. Konstruksi Riwayat Percakapan (Memory) Sesuai Spesifikasi Google Gemini API
+  const contents: Array<{ role: "user" | "model"; parts: [{ text: string }] }> = [];
+
+  if (conversationHistory && conversationHistory.length > 0) {
+    // Ambil hingga 20 turn terakhir untuk keseimbangan konteks & kecepatan
+    const recentHistory = conversationHistory.slice(-20);
+    for (const turn of recentHistory) {
+      const geminiRole: "user" | "model" = turn.role === "assistant" ? "model" : "user";
+      const text = turn.content?.trim();
+      if (!text) continue;
+
+      if (contents.length > 0 && contents[contents.length - 1].role === geminiRole) {
+        // Gabungkan pesan berurutan dengan role sama
+        contents[contents.length - 1].parts[0].text += "\n" + text;
+      } else {
+        contents.push({ role: geminiRole, parts: [{ text }] });
+      }
+    }
+  }
+
+  // Tambahkan userMessage terakhir
+  if (contents.length > 0 && contents[contents.length - 1].role === "user") {
+    contents[contents.length - 1].parts[0].text += "\n" + userMessage;
+  } else {
+    contents.push({ role: "user", parts: [{ text: userMessage }] });
+  }
+
+  // Gemini API mewajibkan pesan pertama selalu ber-role 'user'
+  while (contents.length > 0 && contents[0].role !== "user") {
+    contents.shift();
+  }
+
   const payload = {
     system_instruction: {
       parts: [{ text: systemInstructionText }],
     },
-    contents: [
-      {
-        role: "user",
-        parts: [{ text: userMessage }],
-      },
-    ],
+    contents: contents,
     generationConfig: {
       temperature: 0.7,
-      maxOutputTokens: 500, // Ringkas dan responsif untuk memaksimalkan kecepatan
+      maxOutputTokens: 800, // Cukup leluasa untuk penjelasan cerdas & mendalam
     },
   };
 
-  // ========================================================
-  // JALUR CEPAT (ZERO-HOP): Panggil langsung model tercepat
-  // ========================================================
-  const fastUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cachedWorkingModel}:generateContent?key=${apiKey}`;
-
-  try {
-    const fastRes = await fetch(fastUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (fastRes.ok) {
-      const data = await fastRes.json();
-      const candidateText =
-        data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
-      if (candidateText) {
-        return { text: candidateText, modelUsed: cachedWorkingModel };
-      }
-    } else {
-      const errJson = await fastRes.json().catch(() => null);
-      const errMsg = errJson?.error?.message || `HTTP ${fastRes.status}`;
-
-      // Jika error autentikasi kunci API (400 Invalid key / 403), tidak perlu coba model lain
-      const isAuthError =
-        fastRes.status === 403 ||
-        errMsg.toLowerCase().includes("api_key_invalid") ||
-        errMsg.toLowerCase().includes("api key not valid");
-
-      if (isAuthError) {
-        return { error: errMsg, status: fastRes.status, modelUsed: cachedWorkingModel };
-      }
-    }
-  } catch (fastErr) {
-    console.warn("Direct fast call failed, falling back to dynamic search:", fastErr);
+  // 2. Pemilihan Model Paling Kencang & Pintar
+  let primaryModel = "gemini-2.0-flash";
+  if (modelId === "gemini-1.5-pro") {
+    primaryModel = "gemini-1.5-pro";
+  } else if (modelId === "gemini-1.5-flash") {
+    primaryModel = "gemini-1.5-flash";
+  } else {
+    // Default: Gemini 2.0 Flash (Model tercepat dan terpintar generasi terbaru)
+    primaryModel = "gemini-2.0-flash";
   }
 
-  // ========================================================
-  // JALUR ADAPTIF (Hanya dieksekusi jika model default gagal)
-  // ========================================================
-  let dynamicModels: string[] = [];
-  try {
-    const listRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
-      {
-        method: "GET",
-        headers: {
-          "x-goog-api-key": apiKey,
-        },
-      }
-    );
-
-    if (!listRes.ok) {
-      const errJson = await listRes.json().catch(() => null);
-      const errMsg = errJson?.error?.message || `HTTP ${listRes.status}`;
-      return {
-        error: errMsg,
-        status: listRes.status,
-      };
-    }
-
-    const listData = await listRes.json();
-    const modelsList: Array<{ name: string; supportedGenerationMethods?: string[] }> =
-      listData?.models || [];
-
-    // Filter HANYA model teks interaktif (tolak audio, tts, embedding, imagen, video)
-    const textModels = modelsList.filter((m) => {
-      const name = m.name.toLowerCase();
-      const isExcluded =
-        name.includes("tts") ||
-        name.includes("audio") ||
-        name.includes("embedding") ||
-        name.includes("imagen") ||
-        name.includes("image") ||
-        name.includes("realtime") ||
-        name.includes("robotics");
-
-      const isGenContent = m.supportedGenerationMethods?.includes("generateContent");
-      return !isExcluded && isGenContent;
-    });
-
-    // Urutkan prioritas model teks murni:
-    // 1. gemini-1.5-flash (paling stabil & teruji untuk percakapan teks)
-    // 2. gemini-2.0-flash
-    // 3. gemini-1.5-pro / 2.0-pro
-    // 4. gemini-1.5-flash-8b
-    const scored = textModels.map((m) => {
-      let score = 0;
-      const n = m.name.toLowerCase();
-      if (n.includes("1.5-flash")) score += 100;
-      else if (n.includes("2.0-flash")) score += 95;
-      else if (n.includes("1.5-pro")) score += 80;
-      else if (n.includes("2.0-pro")) score += 75;
-      else if (n.includes("flash-8b")) score += 70;
-      else if (n.includes("gemini")) score += 50;
-      return { name: m.name, score };
-    });
-
-    scored.sort((a, b) => b.score - a.score);
-    dynamicModels = scored.map((s) => s.name.replace(/^models\//, ""));
-  } catch (listErr) {
-    console.warn("Could not list models dynamically, falling back to static list:", listErr);
-  }
-
-  // Jika dynamic list kosong, gunakan static candidate fallback
-  const modelsToTry = dynamicModels.length > 0
-    ? dynamicModels
-    : [
-        "gemini-1.5-flash-latest",
-        "gemini-1.5-flash",
-        "gemini-2.0-flash",
-        "gemini-2.0-flash-exp",
-        "gemini-1.5-flash-002",
-        "gemini-1.5-flash-001",
-        "gemini-1.5-flash-8b",
-        "gemini-1.5-pro-latest",
-        "gemini-1.5-pro",
-      ];
+  // Prioritas kandidat model: model terpilih -> gemini-2.0-flash -> gemini-1.5-flash
+  const modelsToTry = Array.from(new Set([
+    primaryModel,
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-2.0-flash-lite-preview-02-05",
+  ]));
 
   let lastError = "";
   let lastStatus = 0;
@@ -300,6 +239,7 @@ Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentan
           "x-goog-api-key": apiKey,
         },
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(5500), // Timeout ketat 5.5s agar tidak pernah stuck/hang
       });
 
       if (response.ok) {
@@ -307,7 +247,6 @@ Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentan
         const candidateText =
           data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
         if (candidateText) {
-          cachedWorkingModel = cleanModel; // Simpan model yang sukses ke cache
           return { text: candidateText, modelUsed: cleanModel };
         }
       } else {
@@ -325,7 +264,6 @@ Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentan
         if (isAuthError) {
           return { error: errMsg, status: response.status, modelUsed: cleanModel };
         }
-        // Jika error terkait modalitas/model tertentu, lanjutkan mencoba model teks berikutnya di daftar
       }
     } catch (netErr) {
       lastError = netErr instanceof Error ? netErr.message : String(netErr);

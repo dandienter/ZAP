@@ -169,6 +169,8 @@ export default function LogicoMathApp() {
   };
 
   const handleSend = async (customSteps?: string[]) => {
+    if (loading) return; // Mencegah double submit / multiple bubbles
+
     const rawInput = customSteps ? customSteps.join("\n") : inputText.trim();
     if (!rawInput && !customSteps) return;
 
@@ -211,12 +213,36 @@ export default function LogicoMathApp() {
       setLoadingStatus("LogicoMath sedang merancang bimbingan...");
 
       try {
-        const storedKey = typeof window !== "undefined" ? localStorage.getItem("nalar_gemini_api_key") || "" : "";
+        const storedKey =
+          typeof window !== "undefined"
+            ? localStorage.getItem("logicomath_gemini_api_key") ||
+              localStorage.getItem("nalar_gemini_api_key") ||
+              ""
+            : "";
+
+        // Ekstraksi memori seluruh percakapan sebelumnya untuk konteks berkelanjutan
+        const conversationHistory = messages
+          .map((m) => {
+            const content =
+              m.sender === "user"
+                ? m.rawText || (m.steps ? m.steps.join("\n") : "")
+                : m.replyText ||
+                  m.diagnosis?.diagnosis?.socratic_prompt ||
+                  m.diagnosis?.diagnosis?.human_explanation ||
+                  "";
+            return {
+              role: m.sender,
+              content: content.trim(),
+            };
+          })
+          .filter((item) => item.content.length > 0);
+
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             message: rawInput,
+            conversationHistory: conversationHistory,
             activeProblem: activeProblemContext,
             modelId: selectedModel.id,
             apiKey: storedKey,
