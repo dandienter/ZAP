@@ -17,7 +17,6 @@ import {
   Bot,
   Globe,
   Server,
-  HelpCircle,
 } from "lucide-react";
 
 export type ReasoningEffort = "low" | "medium" | "high";

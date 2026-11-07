@@ -11,19 +11,14 @@ import {
   Cpu,
   Code2,
   Server,
-  Key,
   CheckCircle2,
-  XCircle,
   ExternalLink,
   ChevronLeft,
   ArrowRight,
-  ShieldCheck,
   Check,
   Loader2,
   LogIn,
   Lock,
-  Layers,
-  HelpCircle,
   Radio,
 } from "lucide-react";
 import { AVAILABLE_MODELS } from "@/components/ModelPickerWithEffort";
@@ -63,7 +58,7 @@ export default function ConnectorPage() {
   const [openaiKey, setOpenaiKey] = useState("");
   const [claudeKey, setClaudeKey] = useState("");
   const [bazaarKey, setBazaarKey] = useState("");
-  const [mistralKey, setMistralKey] = useState("");
+  const [, setMistralKey] = useState("");
 
   // ChatGPT Account Login Modal
   const [showGptLoginModal, setShowGptLoginModal] = useState(false);
