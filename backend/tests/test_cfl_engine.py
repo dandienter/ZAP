@@ -160,6 +160,21 @@ class TestCFLEngine:
             with pytest.raises(ValueError):
                 parse_step_to_symbolic(payload)
 
+    def test_dangerous_inputs_never_reach_sympy(self, monkeypatch):
+        """
+        Kasus 9: Verifikasi Intersepsi Monkeypatch.
+        Membuktikan secara deterministik bahwa input berbahaya/DoS ditolak pada tahap
+        pra-parse (whitelist & exponent check) dan tidak pernah menyentuh parse_expr atau parse_latex SymPy.
+        """
+        import cfl.parser as P
+        def boom(*a, **k):
+            raise AssertionError("SymPy dipanggil untuk input berbahaya")
+        monkeypatch.setattr(P, "parse_expr", boom)
+        monkeypatch.setattr(P, "parse_latex", boom)
+        for payload in ["(9^9)^9", "2^(100000000000)", "9^{9}^{9}", "10^100000", r"\sqrt[99999]{2}"]:
+            with pytest.raises(ValueError):
+                P.parse_step_to_symbolic(payload)
+
 
 class TestZeroAnswerGuardrail:
 

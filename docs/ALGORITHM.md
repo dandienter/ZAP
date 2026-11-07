@@ -92,7 +92,7 @@ False
 True
 ```
 
-### 3.2 Eksekusi Pytest Lengkap (21/21 Lulus, 0 Warning):
+### 3.2 Eksekusi Pytest Lengkap (22/22 Lulus, 0 Warning):
 ```bash
 $ cd backend
 $ python -m pytest -v -p no:cacheprovider tests/ -W default
@@ -100,29 +100,30 @@ $ python -m pytest -v -p no:cacheprovider tests/ -W default
 platform win32 -- Python 3.15.1, pytest-9.2.0, pluggy-1.7.0 -- C:\Python315\python.exe
 rootdir: C:\Users\wakhidpangestu\orca\projects\logicodix
 plugins: anyio-4.15.1
-collecting ... collected 21 items
+collecting ... collected 22 items
 
 tests/test_api.py::TestNalarAIAPI::test_health_check PASSED              [  4%]
 tests/test_api.py::TestNalarAIAPI::test_diagnose_polynomial_expansion_fault PASSED [  9%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_valid_transposition PASSED [ 14%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_empty_steps PASSED [ 19%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_code_injection_payload PASSED [ 23%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_undecidable_condition_set PASSED [ 28%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_accepts_legacy_fields_lines_and_target_var PASSED [ 33%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_malicious_latex_payload PASSED [ 38%]
-tests/test_api.py::TestNalarAIAPI::test_legacy_target_var_is_honored PASSED [ 42%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_dos_huge_exponent PASSED [ 47%]
-tests/test_cfl_engine.py::TestCFLEngine::test_polynomial_expansion_fault_detected PASSED [ 52%]
-tests/test_cfl_engine.py::TestCFLEngine::test_equation_valid_transposition PASSED [ 57%]
-tests/test_cfl_engine.py::TestCFLEngine::test_equation_invalid_transposition PASSED [ 61%]
-tests/test_cfl_engine.py::TestCFLEngine::test_root_loss_detection PASSED [ 66%]
-tests/test_cfl_engine.py::TestCFLEngine::test_undecidable_condition_set PASSED [ 71%]
-tests/test_cfl_engine.py::TestCFLEngine::test_parser_rejects_code_injection PASSED [ 76%]
-tests/test_cfl_engine.py::TestCFLEngine::test_latex_fallback_rejects_non_math_commands PASSED [ 80%]
-tests/test_cfl_engine.py::TestCFLEngine::test_parser_rejects_dangerous_nested_and_huge_exponents PASSED [ 85%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_valid_transposition PASSED [ 13%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_empty_steps PASSED [ 18%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_code_injection_payload PASSED [ 22%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_undecidable_condition_set PASSED [ 27%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_accepts_legacy_fields_lines_and_target_var PASSED [ 31%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_malicious_latex_payload PASSED [ 36%]
+tests/test_api.py::TestNalarAIAPI::test_legacy_target_var_is_honored PASSED [ 40%]
+tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_dos_huge_exponent PASSED [ 45%]
+tests/test_cfl_engine.py::TestCFLEngine::test_polynomial_expansion_fault_detected PASSED [ 50%]
+tests/test_cfl_engine.py::TestCFLEngine::test_equation_valid_transposition PASSED [ 54%]
+tests/test_cfl_engine.py::TestCFLEngine::test_equation_invalid_transposition PASSED [ 59%]
+tests/test_cfl_engine.py::TestCFLEngine::test_root_loss_detection PASSED [ 63%]
+tests/test_cfl_engine.py::TestCFLEngine::test_undecidable_condition_set PASSED [ 68%]
+tests/test_cfl_engine.py::TestCFLEngine::test_parser_rejects_code_injection PASSED [ 72%]
+tests/test_cfl_engine.py::TestCFLEngine::test_latex_fallback_rejects_non_math_commands PASSED [ 77%]
+tests/test_cfl_engine.py::TestCFLEngine::test_parser_rejects_dangerous_nested_and_huge_exponents PASSED [ 81%]
+tests/test_cfl_engine.py::TestCFLEngine::test_dangerous_inputs_never_reach_sympy PASSED [ 86%]
 tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_preserves_socratic_context PASSED [ 90%]
 tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_censors_explicit_declaration PASSED [ 95%]
 tests/test_cfl_engine.py::TestZeroAnswerGuardrail::test_guardrail_masks_kunci_declaration_with_final_solution PASSED [100%]
 
-============================= 21 passed in 1.83s ==============================
+============================= 22 passed in 1.63s ==============================
 ```

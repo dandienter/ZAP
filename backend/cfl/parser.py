@@ -13,6 +13,7 @@ from sympy.parsing.sympy_parser import (
     implicit_multiplication_application,
     convert_xor
 )
+from sympy.parsing.latex import parse_latex
 
 TRANSFORMATIONS = standard_transformations + (implicit_multiplication_application, convert_xor)
 
@@ -140,7 +141,6 @@ def parse_single_side(side_str: str) -> sp.Expr:
                 f"Eksponen atau indeks akar melebihi batas aman (maksimal 100) atau menggunakan pangkat bertingkat: '{side_str}'"
             )
         try:
-            from sympy.parsing.latex import parse_latex
             return parse_latex(cleaned)
         except Exception as err:
             raise ValueError(f"Gagal mengurai ekspresi LaTeX '{side_str}': {err}")

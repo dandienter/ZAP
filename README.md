@@ -4,7 +4,7 @@
 [![Subtheme](https://img.shields.io/badge/Subtheme-Smart_%26_Fun_Education-10B981?style=for-the-badge)](https://github.com/[your-team]/nalar-ai)
 [![License: MIT](https://img.shields.io/badge/License-MIT-38BDF8?style=for-the-badge)](LICENSE)
 [![Localhost Ready](https://img.shields.io/badge/Localhost-Offline_Tested-F59E0B?style=for-the-badge)](https://github.com/[your-team]/nalar-ai)
-[![Pytest Passing](https://img.shields.io/badge/Pytest-21%2F21_Passing-10B981?style=for-the-badge)](backend/tests/)
+[![Pytest Passing](https://img.shields.io/badge/Pytest-22%2F22_Passing-10B981?style=for-the-badge)](backend/tests/)
 
 > **"Don't give them the answer. Debug how they think."**  
 > NalarAI adalah sistem diagnostik kognitif yang membedah cacat logika berpikir siswa langsung dari foto kertas buram (orat-oretan tangan) mereka, memadukan Vision-Language Model dengan mesin aljabar simbolik deterministik (**SymPy**).
@@ -37,11 +37,11 @@ NalarAI menggunakan arsitektur **Hybrid Perceptual-Symbolic Reasoning**:
 
 ---
 
-## 🧪 Hasil Uji Otomatis (Pytest 21/21 Verified)
+## 🧪 Hasil Uji Otomatis (Pytest 22/22 Verified)
 
 Rangkaian pengujian otomatis di [`backend/tests/`](backend/tests/) mencakup verifikasi logika simbolik dan integrasi API:
 
-### A. Core Symbolic Reasoning (`test_cfl_engine.py` - 11 Tests)
+### A. Core Symbolic Reasoning (`test_cfl_engine.py` - 12 Tests)
 * ✅ **Ekspansi Kuadrat:** Mendeteksi hilangnya suku perkalian silang pada $(x+3)^2 - 4$ (kontra-contoh terhitung: $21 \neq 9$).
 * ✅ **Persamaan Linear Valid:** Memvalidasi manipulasi ruas $2x + 3 = 7 \rightarrow 2x = 4 \rightarrow x = 2$.
 * ✅ **Persamaan Linear Galat:** Mendeteksi kesalahan tanda saat pindah ruas $2x + 3 = 7 \rightarrow 2x = 10$.
@@ -49,7 +49,8 @@ Rangkaian pengujian otomatis di [`backend/tests/`](backend/tests/) mencakup veri
 * ✅ **Penanganan ConditionSet:** Menangani persamaan transendental $\sin(x) = x$ secara aman sebagai `UNDECIDABLE_STEP`.
 * ✅ **Sanitasi Whitelist (Security):** `parse_expr` hanya dipanggil jika input lolos whitelist karakter dan identifier; payload injeksi Python (`__import__`, `eval`, `open`, `__builtins__`) ditolak sebelum dievaluasi.
 * ✅ **Penolakan LaTeX Non-Matematika:** Jalur fallback `parse_latex` memblokir perintah sistem berbahaya seperti `\input{/etc/passwd}` dan `\write18{echo hi}`.
-* ✅ **Pertahanan Anti-DoS (Exponential Limiter):** Menolak eksponen numerik > 100 dan rantai pangkat bertingkat ($9^{9^9}$, $x^{2^3}$) secara instan (< 1 ms) untuk mencegah server CPU lockup.
+* ✅ **Pertahanan Anti-DoS (Exponential Limiter):** Menolak eksponen numerik > 100 dan rantai pangkat bertingkat ($9^{9^9}$, $(9^9)^9$, $2^{100000000000}$, $\sqrt[99999]{2}$) dalam sub-milidetik (< 1 ms).
+* ✅ **Verifikasi Intersepsi Monkeypatch:** Membuktikan secara deterministik bahwa payload berbahaya ditolak pada tahap pra-parse dan sama sekali tidak pernah menyentuh fungsi parser `parse_expr` maupun `parse_latex` SymPy.
 * ✅ **Regresi Guardrail:** Memastikan kalimat `"Jika x = 2"`, `"baris ke-2"`, dan `"Hasil dari substitusi adalah 25"` tidak tersensor.
 * ✅ **Pencegahan Kebocoran Jawaban:** Menyaring pernyataan deklaratif `"jawaban akhirnya adalah x = 2"`.
 * ✅ **Masking Kunci Eksplisit:** Menguji penyaringan pada `"Kunci adalah 5"` tanpa merusak frasa `"baris ke-5"`.
@@ -69,7 +70,7 @@ Rangkaian pengujian otomatis di [`backend/tests/`](backend/tests/) mencakup veri
 ```bash
 $ cd backend
 $ python -m pytest -v -p no:cacheprovider tests/ -W default
-============================= 21 passed in 1.83s ==============================
+============================= 22 passed in 1.63s ==============================
 ```
 
 ---
