@@ -114,6 +114,7 @@ export default function ChatGPTStyleNalarAI() {
   const [loading, setLoading] = useState<boolean>(false);
   const [backendStatus, setBackendStatus] = useState<"checking" | "online" | "offline">("checking");
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+  const [activeProblemFirstStep, setActiveProblemFirstStep] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -139,6 +140,7 @@ export default function ChatGPTStyleNalarAI() {
   const startNewChat = () => {
     setMessages([]);
     setInputText("");
+    setActiveProblemFirstStep(null);
     setSidebarOpen(false);
     if (textareaRef.current) {
       textareaRef.current.focus();
@@ -149,6 +151,11 @@ export default function ChatGPTStyleNalarAI() {
     const rawInput = customSteps ? customSteps.join("\n") : inputText.trim();
     if (!rawInput && !customSteps) return;
 
+    // Normalisasi shorthand penulisan siswa: x2 -> x^2 (kecuali sudah ada ^)
+    const normalizeStep = (s: string) => {
+      return s.replace(/([a-zA-Z])(\d+)/g, (match, v, d) => `${v}^${d}`);
+    };
+
     const stepsArray = customSteps
       ? customSteps
       : rawInput
@@ -158,37 +165,59 @@ export default function ChatGPTStyleNalarAI() {
 
     if (stepsArray.length === 0) return;
 
-    // Follow up reflection response
-    const lastMsg = messages[messages.length - 1];
-    const isFollowUp =
-      !customSteps &&
-      lastMsg &&
-      lastMsg.sender === "assistant" &&
-      stepsArray.length === 1 &&
-      !stepsArray[0].includes("=");
+    // Cek apakah input murni teks obrolan non-rumus
+    const isPureText = stepsArray.length === 1 && !/[0-9+\-*/^=()\\]/.test(stepsArray[0]);
 
-    if (isFollowUp) {
-      const userFollowUp: Message = {
+    if (isPureText) {
+      const userText = stepsArray[0];
+      const userMsg: Message = {
         id: "msg_" + Date.now(),
         sender: "user",
-        rawText: stepsArray[0],
+        rawText: userText,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
-      setMessages((prev) => [...prev, userFollowUp]);
+      setMessages((prev) => [...prev, userMsg]);
       setInputText("");
-      setLoading(true);
+
+      const lower = userText.toLowerCase();
+      let reply = "";
+      if (
+        lower.includes("kenapa") ||
+        lower.includes("mengapa") ||
+        lower.includes("gimana") ||
+        lower.includes("bantu") ||
+        lower.includes("?") ||
+        lower.includes("maksud")
+      ) {
+        reply =
+          "NalarAI menganalisis konsistensi langkah aljabar siswa. Untuk mendiagnosa atau menguji perbaikan, tuliskan langkah rumusmu (gunakan Enter untuk baris baru) atau pilih salah satu sampel di menu samping.";
+      } else {
+        reply = `Teks "${userText}" tidak dikenali sebagai ekspresi aljabar. Masukkan baris penurunan rumus matematika (contoh: "(x + 3)^2 - 4" lalu "x^2 + 6x + 9 - 4", atau "2x + 3 = 7") untuk diuji oleh engine SymPy.`;
+      }
 
       setTimeout(() => {
-        const assistantReply: Message = {
-          id: "msg_" + (Date.now() + 1),
-          sender: "assistant",
-          replyText: `Refleksi yang tepat. Menyadari bahwa "${stepsArray[0]}" adalah langkah penting untuk memahami konsep aljabar secara mandiri tanpa jalan pintas.`,
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        };
-        setMessages((prev) => [...prev, assistantReply]);
-        setLoading(false);
-      }, 600);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: "msg_" + (Date.now() + 1),
+            sender: "assistant",
+            replyText: reply,
+            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          },
+        ]);
+      }, 300);
       return;
+    }
+
+    // Normalisasi notasi matematika
+    const normalizedSteps = stepsArray.map((s) => normalizeStep(s));
+
+    // Cek apakah ini koreksi 1 langkah terhadap problem aktif sebelumnya
+    let stepsToSend = normalizedSteps;
+    let isCorrection = false;
+    if (normalizedSteps.length === 1 && activeProblemFirstStep && !customSteps) {
+      stepsToSend = [activeProblemFirstStep, normalizedSteps[0]];
+      isCorrection = true;
     }
 
     const userMsg: Message = {
@@ -208,7 +237,7 @@ export default function ChatGPTStyleNalarAI() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          confirmed_steps: stepsArray,
+          confirmed_steps: stepsToSend,
           target_variable: targetVar.trim() || "x",
         }),
       });
@@ -219,20 +248,47 @@ export default function ChatGPTStyleNalarAI() {
       }
 
       const data: DiagnoseResponse = await res.json();
+
+      if (!isCorrection && stepsToSend.length >= 1) {
+        setActiveProblemFirstStep(stepsToSend[0]);
+      }
+
+      let customReplyText: string | undefined = undefined;
+      if (isCorrection) {
+        if (!data.diagnosis.has_fault) {
+          customReplyText = `Perbaikanmu valid! Langkah "${stepsArray[0]}" konsisten dan benar secara aljabar terhadap soal awal.`;
+        } else {
+          customReplyText = `Langkah perbaikanmu "${stepsArray[0]}" masih memiliki kejanggalan: ${data.diagnosis.human_explanation}`;
+        }
+      }
+
       const assistantMsg: Message = {
         id: "msg_" + (Date.now() + 1),
         sender: "assistant",
         diagnosis: data,
+        replyText: customReplyText,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
       setMessages((prev) => [...prev, assistantMsg]);
       setBackendStatus("online");
     } catch (err: unknown) {
       const errText = err instanceof Error ? err.message : "Terjadi kesalahan";
+      
+      let userFriendlyText = "";
+      if (
+        errText.includes("whitelist") ||
+        errText.includes("Gagal mengurai") ||
+        errText.includes("tidak valid")
+      ) {
+        userFriendlyText = `Input "${rawInput}" tidak dapat diurai sebagai rumus aljabar yang valid. Pastikan rumus menggunakan simbol matematika yang diizinkan (misal: +, -, *, /, ^, =).`;
+      } else {
+        userFriendlyText = `Gagal menganalisis: ${errText}. Pastikan server backend FastAPI berjalan di port 8000.`;
+      }
+
       const assistantMsg: Message = {
         id: "msg_" + (Date.now() + 1),
         sender: "assistant",
-        replyText: `Gagal menganalisis langkah: ${errText}. Pastikan server backend berjalan di port 8000.`,
+        replyText: userFriendlyText,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
       setMessages((prev) => [...prev, assistantMsg]);
@@ -449,7 +505,7 @@ export default function ChatGPTStyleNalarAI() {
                       )}
 
                       {msg.rawText && (
-                        <p className="text-xs text-zinc-200 leading-relaxed">
+                        <p className="text-xs text-zinc-200 leading-relaxed font-mono">
                           {msg.rawText}
                         </p>
                       )}
@@ -597,7 +653,7 @@ export default function ChatGPTStyleNalarAI() {
 
                           <div className="text-[10px] text-zinc-400 flex items-center justify-between pt-1 border-t border-zinc-800/80">
                             <span>ID: {msg.diagnosis.session_id}</span>
-                            <span>Ketik analisismu untuk membalas</span>
+                            <span>Ketik perbaikanmu untuk menguji ulang</span>
                           </div>
                         </div>
                       )}
