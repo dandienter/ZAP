@@ -2,6 +2,11 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import MathView from "@/components/MathView";
+import ModelPickerWithEffort, {
+  AVAILABLE_MODELS,
+  type AIModel,
+  type ReasoningEffort,
+} from "@/components/ModelPickerWithEffort";
 
 interface LineTranscription {
   line_number: number;
@@ -90,6 +95,8 @@ export default function ChatGPTStyleNalarAI() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState<string>("");
   const [targetVar, setTargetVar] = useState<string>("x");
+  const [selectedModel, setSelectedModel] = useState<AIModel>(AVAILABLE_MODELS[0]);
+  const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>("medium");
   const [loading, setLoading] = useState<boolean>(false);
   const [backendStatus, setBackendStatus] = useState<"checking" | "online" | "offline">("checking");
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
@@ -312,7 +319,7 @@ export default function ChatGPTStyleNalarAI() {
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
         
         {/* TOP BAR */}
-        <header className="h-12 border-b border-slate-800/60 flex items-center justify-between px-4 bg-slate-950/80 backdrop-blur z-20">
+        <header className="h-14 border-b border-slate-800/60 flex items-center justify-between px-4 bg-slate-950/80 backdrop-blur z-20 gap-2">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -327,14 +334,23 @@ export default function ChatGPTStyleNalarAI() {
               <span className="bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent font-bold">
                 NalarAI
               </span>
-              <span className="text-[10px] text-slate-400 font-normal px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800">
+              <span className="hidden sm:inline-block text-[10px] text-slate-400 font-normal px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800">
                 Cognitive Debugger 2.2
               </span>
             </span>
           </div>
 
-          <div className="text-[11px] text-slate-400">
-            LOGICODIX 2026 • Zero-Answer Policy
+          {/* Model Picker with Cost and Effort Control (AI Chat 9) */}
+          <div className="flex items-center gap-3">
+            <ModelPickerWithEffort
+              selectedModelId={selectedModel.id}
+              onSelectModel={setSelectedModel}
+              reasoningEffort={reasoningEffort}
+              onChangeEffort={setReasoningEffort}
+            />
+            <div className="hidden lg:block text-[11px] text-slate-400 border-l border-slate-800 pl-3">
+              Zero-Answer Policy
+            </div>
           </div>
         </header>
 
@@ -583,31 +599,53 @@ export default function ChatGPTStyleNalarAI() {
         {/* BOTTOM INPUT BAR (CHATGPT FLOATING PROMPT BOX) */}
         <div className="border-t border-slate-800/80 bg-slate-950 p-4">
           <div className="max-w-3xl mx-auto w-full">
-            <div className="relative bg-slate-900/90 border border-slate-700/80 rounded-2xl shadow-xl focus-within:border-sky-500/80 focus-within:ring-1 focus-within:ring-sky-500/50 transition-all p-2 flex items-end gap-2">
-              <textarea
-                ref={textareaRef}
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                rows={inputText.split("\n").length > 3 ? 4 : Math.max(1, inputText.split("\n").length)}
-                placeholder="Tuliskan langkah aljabar (gunakan Enter untuk baris baru)..."
-                className="w-full bg-transparent text-sm text-slate-100 placeholder-slate-400 px-3 py-1.5 focus:outline-none resize-none max-h-36 font-mono"
-              />
+            <div className="relative bg-slate-900/90 border border-slate-700/80 rounded-2xl shadow-xl focus-within:border-sky-500/80 focus-within:ring-1 focus-within:ring-sky-500/50 transition-all p-2.5 flex flex-col gap-2">
+              
+              {/* Composer Model & Reasoning Control Info Bar (AI Chat 9) */}
+              <div className="flex items-center justify-between px-1.5 pb-1 text-xs border-b border-slate-800/60">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-mono text-slate-400">Engine:</span>
+                  <span className="text-[11px] font-semibold text-sky-300 font-mono flex items-center gap-1.5">
+                    <span>{selectedModel.name}</span>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
+                      {selectedModel.costInput}
+                    </span>
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono">
+                  <span>Effort:</span>
+                  <span className="text-indigo-300 uppercase font-semibold px-1.5 py-0.2 rounded bg-indigo-500/10 border border-indigo-500/20">
+                    {reasoningEffort}
+                  </span>
+                </div>
+              </div>
 
-              <button
-                onClick={() => handleSend()}
-                disabled={loading || !inputText.trim()}
-                title="Kirim (Enter)"
-                className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${
-                  inputText.trim() && !loading
-                    ? "bg-slate-100 text-slate-900 hover:bg-white shadow-md active:scale-95"
-                    : "bg-slate-800 text-slate-400 cursor-not-allowed"
-                }`}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                </svg>
-              </button>
+              <div className="flex items-end gap-2">
+                <textarea
+                  ref={textareaRef}
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  rows={inputText.split("\n").length > 3 ? 4 : Math.max(1, inputText.split("\n").length)}
+                  placeholder="Tuliskan langkah aljabar (gunakan Enter untuk baris baru)..."
+                  className="w-full bg-transparent text-sm text-slate-100 placeholder-slate-400 px-2 py-1 focus:outline-none resize-none max-h-36 font-mono"
+                />
+
+                <button
+                  onClick={() => handleSend()}
+                  disabled={loading || !inputText.trim()}
+                  title="Kirim (Enter)"
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${
+                    inputText.trim() && !loading
+                      ? "bg-slate-100 text-slate-900 hover:bg-white shadow-md active:scale-95"
+                      : "bg-slate-800 text-slate-400 cursor-not-allowed"
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             <div className="text-[11px] text-slate-400 text-center mt-2 flex items-center justify-center gap-3">
