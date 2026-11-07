@@ -69,16 +69,27 @@ Rangkaian pengujian otomatis di [`backend/tests/`](backend/tests/) mencakup veri
 
 ```bash
 $ cd backend
-$ python -m pytest -v -p no:cacheprovider tests/ -W default
-============================= 22 passed in 1.63s ==============================
+$ python -m pytest -v -p no:cacheprovider tests/
+============================= 22 passed in 1.80s ==============================
 ```
+
+---
+
+## 📌 Cakupan & Batasan Sistem Saat Ini (Current Scope & Limitations)
+
+> [!NOTE]
+> **Transparansi Status Pengembangan Prototipe:**  
+> Rangkaian 22 unit & integration test yang ada mencakup verifikasi matematis deterministik pada **Parser Aljabar**, **CFL Engine** (deteksi breakpoint kesalahan, ekuivalensi aljabar, deteksi `ROOT_LOSS`, kontra-contoh konkret), **Robust Zero-Answer Guardrail**, dan **FastAPI Endpoint**.  
+> **Hal-hal yang belum ada / belum didukung pada rilis saat ini:**
+> 1. **Pipeline OCR / VLM:** Integrasi visual model untuk memindai foto kertas buram secara langsung belum diimplementasikan; input sistem saat ini merupakan teks matematika/LaTeX yang diketik pengguna atau dipilih melalui sampel orat-oretan terkurasi.
+> 2. **Cakupan Domain:** Engine saat ini berfokus ketat pada **Aljabar Sekolah Menengah** (persamaan linear, manipulasi ruas, pemfaktoran, dan ekspansi kuadrat). Materi kalkulus tingkat lanjut (turunan, integral) dan formulasi fisika belum didukung.
 
 ---
 
 ## 🚀 Panduan Menjalankan di Localhost
 
 ### Lingkungan Runtime Python:
-* **Runtime Terverifikasi:** Python **3.15.1** (Windows x86-64). Seluruh 21 tes otomatis dijalankan dan diverifikasi pada runtime ini.
+* **Runtime Terverifikasi:** Python **3.15.1** (Windows x86-64). Seluruh 22 tes otomatis dijalankan dan diverifikasi pada runtime ini.
 * **Catatan Kompatibilitas:** Struktur paket di `requirements.txt` menggunakan pustaka standar yang umum didukung Python 3.11 dan 3.12 LTS, namun pengujian resmi di mesin lokal ini dijalankan khusus pada Python 3.15.1 sesuai ketersediaan environment.
 
 ### 1. Setup Backend & Menjalankan Unit Tests
