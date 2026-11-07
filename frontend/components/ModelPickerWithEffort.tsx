@@ -11,6 +11,7 @@ import {
   Zap,
   SlidersHorizontal,
   Check,
+  Key,
 } from "lucide-react";
 
 export type ReasoningEffort = "low" | "medium" | "high";
@@ -81,7 +82,28 @@ export default function ModelPickerWithEffort({
   onChangeEffort,
 }: ModelPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [savedKey, setSavedKey] = useState("");
+  const [keySavedToast, setKeySavedToast] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("nalar_gemini_api_key") || "";
+      setSavedKey(stored);
+      setApiKeyInput(stored);
+    }
+  }, []);
+
+  const handleSaveApiKey = () => {
+    if (typeof window !== "undefined") {
+      const trimmed = apiKeyInput.trim();
+      localStorage.setItem("nalar_gemini_api_key", trimmed);
+      setSavedKey(trimmed);
+      setKeySavedToast(true);
+      setTimeout(() => setKeySavedToast(false), 2000);
+    }
+  };
 
   const currentModel =
     AVAILABLE_MODELS.find((m) => m.id === selectedModelId) || AVAILABLE_MODELS[0];
@@ -243,6 +265,43 @@ export default function ModelPickerWithEffort({
               {reasoningEffort === "low" && "Verifikasi cepat ekuivalensi baris dasar."}
               {reasoningEffort === "medium" && "Isolasi breakpoint & petunjuk Sokrates berimbang."}
               {reasoningEffort === "high" && "Pencarian kontra-contoh mendalam & pelacakan ROOT_LOSS."}
+            </p>
+          </div>
+
+          {/* Gemini API Key Config (Opsional) */}
+          <div className="pt-2.5 mt-2.5 border-t border-zinc-800">
+            <div className="flex items-center justify-between mb-1.5 text-xs">
+              <span className="text-[11px] font-medium text-zinc-400 flex items-center gap-1">
+                <Key className="w-3 h-3 text-zinc-400" />
+                <span>Google Gemini API Key:</span>
+              </span>
+              <span className="text-[10px] font-mono text-zinc-400">
+                {savedKey ? (
+                  <span className="text-emerald-400">Aktif</span>
+                ) : (
+                  <span className="text-zinc-500">Lokal Sokratik</span>
+                )}
+              </span>
+            </div>
+
+            <div className="flex gap-1.5">
+              <input
+                type="password"
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+                placeholder="AIzaSy... (Opsional)"
+                className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200 focus:outline-none focus:border-zinc-700"
+              />
+              <button
+                type="button"
+                onClick={handleSaveApiKey}
+                className="px-2.5 py-1 text-[11px] font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded transition"
+              >
+                {keySavedToast ? "Tersimpan" : "Simpan"}
+              </button>
+            </div>
+            <p className="text-[9px] text-zinc-500 mt-1">
+              Kosongkan untuk menggunakan mesin Sokratik bawaan tanpa kuota.
             </p>
           </div>
 
