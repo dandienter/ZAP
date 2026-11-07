@@ -1,127 +1,107 @@
-# PROPOSAL INOVASI DIGITAL HACKATHON LOGICODIX 2026 (V2.0 REVISED)
+# PROPOSAL INOVASI DIGITAL HACKATHON LOGICODIX 2026 (V3.0 ZAP REVISED)
 
 ---
 
-## **NalarAI**
-### *The Autonomous Cognitive Diagnostics Engine for Student Scratchpads*
-> **"Don't give them the answer. Debug how they think."**
+## **ZAP (Zero Answer Policy)**
+### *Platform Web-First Transformasi Rumus ke 3D Interaktif Berbasis Dialog Sokratik untuk Seluruh Jenjang (TK – S3)*
+> **"Don't give them answers. Project the wonder to discover."**
 
 * **Subtema:** Smart & Fun Education  
 * **Kategori Karya:** Minimum Viable Product (MVP) Web Application  
 * **Target Kompetisi:** LOGICODIX Hackathon 2026  
-* **Repositori Resmi:** `https://github.com/[your-team]/nalar-ai`  
+* **Repositori Resmi:** `https://github.com/[your-team]/zap`  
+* **Dokumen Blueprint Resmi:** [`ZAP_Product_Blueprint.pdf`](../ZAP_Product_Blueprint.pdf)
 
 ---
 
 ## RINGKASAN EKSEKUTIF (EXECUTIVE SUMMARY)
 
-Dalam beberapa tahun terakhir, sebagian besar adopsi kecerdasan buatan dalam bidang pendidikan (EdTech) berfokus pada penyelesaian tugas secara instan. Aplikasi seperti Photomath, Qanda, dan chatbot generatif umum beroperasi sebagai **"Answer Engines" (Mesin Kunci Jawaban)**. Ketika siswa buntu menyelesaikan soal matematika, aplikasi ini menyodorkan solusi instan yang memicu *Cognitive Bypassing*—kondisi di mana proses berpikir reflektif siswa terlewati. Berdasarkan survei PISA 2022, kemampuan numerasi dan penalaran matematika siswa Indonesia berada pada peringkat 69 dari 81 negara (skor 366 vs rata-rata OECD 472). Siswa kerap bukan tidak mampu berhitung, melainkan mengalami kegagalan model mental (*conceptual misconception*).
+Sebagian besar adopsi kecerdasan buatan dalam pendidikan (EdTech) saat ini beroperasi sebagai **"Answer Engines" (Mesin Kunci Jawaban)**. Siswa memotret atau menyalin tugas matematika ke aplikasi AI generatif publik, lalu sistem menyodorkan jawaban akhir dalam hitungan detik. Dampaknya sangat merusak: terjadi *Cognitive Bypassing*—kondisi di mana proses berpikir reflektif terlewati, memicu penurunan daya nalar kritis siswa. Berdasarkan survei PISA 2022, kemampuan numerasi dan penalaran matematika siswa Indonesia berada pada peringkat 69 dari 81 negara (skor 366 vs rata-rata OECD 472). 
 
-**NalarAI** hadir dengan paradigma pembelajaran reflektif (*formative reflection*). NalarAI adalah sistem diagnostik kognitif yang memprioritaskan proses bernalar siswa dengan menerapkan **Zero-Answer Policy**. Alih-alih memindai soal bersih di buku, siswa memindai **kertas buram (orat-oretan tangan)** tempat pergulatan logika mereka terjadi.
+Di sisi lain, sekolah-sekolah di negara maju seperti Tiongkok telah mengadopsi *Interactive Smart Board* yang mampu mengubah formula matematika menjadi objek 3D hidup di depan kelas. Namun, perangkat tersebut sangat mahal (**Rp 30 juta – Rp 80 juta per unit**), sehingga kurang dari 5% sekolah di Indonesia yang memilikinya.
 
-Menggabungkan **Vision-Language Model (VLM)** dengan mesin matematika simbolik deterministik (**SymPy**), NalarAI mengisolasi titik patah logika pertama (*First Fault Breakpoint*) pada coretan siswa. Sistem kemudian menghasilkan pertanyaan Sokrates (*Socratic Scaffolding*) dan simulasi tandingan interaktif yang membimbing siswa menemukan sendiri kesesatan logikanya (*Aha! moment*).
-
----
-
-## BAB I: LATAR BELAKANG & ANALISIS MASALAH STRUKTURAL
-
-### 1.1 Krisis Kognitif: PISA dan Ketergantungan AI Instan
-Dalam kurikulum pendidikan di Indonesia, evaluasi pembelajaran kerap terpaku pada produk akhir (*summative output*), yakni sekadar apakah jawaban akhir siswa bernilai benar atau salah. Pola evaluasi ini mengabaikan proses pembentukan pemikiran (*formative reasoning*). 
-
-Ketika teknologi AI generatif semakin mudah diakses, tantangan pedagogis baru muncul:
-1. Siswa mengambil foto soal ujian/tugas.
-2. AI menghasilkan langkah pengerjaan terperinci beserta jawaban akhir.
-3. Siswa menyalin teks tanpa memproses struktur logika di baliknya.
-4. **Hasilnya:** Terjadi *Illusion of Explanatory Depth*—siswa merasa telah menguasai materi hanya karena membaca teks jawaban yang disajikan, namun kesulitan ketika dihadapkan pada variasi soal baru tanpa bantuan gawai.
-
-### 1.2 "Kertas Buram": Jejak Otak yang Terabaikan
-Kertas buram (*scratchpad*) adalah artefak kognitif paling autentik dalam pembelajaran sains dan matematika. Pada lembaran inilah terlihat:
-* Asumsi awal yang dibangun siswa.
-* Coretan penghapusan yang mencerminkan keraguan (*epistemic hesitation*).
-* Lompatan logika (*deductive leaps*) yang keliru.
-
-Di ruang kelas dengan rasio guru dan murid yang tinggi, pendidik memiliki keterbatasan waktu untuk memeriksa lembar orat-oretan tiap murid demi mendiagnosis di baris mana pola pikir mereka mulai tersesat. Akibatnya, kertas buram berakhir dibuang, dan evaluasi hanya terfokus pada angka akhir.
-
-### 1.3 Landasan Teori Pedagogis & Psikologi Kognitif
-NalarAI dibangun di atas tiga pilar teori pendidikan teruji:
-1. **Teori Ekuilibrasi Kognitif (Jean Piaget):** Pembelajaran mendalam terjadi ketika individu mengalami ketidakseimbangan kognitif (*cognitive disequilibrium*)—kondisi ketika realitas membantah asumsi awal mereka, mendorong otak melakukan akomodasi skema berpikir baru.
-2. **Zone of Proximal Development & Scaffolding (Lev Vygotsky):** Bantuan terbaik bukan menyelesaikan pekerjaan untuk siswa, melainkan memberikan perancah (*scaffold*) terkecil yang memungkinkan siswa mengatasi kebuntuan logika secara mandiri.
-3. **Cognitive Load Theory (John Sweller):** Menghindari beban kognitif berlebih (*extraneous load*) dengan membedah satu titik kekeliruan spesifik alih-alih membongkar ulang seluruh bab dari awal.
+**ZAP (Zero Answer Policy)** hadir sebagai pembalik paradigma yang mendemokratisasikan teknologi papan tulis interaktif tersebut ke dalam format **Web-First & Device-Agnostic**:
+1. **Zero Answer Policy (Pedagogi Sokratik Murni):** AI bertindak sebagai guru pembimbing yang diharamkan membocorkan jawaban akhir. AI memandu dengan pertanyaan pemantik bertahap agar siswa menemukan jawabannya sendiri (*Aha! Moment*).
+2. **Dynamic 3D Interactive Canvas:** Berbasis WebGL/Three.js, mengonversi persamaan aljabar, irisan bidang, dan kalkulus menjadi bangun ruang 3D hidup secara *real-time*.
+3. **Inklusif untuk Ruang Kelas Indonesia:** Berjalan mulus di **laptop guru yang tersambung ke proyektor gantung InFocus di plafon** (sekolah biasa), maupun di **Smart Board layar sentuh interaktif** (sekolah modern).
+4. **SymPy Computational Shield:** Menghitung matematika dan koordinat 3D secara deterministik bebas halusinasi, sehingga model AI gratisan/ringan sekalipun tetap bekerja 100% akurat.
+5. **1-Click Universal Connect:** Siswa dan guru cukup masuk dengan 1-klik akun Google (otomatis mengaktifkan Gemini) atau menghubungkan ChatGPT tanpa konfigurasi API key yang rumit.
 
 ---
 
-## BAB II: VALUE PROPOSITION & PARADIGMA SOLUSI
+## BAB I: LATAR BELAKANG & ANALISIS MASALAH RUANG KELAS
 
-| Dimensi | Answer Engines Umum | NalarAI (Cognitive Debugger) |
-| :--- | :--- | :--- |
-| **Input Data** | Teks/Foto Soal Bersih di Buku | Foto Kertas Buram Coretan Tangan Siswa |
-| **Tujuan Sistem** | Menyelesaikan soal secepat mungkin | Membimbing siswa memeriksa alur berpikirnya |
-| **Output Utama** | Langkah pengerjaan & Jawaban Final | Diagnosa Titik Galat & Pertanyaan Sokrates |
-| **Keterlibatan Siswa** | Pasif (Menyalin hasil) | Aktif (Mengevaluasi asumsi pribadi) |
-| **Verifikasi Hitung** | Rawan halusinasi komputasi numerik | Deterministik berbasis SymPy (Computer Algebra) |
+### 1.1 The Educational Trilemma di Indonesia
 
-### Kebijakan Mutlak: The "Zero-Answer Policy"
-NalarAI menerapkan batas etis perangkat lunak (*architectural guardrail*): sistem secara programatis memfilter keluaran agar tidak menyajikan jawaban numerik/simbolik akhir dari soal yang sedang dikerjakan. NalarAI berfungsi sebagai *debugger* yang menunjuk lokasi galat logika dan memberikan pemicu refleksi kognitif.
+Pembelajaran matematika di Indonesia menghadapi tiga kebuntuan struktural:
+1. **Kesenjangan Perangkat (Hardware Gap):** Papan tulis pintar interaktif (*Smart Board*) terbukti meningkatkan daya tangkap spasial siswa secara signifikan. Namun harganya yang mencapai puluhan juta rupiah menjadikannya kemewahan yang sulit dijangkau sekolah negeri di daerah. Di sisi lain, hampir setiap sekolah memiliki aset terpendam: **proyektor LCD gantung di plafon kelas**.
+2. **"Math Blindness" & Keterbatasan Papan Tulis 2D:** Menggambar irisan kerucut, turunan multivariabel, atau jaring-jaring bangun ruang di papan tulis kapur/spidol sangat terbatas. Siswa kesulitan memproyeksikan konsep 3D dari gambar 2D yang kaku.
+3. **Degenerasi Nalar akibat AI Instan:** Kemudahan siswa mengakses chatbot generatif membuat mereka terbiasa menyalin hasil akhir tanpa proses berpikir mendalam (*Illusion of Explanatory Depth*).
 
----
+### 1.2 Landasan Teori Pedagogis
 
-## BAB III: RUANG LINGKUP & MATRIKS FITUR MVP
-
-Untuk pelaksanaan kompetisi LOGICODIX 2026 (7–14 November 2026), ruang lingkup MVP **dikunci pada domain Aljabar (Ekspansi Polinomial dan Persamaan Linear/Kuadrat)** guna memastikan keandalan eksekusi dan akurasi tinggi:
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                         CORE PRODUCT MATRIX                            │
-├─────────────────────┬──────────────────────────────────────────────────┤
-│ Fitur 1:            │ • Upload foto / capture kamera langsung          │
-│ Scratchpad Ingestion│ • Automatic image binarization & contrast tuning │
-│                     │ • Fitur Tinjau & Konfirmasi Pembacaan Teks       │
-├─────────────────────┼──────────────────────────────────────────────────┤
-│ Fitur 2:            │ • Ekstraksi multimodal tulisan tangan ke LaTeX   │
-│ Step-by-Step Parser │ • Rekonstruksi garis alur penalaran kronologis   │
-│                     │ • Deteksi otomatis tipe ekspresi vs persamaan    │
-├─────────────────────┼──────────────────────────────────────────────────┤
-│ Fitur 3:            │ • SymPy mathematical engine validation           │
-│ Symbolic Verifier   │ • Uji ekuivalensi bentuk aljabar & himpunan sol  │
-│                     │ • Isolasi First Fault Breakpoint (baris galat)   │
-├─────────────────────┼──────────────────────────────────────────────────┤
-│ Fitur 4:            │ • Klasifikasi miskonsepsi (Ekspansi & Pindah Ruas│
-│ Socratic Console    │ • Counter-example generator (substitusi angka)   │
-│                     │ • Robust Zero-Answer Guardrail filter            │
-└─────────────────────┴──────────────────────────────────────────────────┘
-```
+ZAP dibangun di atas tiga pilar psikologi kognitif teruji:
+1. **Teori Ekuilibrasi Kognitif (Jean Piaget):** Pembelajaran sejati terjadi saat siswa mengalami ketidakseimbangan kognitif (*cognitive disequilibrium*)—kondisi ketika hasil observasi di kanvas 3D membantah tebakan awal mereka, memaksa otak membentuk skema pemahaman baru.
+2. **Zone of Proximal Development & Scaffolding (Lev Vygotsky):** Bantuan terbaik bukan memberikan kunci jawaban, melainkan memberikan perancah (*scaffold*) terkecil berupa pertanyaan Sokratik yang memandu siswa melewati rintangan nalar.
+3. **Concrete-Pictorial-Abstract (Metode CPA Jerome Bruner):** Memfasilitasi pembelajaran bertahap dari manipulasi objek visual konkret di kanvas 3D menuju simbol aljabar abstrak.
 
 ---
 
-## BAB IV: PEMETAAN TERHADAP INDIKATOR PENILAIAN LOGICODIX 2026
+## BAB II: VALUE PROPOSITION & PERBANDINGAN PARADIGMA
 
-Rancangan proyek ini dipetakan secara terukur terhadap buku panduan resmi LOGICODIX 2026:
-
-### 1. Problem-Solution Fit (Bobot: 25%)
-* **Ketajaman Masalah:** Menyasar akar kemunduran numerasi dan fenomena *cheating* AI yang kontraproduktif.
-* **Kesesuaian Solusi:** Tidak menciptakan friksi baru; siswa tetap berhitung di kertas buram seperti biasa, kemudian menggunakan NalarAI saat mengalami kebuntuan logika.
-
-### 2. Inovasi & Implementasi Teknologi (Bobot: 25%)
-* **Bukan Sekadar Wrapper Chatbot:** Mengintegrasikan Vision-Language Model untuk transkripsi perseptual dengan Computer Algebra System deterministik (**SymPy**) di backend.
-* **Human-in-the-Loop Safeguard:** Dilengkapi fitur peninjauan hasil transkripsi sebelum kalkulasi dijalankan demi menjamin integritas data masukan.
-
-### 3. Rekayasa Perangkat Lunak / Software Engineering (Bobot: 25%)
-* **Kode Bersih, Modular & Teruji:** Dilengkapi pengujian unit otomatis (`pytest`) yang mencakup uji ekspansi polinomial, pemecahan persamaan, dan keandalan guardrail.
-* **Localhost Compatibility:** Arsitektur siap dijalankan secara mandiri di *localhost* dengan dukungan kontainer Docker Compose dan fallback model VLM lokal (Qwen2-VL).
-
-### 4. Desain & Pengalaman Pengguna / UI/UX (Bobot: 15%)
-* **Paradigma "Cognitive Diff":** Visualisasi antarmuka memperlihatkan dengan jelas di mana alur berpikir siswa menyimpang dari konsistensi aljabar.
-* **Non-Punitive Visual Language:** Menghilangkan warna merah tanda salah yang mengintimidasi, digantikan dengan warna Amber (*Epistemic Friction*) yang memicu rasa ingin tahu.
-
-### 5. Prinsip Khusus: Green IT & Ethics (Bobot: 10%)
-* **Efisiensi Komputasi (Green IT):** Inferensi VLM berukuran besar hanya dipanggil 1 kali saat ekstraksi teks. Verifikasi baris ke baris diserahkan ke mesin aljabar simbolik yang hemat daya komputasi.
-* **Kepatuhan Privasi & UU PDP:** Mendukung pemrosesan data luring (*air-gapped*) yang aman bagi data siswa di bawah umur, tanpa penyimpanan permanen dokumen kertas buram di peladen.
+| Dimensi | Answer Engines Umum (Photomath / Chatbot) | Papan Tulis Manual / GeoGebra Pasif | **ZAP (Zero Answer Policy)** |
+| :--- | :--- | :--- | :--- |
+| **Tujuan Sistem** | Menyelesaikan soal secepat mungkin | Menggambar grafik secara manual | **Membimbing proses penalaran spasial & konsep** |
+| **Keluaran Utama** | Angka jawaban akhir & langkah jadi | Kurva 2D statis tanpa tutor | **Kanvas 3D Interaktif + Pertanyaan Sokratik** |
+| **Resiko Halusinasi** | Tinggi (AI salah hitung angka/vektor) | Nol (kalkulasi manual) | **Nol (Diverifikasi Deterministik oleh SymPy CAS)** |
+| **Akses Perangkat** | Gawai personal siswa | Papan tulis fisik | **Web-First (Proyektor Gantung & Smart Board)** |
+| **Keterlibatan Siswa** | Pasif (Menyalin hasil) | Pasif (Melihat guru menggambar) | **Aktif (Memanipulasi kanvas 3D & bernalar)** |
+| **Hambatan Akses** | Harus bayar langganan / API key | Terbatas kapur/spidol | **1-Click Google Login (Zero Setup)** |
 
 ---
 
-## BAB V: MODEL KEBERLANJUTAN & RENCANA ADOPSI
+## BAB III: MATRIKS CAKUPAN KURIKULUM (TK HINGGA S3)
 
-1. **B2C (Direct to Students):** Membantu persiapan ujian seleksi masuk perguruan tinggi (UTBK/SNBT) di mana pemahaman konseptual matematika penalaran menjadi penentu kelulusan utama.
-2. **B2B SaaS (Institutional Analytics untuk Sekolah):** Menyediakan dashboard analitik bagi sekolah untuk memetakan distribusi miskonsepsi per kelas.
-   *(Ilustrasi kasus: Guru dapat melihat laporan bahwa sejumlah siswa di kelas tertentu mengalami kendala pada aturan pemangkatan aljabar).*
-3. **Data Flywheel:** Mengembangkan korpus anonim tentang pola miskonsepsi aljabar pelajar Indonesia guna mendukung penyempurnaan bahan ajar guru.
+Karena ZAP menyediakan wadah kanvas 3D dan kebijakan penjaga (*guardrail policy*), sementara model kecerdasan buatan mengelola kurikulum, ZAP mampu mendukung spektrum belajar tanpa batas:
+
+1. **Pendidikan Anak Usia Dini & SD Awal (TK – Kelas 2):**
+   * *Materi:* Pengenalan bentuk ruang dasar, simetri, agregasi penjumlahan konkret.
+   * *Visualisasi 3D:* Balok hitung warna-warni (*Cuisenaire*), buah apel 3D yang dapat ditarik, kubus yang bisa dibuka jaring-jaringnya.
+   * *Dialog ZAP:* *"Ada 3 balok biru di layar. Kalau kamu tarik 2 balok merah ke dekatnya, coba hitung bersama kelinci ada berapa sekarang?"*
+2. **SD Akhir – SMP (Kelas 3 – 9):**
+   * *Materi:* Pecahan ruang, volume bangun ruang (tabung, prisma, kerucut), koordinat Kartesius, fungsi linear.
+   * *Visualisasi 3D:* Tabung transparan yang dapat diisi zat cair dinamis, kurva linear dengan slider gradien (m) dan intersep (c).
+   * *Dialog ZAP:* *"Saat kemiringan tangga (m) diubah jadi angka minus, ke arah mana tangga di layar condong bersandar?"*
+3. **Sekolah Menengah Atas (SMA / SMK):**
+   * *Materi:* Irisan kerucut (elips, parabola, hiperbola), trigonometri ruang 3D, integral volume benda putar 360°.
+   * *Visualisasi 3D:* Bidang potong dinamis (*slicer*) pada kerucut ganda, kurva 2D yang diputar terhadap sumbu putar.
+   * *Dialog ZAP:* *"Perhatikan cincin tipis di irisan kurva ini. Bagaimana hubungan jari-jari cincin dengan nilai fungsi f(x)?"*
+4. **Perguruan Tinggi (Sarjana / S1):**
+   * *Materi:* Kalkulus Multivariabel, Aljabar Linear (Vektor Ruang & Nilai Eigen), Persamaan Diferensial.
+   * *Visualisasi 3D:* Permukaan saddle (*paraboloid pelana*), bidang singgung ruang 3D, visualisasi peregangan ruang oleh transformasi matriks eigen.
+   * *Dialog ZAP:* *"Mengapa turunan parsial terhadap x bernilai nol di titik pelana ini, namun ia bukan titik ekstrim lokal?"*
+5. **Pascasarjana & Riset (Magister & Doktoral / S2 – S3):**
+   * *Materi:* Geometri Diferensial, Manifold Riemannian, Topologi Aljabar, Analisis Tensor.
+   * *Visualisasi 3D:* Manifold non-Euclidean, Möbius strip, medan vektor 3D dengan visualisasi densitas curl dan divergensi ruang.
+   * *Dialog ZAP:* *"Bagaimana tensor kelengkungan Riemann bertransformasi saat metrik ruang mendekati singularitas?"*
+
+---
+
+## BAB IV: ARSITEKTUR TEKNIS & EFISIENSI SISTEM
+
+ZAP dirancang dengan prinsip modularitas tinggi:
+* **Frontend WebGL (Next.js 14 + Three.js / React Three Fiber):** Bertanggung jawab merender jaring poligon 3D dengan performa 60 FPS pada peramban web standar tanpa instalasi plugin.
+* **Deterministic Math Tier (FastAPI + SymPy CAS Microservice):** Arbiter kebenaran matematis mutlak. SymPy mengevaluasi aljabar, mengisolasi titik patah logika, dan menghitung koordinat titik potong 3D sebelum diteruskan ke Three.js.
+* **Zero-Answer Policy Guardrail:** Filter penyaring berbasis regex deterministik dan analisis AST yang memblokir kebocoran formula jawaban akhir dari respons AI.
+* **1-Click Universal Connect:** Mengeliminasi beban biaya server AI terpusat (*zero server-side LLM cost*) dengan memanfaatkan token OAuth akun Google atau ChatGPT pengguna.
+
+---
+
+## BAB V: ROADMAP PENGEMBANGAN & DAMPAK SOSIAL
+
+* **Q4 2026 (MVP Hackathon Logicodix):** Web-First Canvas 3D, SymPy CAS Ground Truth, Zero-Answer Guardrail V1, dan 1-Click Google SSO.
+* **Q1 2027 (Fase 2):** Integrasi OCR Vision untuk coretan kertas buram (*Scratchpad Ingestion*).
+* **Q2 2027 (Fase 3):** WebCam Hand Gesture Tracking (MediaPipe) agar guru/siswa bisa memutar objek 3D di depan proyektor dengan lambaian tangan di udara.
+* **Q3-Q4 2027 (Fase 4):** Tutor Suara Dua Arah (*Voice Socratic Tutor*) & Kanvas Kolaboratif Seluruh Kelas.
+
+ZAP mewujudkan keadilan akses pendidikan: mengubah proyektor gantung lama di sekolah negeri menjadi sarana belajar matematika masa depan yang cerdas, inklusif, dan menyenangkan.

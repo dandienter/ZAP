@@ -4,7 +4,7 @@
 
 ## 1. STRUKTUR PAKET `backend/cfl` & API GATEWAY
 
-Algoritma inti NalarAI diorganisasikan dalam modul Python terpisah:
+Algoritma inti ZAP (Truth Tier `backend/cfl`) diorganisasikan dalam modul Python terpisah:
 * [`backend/cfl/parser.py`](backend/cfl/parser.py): Mengurai string ekspresi maupun persamaan dengan dukungan *implicit multiplication* (`2x` ➔ `2*x`) dan LaTeX. Memastikan parser tidak memanggil `eval` pada input di luar whitelist dan perintah LaTeX non-matematika ditolak.
 * [`backend/cfl/cfl_engine.py`](backend/cfl/cfl_engine.py): Memvalidasi kontinuitas kebenaran aljabar menggunakan kombinasi `sp.solveset(domain=sp.S.Reals)` (persamaan) dan `sp.simplify` (ekspresi). Menangani kondisi `ConditionSet` sebagai `UNDECIDABLE_STEP`.
 * [`backend/cfl/classifier.py`](backend/cfl/classifier.py): Mengklasifikasikan miskonsepsi: `DISTRIBUTIVE_EXPANSION_ILLUSION`, `SIGN_INVERSION_OR_TRANSPOSITION_ERROR`, dan `ROOT_LOSS` (kehilangan akar).
@@ -102,16 +102,16 @@ rootdir: C:\Users\wakhidpangestu\orca\projects\logicodix
 plugins: anyio-4.15.1
 collecting ... collected 22 items
 
-tests/test_api.py::TestNalarAIAPI::test_health_check PASSED              [  4%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_polynomial_expansion_fault PASSED [  9%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_valid_transposition PASSED [ 13%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_empty_steps PASSED [ 18%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_code_injection_payload PASSED [ 22%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_undecidable_condition_set PASSED [ 27%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_accepts_legacy_fields_lines_and_target_var PASSED [ 31%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_malicious_latex_payload PASSED [ 36%]
-tests/test_api.py::TestNalarAIAPI::test_legacy_target_var_is_honored PASSED [ 40%]
-tests/test_api.py::TestNalarAIAPI::test_diagnose_rejects_dos_huge_exponent PASSED [ 45%]
+tests/test_api.py::TestZAPAPI::test_health_check PASSED              [  4%]
+tests/test_api.py::TestZAPAPI::test_diagnose_polynomial_expansion_fault PASSED [  9%]
+tests/test_api.py::TestZAPAPI::test_diagnose_valid_transposition PASSED [ 13%]
+tests/test_api.py::TestZAPAPI::test_diagnose_rejects_empty_steps PASSED [ 18%]
+tests/test_api.py::TestZAPAPI::test_diagnose_rejects_code_injection_payload PASSED [ 22%]
+tests/test_api.py::TestZAPAPI::test_diagnose_undecidable_condition_set PASSED [ 27%]
+tests/test_api.py::TestZAPAPI::test_diagnose_accepts_legacy_fields_lines_and_target_var PASSED [ 31%]
+tests/test_api.py::TestZAPAPI::test_diagnose_rejects_malicious_latex_payload PASSED [ 36%]
+tests/test_api.py::TestZAPAPI::test_legacy_target_var_is_honored PASSED [ 40%]
+tests/test_api.py::TestZAPAPI::test_diagnose_rejects_dos_huge_exponent PASSED [ 45%]
 tests/test_cfl_engine.py::TestCFLEngine::test_polynomial_expansion_fault_detected PASSED [ 50%]
 tests/test_cfl_engine.py::TestCFLEngine::test_equation_valid_transposition PASSED [ 54%]
 tests/test_cfl_engine.py::TestCFLEngine::test_equation_invalid_transposition PASSED [ 59%]

@@ -1,21 +1,22 @@
-# DESIGN SYSTEM & UI/UX SPECIFICATION: "COGNITIVE DIFF" (V2.0 REVISED)
+# DESIGN SYSTEM & UI/UX SPECIFICATION: ZAP (V3.0 REVISED)
 
 ---
 
 ## 1. FILOSOFI DESAIN & METAFORA VISUAL
 
-Desain antarmuka **NalarAI** dirancang berdasarkan paradigma **"Cognitive Diff"**. 
+Desain antarmuka **ZAP (Zero Answer Policy)** dirancang berdasarkan paradigma **"Spatial Cognitive Scaffolding"**. 
 
-Sebagaimana seorang software engineer menggunakan *code diff* untuk melacak di mana letak bug dalam suatu alur kode, siswa menggunakan NalarAI untuk melihat di baris mana asumsi model berpikir mereka mulai menyimpang dari konsistensi matematika.
+Sistem menggabungkan metafora visual kanvas ruang 3D dengan dialog bimbingan yang memandu penalaran siswa secara terarah tanpa hukuman visual yang menurunkan motivasi.
 
 ### Tiga Prinsip Utama UI/UX:
-1. **Non-Punitive Feedback (Warna Amber vs Merah):**
+1. **Dynamic 3D Spatial Canvas (Web-First):**
+   * Mengutamakan visualisasi bentuk ruang interaktif (Three.js WebGL) sebagai jangkar pemahaman sebelum siswa masuk ke simbol matematika abstrak.
+2. **Non-Punitive Feedback (Warna Amber vs Merah):**
    * Menghindari tanda silang merah besar ($\times$) yang menimbulkan *epistemic shame* (rasa malu intelektual).
-   * Menggunakan warna **Amber (Epistemic Friction)** yang memberi sinyal: *"Di baris ini ada paradoks yang menarik untuk diselidiki"*.
-2. **Dual-Pane Focused Workspace:**
-   * Mempertahankan visibilitas artefak fisik siswa (kertas buram) berdampingan dengan instrumen refleksi kognitif.
-3. **Scaffolding Progresif (Bertahap):**
-   * Petunjuk tidak membeberkan jawaban. Level 1 hanya berupa pertanyaan pemantik. Level 2 menyajikan kontradiksi numerik. Level 3 baru memberikan analogi geometris.
+   * Menggunakan warna **Amber (Epistemic Friction)** yang memberi sinyal edukatif: *"Di titik ini ada ketidaksesuaian nalar yang menarik untuk diselidiki bersama"*.
+3. **Adaptive Dual-Mode Presentation:**
+   * **Projector Mode:** Skema warna kontras tinggi, teks bimbingan berukuran besar agar terbaca jelas hingga baris belakang kelas, dan tombol "Focus Mode" untuk menyembunyikan chat saat guru ceramah.
+   * **Smart Board Touch Mode:** Area sentuh virtual ramah jari (min. 48x48 px), mendukung rotasi 1 jari, zoom cubit 2 jari, dan coretan pena stylus.
 
 ---
 
@@ -32,6 +33,7 @@ Sebagaimana seorang software engineer menggunakan *code diff* untuk melacak di m
 │ --bg-elevated     │ #1E293B      │ 217, 33%, 17│ Active Hover / Border │
 │ --text-primary    │ #F8FAFC      │ 210, 40%, 98│ Headings & Math KaTeX │
 │ --text-secondary  │ #94A3B8      │ 215, 16%, 65│ Helper & Descriptions │
+│ --accent-brand    │ #1E3A8A      │ 224, 64%, 33│ ZAP Primary Identity  │
 │ --accent-focus    │ #38BDF8      │ 199, 89%, 60│ Selection & Primary CT│
 │ --amber-glitch    │ #F59E0B      │ 38, 92%, 50%│ Cognitive Breakpoint  │
 │ --emerald-aha     │ #10B981      │ 161, 94%, 30│ Valid Step / Solution │
@@ -40,61 +42,38 @@ Sebagaimana seorang software engineer menggunakan *code diff* untuk melacak di m
 
 ---
 
-## 3. ALUR ANTARMUKA & WORKSPACE DUAL-PANE
+## 3. LAYOUT ARSITEKTUR: SPLIT-VIEW WORKSPACE
 
-### Tahap 1: Modal "Tinjau Hasil Transkripsi" (Human-in-the-Loop)
-Sebelum masuk ke konsol diagnosa, siswa disodori popover verifikasi teks sederhana:
+Antarmuka ZAP mengadopsi tata letak dua bilah (*Split-View Workspace*):
+
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│ 🔍 TINJAU HASIL BACAAN CORETANMU                                       │
-│ Pastikan rumus tulisan tanganmu terbaca dengan tepat:                  │
-├────────────────────────────────────────────────────────────────────────┤
-│ Baris 1: f(x) = (x + 3)^2 - 4                      [Edit ✎] [✓ Cocok]  │
-│ Baris 2: f(x) = x^2 + 9 - 4                        [Edit ✎] [✓ Cocok]  │
-│ Baris 3: f(x) = x^2 + 5                            [Edit ✎] [✓ Cocok]  │
-├────────────────────────────────────────────────────────────────────────┤
-│ [ Batalkan ]                             [ Mulai Diagnosa Logika ➔ ]   │
+│  ZAP (Zero Answer Policy)         [1-Click: Google 🟢] [Mode Proyektor]│
+├───────────────────────────────────┬────────────────────────────────────┤
+│ 📐 KANVAS 3D INTERAKTIF (THREE.JS)│ 💬 BIMBINGAN SOKRATIK              │
+│                                   │                                    │
+│   [ Parabola / Bangun Ruang 3D ]  │  Siswa: "Berapa nilai x?"          │
+│   (Bisa di-rotasi, zoom, slice)   │                                    │
+│                                   │  ZAP:                              │
+│   Slider Parameter:               │  "Coba amati titik potong pada     │
+│   Radius (r): [───●───────] 4.2   │   sumbu-X di kanvas sebelah kiri.  │
+│   Tinggi (h): [──────●────] 8.0   │   Berapakah nilai koordinat Y      │
+│                                   │   pada posisi tersebut?"           │
+│   [ Rotasi 360° ] [ Iris Bidang ] │                                    │
+├───────────────────────────────────┴────────────────────────────────────┤
+│ ✍️ Input Formula / Deret Langkah Aljabar: f(x) = (x+3)^2 - 4   [Kirim] │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### Tahap 2: Layar Utama Dual-Pane Workspace
+## 4. AKSESIBILITAS & ZERO-SETUP ONBOARDING
 
-```
-┌────────────────────────────────────────┬────────────────────────────────────────┐
-│  PANEL KIRI: SCRATCHPAD INSPECTOR      │  PANEL KANAN: THE SOCRATIC CONSOLE     │
-├────────────────────────────────────────┼────────────────────────────────────────┤
-│ [Top Toolbar: Upload | Zoom | Re-crop] │ [Status: First Fault Isolated (Line 2)]│
-│                                        │                                        │
-│  Foto Kertas Buram Siswa:              │ ┌────────────────────────────────────┐ │
-│  ┌──────────────────────────────────┐  │ │ ⚠️ Miskonsepsi Terdeteksi          │ │
-│  │ (1) f(x) = (x + 3)^2 - 4   [OK]  │  │ │ Ilusi Ekspansi Kuadrat             │ │
-│  │ -------------------------------- │  │ └────────────────────────────────────┘ │
-│  │ (2) f(x) = x^2 + 9 - 4 [AMBER ⚠️]│  │                                        │
-│  │     ╭──────────────────────╮     │  │ 💬 Pertanyaan Sokrates (Level 1):    │ │
-│  │     │ Bounding Box Pulse   │     │  │ "Di baris ke-2, apa yang terjadi     │ │
-│  │     ╰──────────────────────╯     │  │  ketika kamu membuka tanda kurung    │ │
-│  │ (3) f(x) = x^2 + 5               │  │  pada bentuk kuadrat?"               │ │
-│  └──────────────────────────────────┘  │                                        │
-│                                        │ ┌────────────────────────────────────┐ │
-│                                        │ │ 🧪 Uji Angka Nyata (Level 2):      │ │
-│                                        │ │ Jika x = 2:                        │ │
-│                                        │ │ Rumus awal : (2+3)² = 25           │ │
-│                                        │ │ Langkahmu  : 2²+9   = 13           │ │
-│                                        │ │ Pertanyaan : Mengapa 25 ≠ 13?      │ │
-│                                        │ └────────────────────────────────────┘ │
-│                                        │                                        │
-│                                        │ [Input Jawaban: "Menurutmu kenapa?"]   │
-│                                        │ [Tombol: "Periksa Ulang Asumsi Saya"]  │
-└────────────────────────────────────────┴────────────────────────────────────────┘
-```
-
----
-
-## 4. TINGKATAN PETUNJUK PROGRESIF (SCAFFOLDING LADDER)
-
-Untuk mencegah siswa melihat petunjuk yang langsung membocorkan jawaban:
-1. **Level 1 (Socratic Query):** Mendorong siswa melihat kembali operasi di baris tersebut (*"Coba periksa perkalian suku-suku di dalam tanda kurung"*).
-2. **Level 2 (Numerical Counter-Example):** Menampilkan perbandingan angka substitusi sederhana ($x = 2$) yang menunjukkan terjadinya ketidaksamaan matematis ($25 \neq 13$).
-3. **Level 3 (Conceptual Analogy):** Menampilkan visualisasi kotak persegi berukuran $(a+b) \times (a+b)$ yang memperlihatkan empat area pecahan: $a^2$, $ab$, $ab$, dan $b^2$.
+1. **1-Click Google Authentication:**
+   * Menggantikan formulir registrasi yang rumit dengan tombol tunggal yang langsung terhubung ke akun Google pengguna.
+2. **Model Indicator Badge:**
+   * Menampilkan lencana status model di sudut kanan atas:
+     * 🟢 *Tutor Aktif: Gemini (Google Baseline)*
+     * 🟣 *Tutor Aktif: ChatGPT (User Connected)*
+3. **Typography Standard:**
+   * Menggunakan KaTeX untuk rendering notasi matematika dengan akselerasi hardware agar simbol akar, pecahan, dan integral tampil sempurna tanpa patah.

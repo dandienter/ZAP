@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Blueprint Produk ZAP (Zero Answer Policy)</title>
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm 10mm 12mm;
+  }
+  
+  * {
+    box-sizing: border-box;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #0F172A;
+    background-color: #FFFFFF;
+    line-height: 1.42;
+    font-size: 8.5pt;
+    margin: 0;
+    padding: 0;
+  }
+
+  .page {
+    page-break-after: always;
+    height: 275mm;
+    max-height: 275mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+  }
+
+  .page-last {
+    page-break-after: avoid;
+    height: 275mm;
+    max-height: 275mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+  }
+
+  .content-body {
+    flex: 1;
+  }
+
+  /* Header Card */
+  .header-card {
+    border: 1.5px solid #0F172A;
+    background-color: #F8FAFC;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+  }
+
+  .header-tag {
+    display: inline-block;
+    background-color: #1E3A8A;
+    color: #FFFFFF;
+    font-size: 6.8pt;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    margin-bottom: 4px;
+  }
+
+  h1 {
+    font-size: 15pt;
+    font-weight: 800;
+    color: #0F172A;
+    margin: 2px 0 4px 0;
+    letter-spacing: -0.02em;
+  }
+
+  .subtitle {
+    font-size: 8.5pt;
+    color: #334155;
+    font-weight: 500;
+    margin: 0 0 6px 0;
+  }
+
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    border-top: 1px solid #CBD5E1;
+    padding-top: 6px;
+    font-size: 7.2pt;
+    color: #475569;
+  }
+
+  .meta-grid strong {
+    color: #0F172A;
+  }
+
+  h2 {
+    font-size: 10pt;
+    font-weight: 800;
+    color: #0F172A;
+    border-bottom: 1.5px solid #0F172A;
+    padding-bottom: 3px;
+    margin-top: 10px;
+    margin-bottom: 6px;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+  }
+
+  h3 {
+    font-size: 8.8pt;
+    font-weight: 700;
+    color: #1E3A8A;
+    margin-top: 8px;
+    margin-bottom: 4px;
+  }
+
+  p {
+    margin: 0 0 6px 0;
+    color: #1E293B;
+    text-align: justify;
+    font-size: 8.2pt;
+  }
+
+  ul, ol {
+    margin: 0 0 6px 0;
+    padding-left: 16px;
+  }
+
+  li {
+    margin-bottom: 2px;
+    color: #1E293B;
+    font-size: 8.2pt;
+  }
+
+  .card {
+    background-color: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+  }
+
+  .callout-box {
+    background-color: #F1F5F9;
+    border-left: 3.5px solid #1E3A8A;
+    padding: 6px 10px;
+    margin: 6px 0;
+    font-size: 8pt;
+  }
+
+  .callout-box strong {
+    color: #1E3A8A;
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .stat-card {
+    border: 1px solid #CBD5E1;
+    background-color: #FFFFFF;
+    padding: 6px 8px;
+  }
+
+  .stat-card .stat-title {
+    font-size: 6.8pt;
+    font-weight: 700;
+    color: #64748B;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  .stat-card .stat-value {
+    font-size: 9.5pt;
+    font-weight: 800;
+    color: #0F172A;
+  }
+
+  .stat-card .stat-desc {
+    font-size: 7.2pt;
+    color: #475569;
+    margin-top: 2px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 6px 0 8px 0;
+    font-size: 7.5pt;
+  }
+
+  th {
+    background-color: #0F172A;
+    color: #FFFFFF;
+    font-weight: 700;
+    text-align: left;
+    padding: 4px 6px;
+    border: 1px solid #0F172A;
+    font-size: 7.2pt;
+  }
+
+  td {
+    padding: 4px 6px;
+    border: 1px solid #E2E8F0;
+    vertical-align: top;
+    line-height: 1.35;
+  }
+
+  tr:nth-child(even) td {
+    background-color: #F8FAFC;
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: 6.5pt;
+    font-weight: 700;
+    padding: 1px 5px;
+    border: 1px solid transparent;
+    text-transform: uppercase;
+  }
+
+  .badge-primary {
+    background-color: #DBEAFE;
+    color: #1E40AF;
+    border-color: #93C5FD;
+  }
+
+  .badge-success {
+    background-color: #DCFCE7;
+    color: #166534;
+    border-color: #86EFAC;
+  }
+
+  .badge-warning {
+    background-color: #FEF3C7;
+    color: #92400E;
+    border-color: #FCD34D;
+  }
+
+  .diagram-container {
+    border: 1px solid #CBD5E1;
+    background-color: #FFFFFF;
+    padding: 6px;
+    margin: 6px 0 8px 0;
+    text-align: center;
+  }
+
+  .diagram-caption {
+    font-size: 7pt;
+    font-weight: 700;
+    color: #475569;
+    margin-top: 4px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .footer-note {
+    font-size: 7pt;
+    color: #64748B;
+    border-top: 1px solid #E2E8F0;
+    padding-top: 4px;
+    margin-top: 4px;
+    display: flex;
+    justify-content: space-between;
+  }
+</style>
+</head>
+<body>
+
+  <!-- ==================== PAGE 1 ==================== -->
+  <div class="page">
+    <div class="content-body">
+      <div class="header-card">
+        <div class="header-tag">Dokumen Arsitektur &amp; Blueprint Produk V1.1 (Revised)</div>
+        <h1>ZAP (ZERO ANSWER POLICY)</h1>
+        <div class="subtitle">Platform Pembelajaran Matematika Web-First: Transformasi Rumus ke 3D Interaktif Berbasis Dialog Sokratik untuk Seluruh Jenjang (TK – S3)</div>
+        <div class="meta-grid">
+          <div><strong>Subtema:</strong><br>Smart &amp; Fun Education</div>
+          <div><strong>Ajang:</strong><br>Logicodix Hackathon 2026</div>
+          <div><strong>Aksesibilitas:</strong><br>1-Click Connect (Zero Setup)</div>
+          <div><strong>Infrastruktur:</strong><br>Web-First (Proyektor &amp; Smart Board)</div>
+        </div>
+      </div>
+
+      <h2>1. Ringkasan Eksekutif (Executive Summary)</h2>
+      <p>
+        <strong>ZAP (Zero Answer Policy)</strong> adalah terobosan platform edukasi matematika yang memadukan <strong>tiga inovasi fundamental</strong>: (1) <em>Zero Answer Policy Engine</em> yang melarang AI membocorkan jawaban akhir dan memposisikannya sebagai tutor Sokratik murni; (2) <em>Dynamic 3D Interactive Canvas</em> berbasis WebGL/Three.js yang mengonversi rumus, aljabar, dan bangun ruang secara instan; serta (3) <em>Deterministic Ground-Truth Engine</em> bertenaga SymPy yang memverifikasi kebenaran matematika secara absolut tanpa halusinasi numerik.
+      </p>
+      <p>
+        Terinspirasi dari teknologi <em>Interactive Smart Board</em> di Tiongkok yang memvisualisasikan persamaan secara instan di layar kelas, ZAP mengadopsi pendekatan <strong>Web-First &amp; Device-Agnostic</strong>. Solusi ini menjawab realitas ruang kelas di Indonesia: sekolah yang belum memiliki <em>smart board</em> mahal (Rp 30–80 juta) tetap menikmati fitur lengkap menggunakan <strong>laptop guru dan proyektor gantung InFocus di plafon</strong>, sedangkan sekolah yang memiliki layar sentuh dapat langsung mengoperasikannya lewat sentuhan jari.
+      </p>
+
+      <div class="grid-3">
+        <div class="stat-card">
+          <div class="stat-title">Pilar 1: Pedagogi</div>
+          <div class="stat-value">Zero Answer Policy</div>
+          <div class="stat-desc">AI hanya memandu dengan pertanyaan pemantik bertahap, bukan mesin contek.</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-title">Pilar 2: Visualisasi</div>
+          <div class="stat-value">3D Dynamic Canvas</div>
+          <div class="stat-desc">Three.js merender kurva, irisan, dan ruang geometri secara real-time di browser.</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-title">Pilar 3: Komputasi</div>
+          <div class="stat-value">SymPy Truth Shield</div>
+          <div class="stat-desc">SymPy menanggung beban rumus; model ringan/gratisan pun akurat 100%.</div>
+        </div>
+      </div>
+
+      <h2>2. Latar Belakang &amp; Analisis Masalah Ruang Kelas</h2>
+      <p>
+        Krisis pembelajaran numerasi dan matematika di Indonesia memiliki akar masalah struktural yang saling terkait, terangkum dalam <strong>The Educational Trilemma</strong>:
+      </p>
+      <ul>
+        <li><strong>Kesenjangan Infrastruktur Perangkat (Hardware Gap):</strong> Papan tulis pintar (<em>Smart Board</em>) terbukti efektif menaikkan pemahaman spasial, namun biayanya sangat mahal (&lt; 5% sekolah di Indonesia yang memilikinya). Di sisi lain, hampir seluruh sekolah memiliki proyektor LCD gantung di langit-langit kelas yang belum dimanfaatkan secara interaktif.</li>
+        <li><strong>"Math Blindness" &amp; Keterbatasan Papan Tulis 2D:</strong> Menggambar irisan bangun ruang atau kalkulus multivariabel di papan tulis hitam sangat kaku. Siswa mengalami kesulitan membayangkan dimensi ruang yang abstrak.</li>
+        <li><strong>Cognitive Bypassing akibat AI Generatif:</strong> Siswa sering memakai ChatGPT/Photomath sekadar mencari jawaban instan. Terjadi degradasi penalaran kritis (*computational thinking*) karena proses berpikir reflektif terlewati.</li>
+      </ul>
+
+      <!-- DIAGRAM 1: THE TRILEMMA -->
+      <div class="diagram-container">
+        <svg width="100%" height="135" viewBox="0 0 700 135" xmlns="http://www.w3.org/2000/svg">
+          <rect x="5" y="5" width="690" height="125" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1"/>
+          
+          <!-- Box 1: Hardware Gap -->
+          <rect x="25" y="16" width="190" height="50" fill="#FFFFFF" stroke="#DC2626" stroke-width="1.2"/>
+          <text x="120" y="32" font-size="8" font-weight="bold" fill="#DC2626" text-anchor="middle">MASALAH 1: HARDWARE GAP</text>
+          <text x="120" y="46" font-size="6.8" fill="#475569" text-anchor="middle">Smart Board mahal (Rp 30-80 jt)</text>
+          <text x="120" y="57" font-size="6.8" fill="#475569" text-anchor="middle">Hanya &lt;5% sekolah mampu beli</text>
+
+          <!-- Box 2: Math Blindness -->
+          <rect x="485" y="16" width="190" height="50" fill="#FFFFFF" stroke="#DC2626" stroke-width="1.2"/>
+          <text x="580" y="32" font-size="8" font-weight="bold" fill="#DC2626" text-anchor="middle">MASALAH 2: MATH BLINDNESS</text>
+          <text x="580" y="46" font-size="6.8" fill="#475569" text-anchor="middle">Papan tulis 2D membatasi nalar ruang</text>
+          <text x="580" y="57" font-size="6.8" fill="#475569" text-anchor="middle">Kalkulus &amp; geometri sulit dibayangkan</text>
+
+          <!-- Box 3: AI Cheating Engine -->
+          <rect x="255" y="78" width="190" height="46" fill="#FFFFFF" stroke="#DC2626" stroke-width="1.2"/>
+          <text x="350" y="93" font-size="8" font-weight="bold" fill="#DC2626" text-anchor="middle">MASALAH 3: AI SEBAGAI CONTEKAN</text>
+          <text x="350" y="105" font-size="6.8" fill="#475569" text-anchor="middle">Jawaban instan membunuh daya kritis</text>
+          <text x="350" y="116" font-size="6.8" fill="#475569" text-anchor="middle">Siswa pasif tanpa ekuilibrasi nalar</text>
+
+          <!-- Central Solution Box: ZAP -->
+          <rect x="250" y="14" width="200" height="55" fill="#1E3A8A" stroke="#0F172A" stroke-width="1.5"/>
+          <text x="350" y="31" font-size="9.5" font-weight="bold" fill="#FFFFFF" text-anchor="middle">ZAP (SOLUSI TERPADU)</text>
+          <text x="350" y="44" font-size="7" fill="#93C5FD" text-anchor="middle">• Web-First (Bisa Proyektor / Smartboard)</text>
+          <text x="350" y="54" font-size="7" fill="#93C5FD" text-anchor="middle">• Three.js Canvas 3D Interaktif Real-Time</text>
+          <text x="350" y="64" font-size="7" fill="#93C5FD" text-anchor="middle">• Zero-Answer Guardrail + SymPy Truth</text>
+
+          <!-- Connecting Lines -->
+          <line x1="215" y1="41" x2="250" y2="41" stroke="#0F172A" stroke-width="1.2" stroke-dasharray="3,3"/>
+          <line x1="450" y1="41" x2="485" y2="41" stroke="#0F172A" stroke-width="1.2" stroke-dasharray="3,3"/>
+          <line x1="350" y1="69" x2="350" y2="78" stroke="#0F172A" stroke-width="1.2" stroke-dasharray="3,3"/>
+        </svg>
+        <div class="diagram-caption">Diagram 1: The Educational Trilemma &amp; Paradigma Terintegrasi ZAP</div>
+      </div>
+    </div>
+    <div class="footer-note">
+      <span>ZAP Product Blueprint — Logicodix 2026</span>
+      <span>Halaman 1 dari 4</span>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE 2 ==================== -->
+  <div class="page">
+    <div class="content-body">
+      <h2>3. Arsitektur Sistem &amp; The SymPy Computational Shield</h2>
+      <p>
+        ZAP dibangun dengan prinsip <strong>Strict Separation of Concerns</strong>: Model AI generatif (Gemini/ChatGPT) <em>tidak pernah dibebani</em> menghitung aljabar atau koordinat poligon. Beban komputasi deterministik dipikul sepenuhnya oleh <strong>SymPy Microservice</strong>. Dampaknya sangat revolusioner: <strong>Model AI ringan/gratisan (seperti Gemini Flash) sekalipun tetap bekerja 100% akurat tanpa halusinasi</strong>, karena tugas model murni sebagai komunikator pedagogis yang menyusun pertanyaan pemantik.
+      </p>
+
+      <!-- DIAGRAM 2: HIGH-LEVEL ARCHITECTURE -->
+      <div class="diagram-container">
+        <svg width="100%" height="165" viewBox="0 0 700 165" xmlns="http://www.w3.org/2000/svg">
+          <rect x="5" y="5" width="690" height="155" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1"/>
+
+          <!-- TIER 1: CLIENT FRONTEND -->
+          <rect x="20" y="16" width="190" height="135" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.2"/>
+          <rect x="20" y="16" width="190" height="20" fill="#0F172A"/>
+          <text x="115" y="30" font-size="7.8" font-weight="bold" fill="#FFFFFF" text-anchor="middle">TIER 1: PRESENTASI (WEB)</text>
+          <text x="30" y="50" font-size="7.5" font-weight="bold" fill="#1E3A8A">• Next.js 14 Web-First</text>
+          <text x="30" y="62" font-size="6.8" fill="#475569">UI Layar Proyektor &amp; Layar Sentuh</text>
+          <text x="30" y="80" font-size="7.5" font-weight="bold" fill="#1E3A8A">• Three.js / React Three Fiber</text>
+          <text x="30" y="92" font-size="6.8" fill="#475569">Kanvas 3D Interaktif WebGL</text>
+          <text x="30" y="110" font-size="7.5" font-weight="bold" fill="#1E3A8A">• Dual-Mode Input Controller</text>
+          <text x="30" y="122" font-size="6.8" fill="#475569">Mouse, USB Clicker &amp; Multi-Touch</text>
+          <text x="30" y="138" font-size="6.8" fill="#475569">Formula Editor &amp; KaTeX Live Render</text>
+
+          <!-- TIER 2: BACKEND & CAS -->
+          <rect x="255" y="16" width="200" height="135" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.2"/>
+          <rect x="255" y="16" width="200" height="20" fill="#0F172A"/>
+          <text x="355" y="30" font-size="7.8" font-weight="bold" fill="#FFFFFF" text-anchor="middle">TIER 2: VERIFIKASI (FASTAPI)</text>
+          <text x="267" y="50" font-size="7.5" font-weight="bold" fill="#059669">• SymPy Computational Shield</text>
+          <text x="267" y="62" font-size="6.8" fill="#475569">Arbiter kebenaran aljabar 100% mutlak</text>
+          <text x="267" y="80" font-size="7.5" font-weight="bold" fill="#059669">• 3D Mesh &amp; Geometry Calculator</text>
+          <text x="267" y="92" font-size="6.8" fill="#475569">Kalkulasi vertex, slice &amp; poligon presisi</text>
+          <text x="267" y="110" font-size="7.5" font-weight="bold" fill="#DC2626">• Zero-Answer Guardrail</text>
+          <text x="267" y="122" font-size="6.8" fill="#475569">Filter anti-bocor solusi instan</text>
+          <text x="267" y="138" font-size="6.8" fill="#475569">CFL Engine (Cognitive Fault Localizer)</text>
+
+          <!-- TIER 3: INTELLIGENCE & DELEGATED AUTH -->
+          <rect x="495" y="16" width="185" height="135" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.2"/>
+          <rect x="495" y="16" width="185" height="20" fill="#0F172A"/>
+          <text x="587" y="30" font-size="7.8" font-weight="bold" fill="#FFFFFF" text-anchor="middle">TIER 3: PEDAGOGI (1-CLICK CONNECT)</text>
+          <text x="507" y="50" font-size="7.5" font-weight="bold" fill="#1E3A8A">• 1-Click Google Login</text>
+          <text x="507" y="62" font-size="6.8" fill="#475569">Otomatis aktifkan Gemini tanpa setup</text>
+          <text x="507" y="80" font-size="7.5" font-weight="bold" fill="#1E3A8A">• Opsi Connect ChatGPT</text>
+          <text x="507" y="92" font-size="6.8" fill="#475569">Bebas ganti provider tanpa downgrade</text>
+          <text x="507" y="110" font-size="7.5" font-weight="bold" fill="#1E3A8A">• Zero-Setup UX (Orang Awam)</text>
+          <text x="507" y="122" font-size="6.8" fill="#475569">Bebas repot salin-tempel API Key</text>
+          <text x="507" y="138" font-size="6.8" fill="#475569">Socratic Scaffolding Generator</text>
+
+          <!-- Connection Arrows -->
+          <line x1="210" y1="70" x2="255" y2="70" stroke="#0F172A" stroke-width="1.5"/>
+          <polygon points="255,70 248,67 248,73" fill="#0F172A"/>
+          <line x1="255" y1="95" x2="210" y2="95" stroke="#059669" stroke-width="1.5"/>
+          <polygon points="210,95 217,92 217,98" fill="#059669"/>
+
+          <line x1="455" y1="70" x2="495" y2="70" stroke="#0F172A" stroke-width="1.5"/>
+          <polygon points="495,70 488,67 488,73" fill="#0F172A"/>
+          <line x1="495" y1="95" x2="455" y2="95" stroke="#1E3A8A" stroke-width="1.5"/>
+          <polygon points="455,95 462,92 462,98" fill="#1E3A8A"/>
+        </svg>
+        <div class="diagram-caption">Diagram 2: Arsitektur 3-Tier ZAP (Client Presentation, SymPy Truth Engine, 1-Click Pedagogical Engine)</div>
+      </div>
+
+      <h2>4. Fleksibilitas Implementasi Hardware di Ruang Kelas</h2>
+      <p>
+        ZAP mengadopsi standar WebGL standar terbuka tanpa memerlukan instalasi aplikasi native atau perangkat proprietary, memungkinkan adopsi instan pada dua skenario utama sekolah di Indonesia:
+      </p>
+
+      <!-- DIAGRAM 3: HARDWARE TOPOLOGY -->
+      <div class="diagram-container">
+        <svg width="100%" height="135" viewBox="0 0 700 135" xmlns="http://www.w3.org/2000/svg">
+          <rect x="5" y="5" width="690" height="125" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1"/>
+
+          <!-- Topology A: Hanging Projector -->
+          <rect x="25" y="16" width="315" height="105" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="1.2"/>
+          <rect x="25" y="16" width="315" height="18" fill="#1E3A8A"/>
+          <text x="182" y="29" font-size="7.5" font-weight="bold" fill="#FFFFFF" text-anchor="middle">TOPOLOGI A: PROYEKTOR GANTUNG (SEKOLAH REGULER)</text>
+          <text x="35" y="47" font-size="7" fill="#0F172A"><strong>Setup Perangkat:</strong> Laptop Guru + Proyektor InFocus di Plafon + Dinding Kelas</text>
+          <text x="35" y="60" font-size="7" fill="#0F172A"><strong>Metode Kendali:</strong> Mouse Wireless / Keyboard / USB Presenter Clicker</text>
+          <text x="35" y="73" font-size="7" fill="#0F172A"><strong>Optimalisasi Tampilan:</strong> Mode kontras tinggi &amp; perbesaran UI agar terbaca baris belakang</text>
+          <text x="35" y="86" font-size="7" fill="#0F172A"><strong>Fitur Khusus:</strong> "Focus Mode" menyembunyikan kolom chat agar fokus ke kanvas 3D</text>
+          <text x="35" y="104" font-size="6.8" font-weight="bold" fill="#059669">STATUS: 100% KOMPATIBEL TANPA BELI ALAT TAMBAHAN</text>
+
+          <!-- Topology B: Interactive Smart Board -->
+          <rect x="360" y="16" width="315" height="105" fill="#FFFFFF" stroke="#059669" stroke-width="1.2"/>
+          <rect x="360" y="16" width="315" height="18" fill="#059669"/>
+          <text x="517" y="29" font-size="7.5" font-weight="bold" fill="#FFFFFF" text-anchor="middle">TOPOLOGI B: SMART BOARD / IFP (SEKOLAH MODERN)</text>
+          <text x="370" y="47" font-size="7" fill="#0F172A"><strong>Setup Perangkat:</strong> Layar Sentuh Interaktif 65–86 Inci (Browser bawaan layar)</text>
+          <text x="370" y="60" font-size="7" fill="#0F172A"><strong>Metode Kendali:</strong> Sentuhan multi-jari (1 jari putar, 2 jari zoom cubit, 3 jari reset)</text>
+          <text x="370" y="73" font-size="7" fill="#0F172A"><strong>Optimalisasi Tampilan:</strong> Tombol virtual ekstra besar yang ramah sentuhan tangan</text>
+          <text x="370" y="86" font-size="7" fill="#0F172A"><strong>Fitur Khusus:</strong> Annotation layer (coret stylus langsung di atas kurva/bidang 3D)</text>
+          <text x="370" y="104" font-size="6.8" font-weight="bold" fill="#1E3A8A">STATUS: PENGALAMAN SETARA DENGAN SMARTBOARD CHINA</text>
+        </svg>
+        <div class="diagram-caption">Diagram 3: Adaptabilitas Topologi Perangkat ZAP di Ruang Kelas Indonesia</div>
+      </div>
+    </div>
+    <div class="footer-note">
+      <span>ZAP Product Blueprint — Logicodix 2026</span>
+      <span>Halaman 2 dari 4</span>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE 3 ==================== -->
+  <div class="page">
+    <div class="content-body">
+      <h2>5. Mekanisme Pedagogis: Socratic Discovery Loop</h2>
+      <p>
+        ZAP mengimplementasikan teori belajar <strong>Ekuilibrasi Jean Piaget</strong> dan <strong>Scaffolding Lev Vygotsky</strong>. Sistem secara ketat menolak memberikan solusi langsung, melainkan mengeksekusi siklus penemuan mandiri (*Aha! Moment Loop*):
+      </p>
+
+      <!-- DIAGRAM 4: SOCRATIC DISCOVERY LOOP -->
+      <div class="diagram-container">
+        <svg width="100%" height="120" viewBox="0 0 700 120" xmlns="http://www.w3.org/2000/svg">
+          <rect x="5" y="5" width="690" height="110" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1"/>
+
+          <!-- Conventional AI Loop (Top red path) -->
+          <rect x="25" y="14" width="130" height="34" fill="#FFFFFF" stroke="#DC2626" stroke-width="1"/>
+          <text x="90" y="27" font-size="7" font-weight="bold" fill="#DC2626" text-anchor="middle">Siswa Tanya Soal</text>
+          <text x="90" y="38" font-size="6.2" fill="#475569" text-anchor="middle">"Berapa nilai x?"</text>
+
+          <line x1="155" y1="31" x2="275" y2="31" stroke="#DC2626" stroke-width="1.2"/>
+          <polygon points="275,31 268,28 268,34" fill="#DC2626"/>
+          <text x="215" y="26" font-size="6" fill="#DC2626" text-anchor="middle">AI Konvensional</text>
+
+          <rect x="275" y="14" width="160" height="34" fill="#FFFFFF" stroke="#DC2626" stroke-width="1"/>
+          <text x="355" y="27" font-size="7" font-weight="bold" fill="#DC2626" text-anchor="middle">Bocor Jawaban Langsung</text>
+          <text x="355" y="38" font-size="6.2" fill="#DC2626" text-anchor="middle">"x = 5 (Ini rumus dan hasilnya...)"</text>
+
+          <line x1="435" y1="31" x2="525" y2="31" stroke="#DC2626" stroke-width="1.2"/>
+          <polygon points="525,31 518,28 518,34" fill="#DC2626"/>
+
+          <rect x="525" y="14" width="150" height="34" fill="#FEE2E2" stroke="#DC2626" stroke-width="1.2"/>
+          <text x="600" y="27" font-size="7" font-weight="bold" fill="#991B1B" text-anchor="middle">Cognitive Bypassing</text>
+          <text x="600" y="38" font-size="6.2" fill="#991B1B" text-anchor="middle">Siswa menyalin tanpa mengerti konsep</text>
+
+          <!-- ZAP Socratic Loop (Bottom blue/green path) -->
+          <rect x="25" y="60" width="130" height="42" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="1"/>
+          <text x="90" y="76" font-size="7" font-weight="bold" fill="#1E3A8A" text-anchor="middle">Input Rumus ke ZAP</text>
+          <text x="90" y="89" font-size="6.2" fill="#475569" text-anchor="middle">Persamaan &amp; Hipotesis</text>
+
+          <line x1="155" y1="81" x2="200" y2="81" stroke="#1E3A8A" stroke-width="1.2"/>
+          <polygon points="200,81 193,78 193,84" fill="#1E3A8A"/>
+
+          <rect x="200" y="60" width="125" height="42" fill="#FFFFFF" stroke="#059669" stroke-width="1"/>
+          <text x="262" y="76" font-size="7" font-weight="bold" fill="#059669" text-anchor="middle">SymPy Render 3D</text>
+          <text x="262" y="89" font-size="6.2" fill="#475569" text-anchor="middle">Proyeksi kurva &amp; bidang</text>
+
+          <line x1="325" y1="81" x2="365" y2="81" stroke="#1E3A8A" stroke-width="1.2"/>
+          <polygon points="365,81 358,78 358,84" fill="#1E3A8A"/>
+
+          <rect x="365" y="60" width="150" height="42" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="1"/>
+          <text x="440" y="74" font-size="7" font-weight="bold" fill="#1E3A8A" text-anchor="middle">Pertanyaan Sokratik ZAP</text>
+          <text x="440" y="85" font-size="6.2" fill="#475569" text-anchor="middle">"Perhatikan titik potong sumbu-x,</text>
+          <text x="440" y="94" font-size="6.2" fill="#475569" text-anchor="middle">berapa nilai y saat memotong?"</text>
+
+          <line x1="515" y1="81" x2="550" y2="81" stroke="#059669" stroke-width="1.2"/>
+          <polygon points="550,81 543,78 543,84" fill="#059669"/>
+
+          <rect x="550" y="60" width="125" height="42" fill="#DCFCE7" stroke="#059669" stroke-width="1.2"/>
+          <text x="612" y="76" font-size="7.5" font-weight="bold" fill="#166534" text-anchor="middle">Aha! Moment</text>
+          <text x="612" y="89" font-size="6.2" fill="#166534" text-anchor="middle">Pemahaman konsep mandiri</text>
+        </svg>
+        <div class="diagram-caption">Diagram 4: Perbandingan Alur Kognitif AI Konvensional vs Socratic Discovery Loop ZAP</div>
+      </div>
+
+      <h2>6. Matriks Spektrum Kurikulum Komprehensif (TK s/d S3)</h2>
+      <p>
+        ZAP menyediakan wadah kanvas dan kebijakan guardrail, sementara Gemini/ChatGPT beradaptasi secara dinamis dengan seluruh tingkatan pendidikan:
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 16%;">Jenjang</th>
+            <th style="width: 24%;">Materi Pokok</th>
+            <th style="width: 30%;">Visualisasi Kanvas 3D (Three.js)</th>
+            <th style="width: 30%;">Intervensi Sokratik ZAP</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>TK – SD Awal<br>(Usia 4–8)</strong></td>
+            <td>Bentuk geometri dasar, agregasi penjumlahan, jaring kubus, simetri.</td>
+            <td>Balok warna-warni (*Cuisenaire*), buah apel 3D yang dapat digeser, kubus yang bisa dibuka lipatannya.</td>
+            <td><em>Metode CPA:</em> "Ada 3 balok biru di layar. Kalau kamu tarik 2 balok merah ke dekatnya, coba hitung bersama kelinci ada berapa sekarang?"</td>
+          </tr>
+          <tr>
+            <td><strong>SD Akhir – SMP<br>(Kelas 4–9)</strong></td>
+            <td>Volume tabung &amp; kerucut, pecahan ruang, koordinat Kartesius, aljabar linear.</td>
+            <td>Prisma transparan yang dapat diisi zat cair interaktif, garis linear dengan slider gradien (m) dan intersep (c).</td>
+            <td>"Saat kemiringan tangga (m) diubah menjadi nilai minus, ke arah mana tangga tersebut sekarang condong bersandar?"</td>
+          </tr>
+          <tr>
+            <td><strong>SMA / SMK<br>(Kelas 10–12)</strong></td>
+            <td>Irisan kerucut (elips, hiperbola), trigonometri 3D, integral volume putar 360°.</td>
+            <td>Bidang potong dinamis (*slicer*) pada kerucut ganda, kurva f(x) yang diputar mengelilingi sumbu-X menghasilkan tabung pejal.</td>
+            <td>"Coba amati cincin tipis di irisan kurva ini. Bagaimana hubungan jari-jari cincin dengan nilai fungsi f(x) pada sumbu vertikal?"</td>
+          </tr>
+          <tr>
+            <td><strong>Sarjana / S1<br>(Perguruan Tinggi)</strong></td>
+            <td>Kalkulus Multivariabel, Aljabar Linear (Eigen &amp; Vektor Ruang), Persamaan Diferensial.</td>
+            <td>Permukaan saddle (*paraboloid pelana*), bidang singgung ruang 3D, visualisasi peregangan ruang oleh transformasi matriks eigen.</td>
+            <td>"Mengapa turunan parsial terhadap x bernilai nol di titik pelana ini, namun ia bukan titik ekstrim lokal maksimum maupun minimum?"</td>
+          </tr>
+          <tr>
+            <td><strong>Pascasarjana / S2–S3<br>(Magister &amp; Riset)</strong></td>
+            <td>Geometri Diferensial, Manifold Riemannian, Topologi Aljabar, Medan Tensor.</td>
+            <td>Manifold non-Euclidean, Möbius Strip, Klein Bottle, medan vektor 3D dengan visualisasi densitas curl dan divergensi ruang.</td>
+            <td>"Bagaimana tensor kelengkungan Riemann bertransformasi saat metrik ruang mendekati daerah singularitas koordinat bola?"</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="footer-note">
+      <span>ZAP Product Blueprint — Logicodix 2026</span>
+      <span>Halaman 3 dari 4</span>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE 4 ==================== -->
+  <div class="page-last">
+    <div class="content-body">
+      <h2>7. Spesifikasi Fitur Utama ZAP Engine</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin-top:0;">1. Formula-to-3D Live Mesh Generator</h3>
+          <p style="font-size: 7.8pt;">
+            Mengonversi persamaan LaTeX atau fungsi matematika menjadi objek 3D secara instan. SymPy menghitung matriks koordinat (*vertices &amp; faces*), kemudian Three.js me-render poligon dengan material pencahayaan studio, kontur grid, dan penanda koordinat dinamis.
+          </p>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0;">2. Interactive Cross-Section Slicer</h3>
+          <p style="font-size: 7.8pt;">
+            Pisau pemotong virtual 3D. Pengguna dapat menggeser bidang potong sepanjang sumbu X, Y, atau Z untuk melihat penampang dalam dari bangun ruang kompleks (misal: irisan elips pada silinder miring atau irisan kerucut).
+          </p>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin-top:0;">3. Anti-Bypass Guardrail Sanitizer</h3>
+          <p style="font-size: 7.8pt;">
+            Lapisan verifikasi pada API Gateway. Memastikan tidak ada token solusi akhir, angka jawaban tunggal, atau rumus penyelesaian instan yang lolos ke layar siswa. Respons yang melanggar langsung dipaksa regenerasi menjadi dialog sokratik.
+          </p>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0;">4. Dual-Control Adaptor (Clicker &amp; Gesture)</h3>
+          <p style="font-size: 7.8pt;">
+            Mendukung kontrol ganda: mode proyektor (hotkeys keyboard, USB presenter, mouse clicker) dan mode layar sentuh smartboard (rotasi 1 jari, zoom cubit 2 jari, pan 3 jari, dan layer coretan stylus di atas objek 3D).
+          </p>
+        </div>
+      </div>
+
+      <h2>8. Strategi Integrasi AI: 1-Click Connect (Zero-Friction UX)</h2>
+      <div class="callout-box">
+        <strong>Inklusivitas Total Tanpa Hambatan Teknis:</strong> Pengguna awam (guru dan siswa) tidak perlu paham istilah teknis seperti <em>API Key, Token, Endpoint</em>, atau salin-tempel kode. Cukup 1 kali klik login, ZAP langsung siap digunakan.
+      </div>
+      <ul>
+        <li><strong>Otomatis Aktif via Akun Google:</strong> Pengguna cukup klik <em>"Sign in with Google"</em>. Sistem secara otomatis menyambungkan otorisasi ke layanan <strong>Google Gemini</strong> di latar belakang. Kanvas 3D langsung terbuka dan siap membimbing tanpa konfigurasi apa pun.</li>
+        <li><strong>Opsi Universal "Hubungkan ke ChatGPT":</strong> Bagi pengguna yang memiliki akun OpenAI (ChatGPT Plus/Pro), ZAP menyediakan tombol instan <em>"Hubungkan Akun ChatGPT"</em>. Sistem mengautentikasi akun secara resmi tanpa menurunkan (*downgrade*) kecerdasan model.</li>
+        <li><strong>Akses Model Frontier Tanpa Diskriminasi:</strong>
+          <ul>
+            <li>Pengguna akun standar menikmati model <strong>Gemini 3.6 Flash</strong> yang ringan, responsif (&lt; 800 ms), dan hemat kuota.</li>
+            <li>Pengguna dengan akun Pro/Ultra langsung membuka kekuatan penuh model <em>frontier</em> seperti <strong>Gemini 3.8 Flash, Gemini 4 Argon, atau GPT-4o / o1</strong> untuk diskusi riset kalkulus rumit atau tingkat doktoral.</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h2>9. Roadmap Pengembangan Produk (2026 – 2027)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 20%;">Fase &amp; Waktu</th>
+            <th style="width: 35%;">Milestone Teknis</th>
+            <th style="width: 45%;">Target Implementasi Pendidikan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Fase 1 (Q4 2026)</strong><br><span class="badge badge-success">MVP Hackathon</span></td>
+            <td>Arsitektur Web-First, SymPy Truth Shield, Three.js 3D Canvas, dan 1-Click Google Connect.</td>
+            <td>Uji coba pada proyektor gantung ruang kelas dan layar smart board untuk matematika SMP dan SMA.</td>
+          </tr>
+          <tr>
+            <td><strong>Fase 2 (Q1 2027)</strong><br><span class="badge badge-primary">Rencana</span></td>
+            <td>Dukungan OCR Scanner Kertas Buram (*Handwritten Scratchpad Ingestion*) via Gemini Multimodal Vision.</td>
+            <td>Siswa memotret coretan tangan di kertas, ZAP mendeteksi titik galat aljabar pertama dan menampilkannya di kanvas 3D.</td>
+          </tr>
+          <tr>
+            <td><strong>Fase 3 (Q2 2027)</strong><br><span class="badge badge-primary">Rencana</span></td>
+            <td>WebCam Hand Gesture Tracking (MediaPipe) untuk interaksi kanvas 3D tanpa menyentuh layar.</td>
+            <td>Guru dan siswa dapat memutar objek 3D di depan proyektor cukup dengan gerakan tangan di udara (*air gestures*).</td>
+          </tr>
+          <tr>
+            <td><strong>Fase 4 (Q3-Q4 2027)</strong><br><span class="badge badge-warning">Eksplorasi</span></td>
+            <td>Voice Socratic Interactive Tutor &amp; Multi-User Classroom Collaborative Canvas.</td>
+            <td>Interaksi suara dua arah seperti percakapan dengan guru sungguhan, serta kanvas bersama untuk seluruh siswa dalam satu kelas.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>10. Kesimpulan &amp; Nilai Jual untuk Juri Hackathon</h2>
+      <p style="margin-bottom:0;">
+        ZAP membuktikan bahwa kecerdasan buatan dalam pendidikan bukan tentang seberapa cepat mesin dapat menyajikan kunci jawaban, melainkan seberapa dalam mesin dapat memantik daya nalar manusia. Dengan membawa kecanggihan teknologi *smart board* internasional ke dalam format web yang kompatibel dengan proyektor gantung sekolah negeri, ZAP adalah solusi yang <strong>inklusif, berdaya guna nyata, hemat anggaran, dan berakar kuat pada nilai pedagogis sejati.</strong>
+      </p>
+    </div>
+    <div class="footer-note">
+      <span>ZAP Product Blueprint — Logicodix 2026</span>
+      <span>Halaman 4 dari 4 — Dokumen Final Disetujui (V1.1 Revised)</span>
+    </div>
+  </div>
+
+</body>
+</html>

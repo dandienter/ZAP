@@ -1,13 +1,13 @@
 ---
 name: cfl-verification
 description: >-
-  Use this skill whenever you need to verify, audit, or test the LogicoMath CFL Engine,
+  Use this skill whenever you need to verify, audit, or test the ZAP CFL Engine,
   FastAPI diagnostic endpoints, or run mutation testing on parser security invariants.
 ---
 
 # CFL Engine & Security Verification Runbook
 
-This skill outlines the strict, deterministic verification procedure for LogicoMath's Cognitive Fault Localization (CFL) Engine and API Gateway.
+This skill outlines the strict, deterministic verification procedure for ZAP's Cognitive Fault Localization (CFL) Engine and API Gateway.
 
 ## Step 1: Run Full Pytest Suite
 

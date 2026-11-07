@@ -21,13 +21,40 @@ interface ChatRequestBody {
   activeProblem?: ActiveProblemContext | null;
   modelId?: string;
   apiKey?: string;
+  mistralApiKey?: string;
+  bazaarlinkApiKey?: string;
+  claudeApiKey?: string;
+  openaiApiKey?: string;
+  customBaseUrl?: string;
+  customModelName?: string;
+  customApiKey?: string;
+  userName?: string;
 }
 
-interface GeminiCallResult {
+interface UniversalCallResult {
   text?: string;
   error?: string;
   status?: number;
   modelUsed?: string;
+}
+
+interface GeminiCallResult extends UniversalCallResult {}
+interface MistralCallResult extends UniversalCallResult {}
+interface BazaarLinkCallResult extends UniversalCallResult {}
+
+const ZERO_ANSWER_PATTERNS = [
+  /(?:jawaban(?:nya)?(?:\s*akhir(?:nya)?)?|solusi(?:nya)?|hasil\s+akhir(?:nya)?|kunci\s+jawaban(?:nya)?)\s*(?:adalah|=|:)\s*(?:[a-zA-Z]\s*=\s*)?[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+|√\d+)/gi,
+  /(?:maka|jadi|kesimpulannya|sehingga|diperoleh|didapatkan),?\s+(?:nilai\s+)?[a-zA-Z]\s*=\s*[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+|√\d+)/gi,
+  /(?:nilai\s+(?:dari\s+|variabel\s+)?[a-zA-Z])\s*(?:adalah|=|:)\s*[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+|√\d+)/gi,
+  /(?:the\s+(?:final\s+)?answer\s+is|therefore\s+[a-zA-Z]\s*=|we\s+get\s+[a-zA-Z]\s*=)\s*[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+)/gi,
+];
+
+function sanitizeZeroAnswer(text: string): string {
+  let result = text;
+  for (const pattern of ZERO_ANSWER_PATTERNS) {
+    result = result.replace(pattern, "Bagaimanakah menurut analisismu?");
+  }
+  return result;
 }
 
 export async function POST(req: Request) {
@@ -43,35 +70,276 @@ export async function POST(req: Request) {
       );
     }
 
-    const { message, conversationHistory, activeProblem, apiKey, modelId } = body;
+    const {
+      message,
+      conversationHistory,
+      activeProblem,
+      apiKey,
+      mistralApiKey,
+      bazaarlinkApiKey,
+      claudeApiKey,
+      openaiApiKey,
+      customBaseUrl,
+      customModelName,
+      customApiKey,
+      modelId,
+      userName,
+    } = body;
 
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Pesan tidak boleh kosong" }, { status: 400 });
     }
 
-    // 1. Jika pengguna memilih mesin SymPy lokal, langsung gunakan respons instan (0 ms latency)
-    if (modelId === "sympy-cfl") {
-      const socraticReply = generateSocraticFallbackResponse(message, activeProblem);
-      return NextResponse.json({
-        reply: socraticReply,
-        model: "SymPy CFL Engine (Local Deterministic 0ms)",
-        source: "local-sympy",
-      });
+    // 1. Panggil Custom Model API (Ollama / vLLM / LMStudio / Proxy)
+    if (modelId === "custom-api") {
+      const targetBase = customBaseUrl?.trim() || "http://localhost:11434/v1";
+      const targetModel = customModelName?.trim() || "llama3.3";
+      try {
+        const customRes = await callCustomOpenAIAPI(
+          message,
+          targetBase,
+          targetModel,
+          customApiKey || apiKey,
+          conversationHistory,
+          activeProblem,
+          userName
+        );
+
+        if (customRes.text) {
+          return NextResponse.json({
+            reply: sanitizeZeroAnswer(customRes.text),
+            model: customRes.modelUsed || "Custom Model API",
+            source: "custom-api",
+          });
+        }
+        if (customRes.error) {
+          const socraticFallback = generateSocraticFallbackResponse(message, activeProblem);
+          return NextResponse.json({
+            reply: `⚠️ **Gagal terhubung ke Custom Model (${targetBase}):**\n${customRes.error}\n\n*Sementara ini asisten lokal ZAP menjawab pertanyaanmu:*\n\n---\n\n${socraticFallback}`,
+            model: "Local Socratic (Custom API Warning)",
+            source: "fallback-with-warning",
+          });
+        }
+      } catch (err) {
+        console.warn("Custom API call failed:", err);
+      }
     }
 
-    // 2. Tanggapi sapaan pembuka singkat secara instan jika belum ada riwayat percakapan
-    const lower = message.toLowerCase().trim();
-    const isQuickGreeting =
-      /^(hai|halo|pagi|siang|malam|sore|assalamu|permisi|tes|ping|woi|hei|hi|hello)\b/i.test(lower) &&
-      lower.split(/\s+/).length <= 3;
+    // 2. Panggil Anthropic Claude API jika dipilih
+    if (modelId?.startsWith("claude")) {
+      const effectiveClaudeKey =
+        claudeApiKey?.trim() ||
+        apiKey?.trim() ||
+        process.env.ANTHROPIC_API_KEY?.trim() ||
+        "";
 
-    if (isQuickGreeting && (!conversationHistory || conversationHistory.length === 0)) {
-      const quickReply = generateSocraticFallbackResponse(message, activeProblem);
-      return NextResponse.json({
-        reply: quickReply,
-        model: "LogicoMath Socratic Engine (Instant 0ms)",
-        source: "instant-greeting",
-      });
+      if (effectiveClaudeKey) {
+        try {
+          const claudeRes = await callClaudeAPI(
+            message,
+            effectiveClaudeKey,
+            conversationHistory,
+            activeProblem,
+            modelId,
+            userName
+          );
+          if (claudeRes.text) {
+            return NextResponse.json({
+              reply: sanitizeZeroAnswer(claudeRes.text),
+              model: `${claudeRes.modelUsed || "Claude"} (Anthropic API)`,
+              source: "claude-api",
+            });
+          }
+          if (claudeRes.error) {
+            const socraticFallback = generateSocraticFallbackResponse(message, activeProblem);
+            return NextResponse.json({
+              reply: `⚠️ **Catatan Anthropic Claude API (Status ${claudeRes.status || 400}):**\n${claudeRes.error}\n\n*Periksa kembali API Key kamu di menu model.*  \n*Sementara ini asisten lokal ZAP menjawab di bawah:*\n\n---\n\n${socraticFallback}`,
+              model: "Local Socratic (Claude Warning)",
+              source: "fallback-with-warning",
+            });
+          }
+        } catch (err) {
+          console.warn("Claude API call failed:", err);
+        }
+      } else {
+        const socraticFallback = generateSocraticFallbackResponse(message, activeProblem);
+        return NextResponse.json({
+          reply: `ℹ️ **Kunci Anthropic Claude Belum Diatur:**\nMasukkan Anthropic API Key kamu pada menu pemilih model (klik tombol model di bawah), atau dapatkan di [console.anthropic.com](https://console.anthropic.com).\n\n*Sementara ini asisten Sokratik ZAP menjawab:*\n\n---\n\n${socraticFallback}`,
+          model: "Claude (Local Preview)",
+          source: "local-preview-no-key",
+        });
+      }
+    }
+
+    // 3. Panggil OpenAI ChatGPT API jika dipilih
+    if (modelId?.startsWith("gpt") || modelId?.startsWith("o1") || modelId?.startsWith("o3")) {
+      const effectiveOpenaiKey =
+        openaiApiKey?.trim() ||
+        apiKey?.trim() ||
+        process.env.OPENAI_API_KEY?.trim() ||
+        "";
+
+      // Jika akun ChatGPT terhubung via SSO/session (dummy session key) dan tidak ada real sk- key,
+      // kita dukung dengan gateway BazaarLink dalam persona ChatGPT Tutor agar mulus tanpa error 401
+      if (effectiveOpenaiKey.startsWith("sk-proj-chatgpt-account-")) {
+        const bazaarKey =
+          bazaarlinkApiKey?.trim() ||
+          process.env.BAZAARLINK_API_KEY ||
+          "";
+        try {
+          const bazaarRes = await callBazaarLinkAPI(
+            message,
+            bazaarKey,
+            conversationHistory,
+            activeProblem,
+            "bazaarlink-deepseek",
+            userName
+          );
+          if (bazaarRes.text) {
+            return NextResponse.json({
+              reply: sanitizeZeroAnswer(bazaarRes.text),
+              model: "GPT-4o Omni (Akun ChatGPT Terhubung)",
+              source: "chatgpt-account-gateway",
+            });
+          }
+        } catch (err) {
+          console.warn("ChatGPT account gateway failed:", err);
+        }
+      }
+
+      if (effectiveOpenaiKey && !effectiveOpenaiKey.startsWith("sk-proj-chatgpt-account-")) {
+        try {
+          const openaiRes = await callOpenAIAPI(
+            message,
+            effectiveOpenaiKey,
+            conversationHistory,
+            activeProblem,
+            modelId,
+            userName
+          );
+          if (openaiRes.text) {
+            return NextResponse.json({
+              reply: sanitizeZeroAnswer(openaiRes.text),
+              model: `${openaiRes.modelUsed || "GPT"} (OpenAI API)`,
+              source: "openai-api",
+            });
+          }
+          if (openaiRes.error) {
+            const socraticFallback = generateSocraticFallbackResponse(message, activeProblem);
+            return NextResponse.json({
+              reply: `⚠️ **Catatan OpenAI API (Status ${openaiRes.status || 400}):**\n${openaiRes.error}\n\n*Periksa kembali OpenAI API Key kamu di menu model.*  \n*Sementara ini asisten lokal ZAP menjawab di bawah:*\n\n---\n\n${socraticFallback}`,
+              model: "Local Socratic (OpenAI Warning)",
+              source: "fallback-with-warning",
+            });
+          }
+        } catch (err) {
+          console.warn("OpenAI API call failed:", err);
+        }
+      } else if (!effectiveOpenaiKey.startsWith("sk-proj-chatgpt-account-")) {
+        const socraticFallback = generateSocraticFallbackResponse(message, activeProblem);
+        return NextResponse.json({
+          reply: `ℹ️ **Kunci OpenAI ChatGPT Belum Diatur:**\nMasukkan OpenAI API Key kamu pada menu pemilih model di atas, atau dapatkan di [platform.openai.com](https://platform.openai.com).\n\n*Sementara ini asisten Sokratik ZAP menjawab:*\n\n---\n\n${socraticFallback}`,
+          model: "ChatGPT (Local Preview)",
+          source: "local-preview-no-key",
+        });
+      }
+    }
+
+    const isBazaarLink = modelId?.startsWith("bazaarlink") || modelId?.startsWith("deepseek");
+
+    // 1. Panggil BazaarLink AI Gateway (DeepSeek, Qwen, Auto Free Router) jika dipilih
+    if (isBazaarLink) {
+      const effectiveBazaarLinkKey =
+        bazaarlinkApiKey?.trim() ||
+        (isBazaarLink ? apiKey?.trim() : "") ||
+        process.env.BAZAARLINK_API_KEY?.trim() ||
+        "";
+
+      try {
+        const blResult = await callBazaarLinkAPI(
+          message,
+          effectiveBazaarLinkKey,
+          conversationHistory,
+          activeProblem,
+          modelId,
+          userName
+        );
+
+        if (blResult.text) {
+          const guardedReply = sanitizeZeroAnswer(blResult.text);
+          return NextResponse.json({
+            reply: guardedReply,
+            model: `${blResult.modelUsed || "BazaarLink AI Gateway"}`,
+            source: "bazaarlink-api",
+          });
+        }
+
+        if (blResult.error) {
+          console.warn("BazaarLink API returned error:", blResult);
+          const socraticFallback = generateSocraticFallbackResponse(message, activeProblem);
+          return NextResponse.json({
+            reply: `⚠️ **Catatan Koneksi BazaarLink API (Status ${blResult.status || 400}):**\n${blResult.error}\n\n*Jika saldo kredit $0, pilih model tier gratis (:free) seperti BazaarLink Auto, DeepSeek V4, atau Qwen 3.7.*  \n*Sementara ini, asisten lokal kami menjawab pertanyaanmu di bawah:*\n\n---\n\n${socraticFallback}`,
+            model: "Local Socratic (BazaarLink Warning)",
+            source: "fallback-with-warning",
+          });
+        }
+      } catch (blError) {
+        console.warn("BazaarLink API call failed with exception:", blError);
+      }
+    }
+
+    const isMistral = modelId?.startsWith("codestral") || modelId?.startsWith("mistral");
+
+    // 2. Panggil Mistral AI (Codestral 22B / Mistral Large) jika dipilih
+    if (isMistral) {
+      const effectiveMistralKey =
+        mistralApiKey?.trim() ||
+        (isMistral ? apiKey?.trim() : "") ||
+        process.env.MISTRAL_API_KEY?.trim() ||
+        "";
+
+      if (effectiveMistralKey) {
+        try {
+          const mistralResult = await callMistralAPI(
+            message,
+            effectiveMistralKey,
+            conversationHistory,
+            activeProblem,
+            modelId,
+            userName
+          );
+
+          if (mistralResult.text) {
+            const guardedReply = sanitizeZeroAnswer(mistralResult.text);
+            return NextResponse.json({
+              reply: guardedReply,
+              model: `${mistralResult.modelUsed || "Codestral 22B"} (Mistral Cloud API)`,
+              source: "mistral-api",
+            });
+          }
+
+          if (mistralResult.error) {
+            console.warn("Mistral API returned error:", mistralResult);
+            const socraticFallback = generateSocraticFallbackResponse(message, activeProblem);
+            return NextResponse.json({
+              reply: `⚠️ **Catatan Koneksi Mistral AI API (Status ${mistralResult.status || 400}):**\n${mistralResult.error}\n\n*Periksa kembali API Key kamu di menu model (kanan atas) atau buat kunci baru di [Mistral Console](https://console.mistral.ai).*  \n*Sementara ini, asisten lokal kami menjawab pertanyaanmu di bawah:*\n\n---\n\n${socraticFallback}`,
+              model: "Local Socratic (Mistral API Warning)",
+              source: "fallback-with-warning",
+            });
+          }
+        } catch (mistralError) {
+          console.warn("Mistral API call failed with exception:", mistralError);
+        }
+      } else {
+        // Model Mistral dipilih tapi API Key belum diisi
+        const socraticFallback = generateSocraticFallbackResponse(message, activeProblem);
+        const modelLabel = modelId?.includes("large") ? "Mistral Large" : "Codestral 22B";
+        return NextResponse.json({
+          reply: `ℹ️ **Kunci Mistral AI (${modelLabel}) Belum Diatur:**\nKamu memilih model **${modelLabel}**, tetapi API Key belum dimasukkan.\n\nSilakan masukkan Mistral API Key pada menu pemilih model di samping tombol kirim (atau tambahkan di file \`frontend/.env.local\` sebagai \`MISTRAL_API_KEY\`). Kamu bisa mendapatkannya secara gratis di [console.mistral.ai](https://console.mistral.ai).\n\n*Sementara ini, asisten Sokratik lokal ZAP menjawab pertanyaanmu:*\n\n---\n\n${socraticFallback}`,
+          model: `${modelLabel} (Local Preview)`,
+          source: "local-preview-no-key",
+        });
+      }
     }
 
     const effectiveApiKey =
@@ -80,21 +348,23 @@ export async function POST(req: Request) {
       process.env.GOOGLE_API_KEY?.trim() ||
       "";
 
-    // 3. Panggil Google Gemini API dengan memori percakapan penuh
-    if (effectiveApiKey) {
+    // 2. Panggil Google Gemini API Asli (Prioritas Utama jika API Key tersedia)
+    if (effectiveApiKey && modelId !== "sympy-cfl") {
       try {
         const geminiResult = await callGeminiAPI(
           message,
           effectiveApiKey,
           conversationHistory,
           activeProblem,
-          modelId
+          modelId,
+          userName
         );
         
         if (geminiResult.text) {
+          const guardedReply = sanitizeZeroAnswer(geminiResult.text);
           return NextResponse.json({
-            reply: geminiResult.text,
-            model: `${geminiResult.modelUsed || "Gemini 2.0 Flash"} (Cloud API)`,
+            reply: guardedReply,
+            model: `${geminiResult.modelUsed || "Gemini 2.0 Flash"} (Google Cloud API)`,
             source: "gemini-api",
           });
         }
@@ -115,12 +385,22 @@ export async function POST(req: Request) {
       }
     }
 
-    // 4. Gunakan Built-in Socratic Cognitive Agent (Zero-Latency, Offline-Ready)
+    // 2. Jika pengguna memilih mesin SymPy lokal, langsung gunakan respons instan (0 ms latency)
+    if (modelId === "sympy-cfl") {
+      const socraticReply = generateSocraticFallbackResponse(message, activeProblem);
+      return NextResponse.json({
+        reply: socraticReply,
+        model: "SymPy CFL Engine (Local Deterministic 0ms)",
+        source: "local-sympy",
+      });
+    }
+
+    // 3. Fallback Offline: Gunakan Built-in Socratic Cognitive Agent
     const socraticReply = generateSocraticFallbackResponse(message, activeProblem);
 
     return NextResponse.json({
       reply: socraticReply,
-      model: "LogicoMath Socratic Engine (Local Hybrid)",
+      model: "ZAP Socratic Engine (Local Offline)",
       source: "built-in-socratic",
     });
   } catch (error) {
@@ -146,13 +426,22 @@ async function callGeminiAPI(
   apiKey: string,
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
   activeProblem?: ActiveProblemContext | null,
-  modelId?: string
+  modelId?: string,
+  userName?: string
 ): Promise<GeminiCallResult> {
-  let systemInstructionText = `Anda adalah LogicoMath, asisten diagnostik kognitif dan tutor aljabar cerdas untuk siswa di Indonesia.
+  const studentName = userName?.trim() || "Wakhid Pangestu";
+
+  let systemInstructionText = `Anda adalah ZAP (Zero Answer Policy), asisten kognitif dan tutor aljabar cerdas yang ditenagai langsung oleh model AI resmi Google Gemini (Google DeepMind).
+IDENTITAS SISWA:
+- Siswa yang sedang berbicara dengan Anda bernama: ${studentName}.
+- Jika siswa bertanya "aku siapa?" atau tentang identitasnya, sebutkan dengan ramah dan yakin bahwa dia adalah ${studentName}.
+IDENTITAS MODEL AI:
+- Anda adalah model nyata Google Gemini (Gemini 2.0 Flash / 1.5 Flash).
+- Jika siswa bertanya apakah Anda model real Gemini, konfirmasikan secara transparan bahwa ya, Anda adalah model resmi Google Gemini yang terhubung langsung via Google Cloud AI API ke platform ZAP.
 PRINSIP UTAMA (RUBRIK LOGICODIX 2026):
-1. ZERO-ANSWER POLICY: JANGAN PERNAH memberikan jawaban akhir atau mengerjakan PR aljabar siswa secara langsung. Bimbing siswa untuk menemukan solusinya sendiri.
+1. ZERO-ANSWER POLICY: JANGAN PERNAH memberikan jawaban akhir langsung atau membocorkan hasil hitungan akhir kepada siswa. Bimbing siswa untuk menemukan solusinya sendiri.
 2. METODE SOKRATES & PEDAGOGIS: Bimbing siswa dengan pertanyaan reflektif, analogi intuitif (misal: model luas geometri untuk kuadrat suku dua), dan uji angka nyata (kontra-contoh).
-3. MEMORI PERCAKAPAN: Jaga konteks percakapan secara utuh. Ingat nama pengguna, pertanyaan sebelumnya, dan topik yang telah dibahas dalam sesi ini. Jika siswa bertanya hal umum di luar matematika (seperti fenomena sains atau fisika), jawab dengan ramah, berpengetahuan luas, cerdas, dan kontekstual.
+3. MEMORI PERCAKAPAN: Jaga konteks percakapan secara utuh. Ingat pertanyaan sebelumnya dan topik yang telah dibahas dalam sesi ini.
 4. FORMAT: Gunakan Markdown bersih dan notasi KaTeX ($...$ untuk inline, $$...$$ untuk baris formula).`;
 
   if (activeProblem && activeProblem.steps && activeProblem.steps.length > 0) {
@@ -320,6 +609,473 @@ Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentan
 }
 
 /**
+ * Panggilan ke Mistral AI Chat Completion REST API (Codestral 22B / Mistral Large).
+ * Mendukung multi-turn chat memory, failover endpoint codestral.mistral.ai,
+ * serta integrasi penjagaan Zero-Answer Policy.
+ */
+async function callMistralAPI(
+  userMessage: string,
+  apiKey: string,
+  conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
+  activeProblem?: ActiveProblemContext | null,
+  modelId?: string,
+  userName?: string
+): Promise<MistralCallResult> {
+  const studentName = userName?.trim() || "Wakhid Pangestu";
+  const targetModel =
+    modelId === "mistral-large-latest" || modelId === "mistral-large"
+      ? "mistral-large-latest"
+      : "codestral-latest";
+
+  let systemInstructionText = `Anda adalah ZAP (Zero Answer Policy), asisten kognitif dan tutor aljabar cerdas yang ditenagai langsung oleh model AI resmi Mistral AI (${targetModel.includes("codestral") ? "Codestral 22B" : "Mistral Large"}).
+IDENTITAS SISWA:
+- Siswa yang sedang berbicara dengan Anda bernama: ${studentName}.
+- Jika siswa bertanya "aku siapa?" atau tentang identitasnya, sebutkan dengan ramah dan yakin bahwa dia adalah ${studentName}.
+IDENTITAS MODEL AI:
+- Anda adalah model AI Mistral AI (${targetModel.includes("codestral") ? "Codestral 22B - Model Spesialis Kode & Logika Matematika 22B token" : "Mistral Large 2"}).
+- Jika siswa bertanya model apa ini, sebutkan secara transparan dan jelas bahwa Anda adalah ${targetModel.includes("codestral") ? "Codestral 22B" : "Mistral Large"} dari Mistral AI yang terhubung via Mistral Cloud API ke ZAP.
+PRINSIP UTAMA (RUBRIK LOGICODIX 2026):
+1. ZERO-ANSWER POLICY: JANGAN PERNAH memberikan jawaban akhir langsung atau membocorkan hasil hitungan akhir kepada siswa. Bimbing siswa untuk menemukan solusinya sendiri.
+2. METODE SOKRATES & PEDAGOGIS: Bimbing siswa dengan pertanyaan reflektif, analogi intuitif (misal: model luas geometri untuk kuadrat suku dua), dan uji angka nyata (kontra-contoh).
+3. MEMORI PERCAKAPAN: Jaga konteks percakapan secara utuh. Ingat pertanyaan sebelumnya dan topik yang telah dibahas dalam sesi ini.
+4. FORMAT: Gunakan Markdown bersih dan notasi KaTeX ($...$ untuk inline, $$...$$ untuk baris formula).`;
+
+  if (activeProblem && activeProblem.steps && activeProblem.steps.length > 0) {
+    systemInstructionText += `\n\nKONTEKS CORETAN SISWA SAAT INI:
+- Langkah coretan siswa: ${activeProblem.steps.map((s, i) => `#${i + 1}: ${s}`).join(" -> ")}
+${activeProblem.faultLine ? `- Titik patah kesalahan logika terdeteksi di baris #${activeProblem.faultLine}` : ""}
+${activeProblem.misconceptionType ? `- Tipe miskonsepsi: ${activeProblem.misconceptionType}` : ""}
+${activeProblem.explanation ? `- Penjelasan galat: ${activeProblem.explanation}` : ""}
+${activeProblem.counterExample?.contradiction_statement ? `- Kontra-contoh aritmetika: ${activeProblem.counterExample.contradiction_statement}` : ""}
+Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentang kesalahannya atau bingung cara memperbaikinya.`;
+  }
+
+  const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+    { role: "system", content: systemInstructionText },
+  ];
+
+  if (conversationHistory && conversationHistory.length > 0) {
+    const recentHistory = conversationHistory.slice(-20);
+    for (const turn of recentHistory) {
+      const text = turn.content?.trim();
+      if (!text) continue;
+      messages.push({
+        role: turn.role === "assistant" ? "assistant" : "user",
+        content: text,
+      });
+    }
+  }
+
+  messages.push({
+    role: "user",
+    content: userMessage,
+  });
+
+  const payload = {
+    model: targetModel,
+    messages: messages,
+    temperature: 0.7,
+    max_tokens: 800,
+  };
+
+  const endpoints = [
+    "https://api.mistral.ai/v1/chat/completions",
+  ];
+  if (targetModel.includes("codestral")) {
+    endpoints.push("https://codestral.mistral.ai/v1/chat/completions");
+  }
+
+  let lastError = "";
+  let lastStatus = 500;
+
+  for (const endpoint of endpoints) {
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey.trim()}`,
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(7000),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const candidate = data?.choices?.[0]?.message?.content;
+        if (candidate) {
+          return {
+            text: candidate,
+            modelUsed: targetModel.includes("codestral") ? "Codestral 22B" : "Mistral Large",
+          };
+        }
+      }
+
+      const errJson = await res.json().catch(() => null);
+      lastStatus = res.status;
+      lastError = errJson?.message || errJson?.error?.message || `HTTP ${res.status}`;
+      if (res.status === 401 || res.status === 403) {
+        return { error: lastError, status: lastStatus, modelUsed: targetModel };
+      }
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
+      lastStatus = 500;
+    }
+  }
+
+  return {
+    error: lastError || "Tidak dapat menghasilkan respon dari Mistral AI API",
+    status: lastStatus,
+    modelUsed: targetModel,
+  };
+}
+
+/**
+ * Panggilan ke BazaarLink AI Gateway (OpenAI-compatible).
+ * Mendukung Auto Router gratis, DeepSeek V4 Flash, dan Qwen 3.7.
+ */
+async function callBazaarLinkAPI(
+  userMessage: string,
+  apiKey: string,
+  conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
+  activeProblem?: ActiveProblemContext | null,
+  modelId?: string,
+  userName?: string
+): Promise<BazaarLinkCallResult> {
+  const studentName = userName?.trim() || "Wakhid Pangestu";
+
+  let targetModel = "auto:free";
+  if (modelId === "bazaarlink-deepseek") {
+    targetModel = "deepseek/deepseek-v4-flash-0731free:free";
+  } else if (modelId === "bazaarlink-qwen") {
+    targetModel = "qwen/qwen3.7-flash:free";
+  } else if (modelId === "bazaarlink-auto") {
+    targetModel = "auto:free";
+  }
+
+  let systemInstructionText = `Anda adalah ZAP (Zero Answer Policy), asisten kognitif dan tutor aljabar cerdas yang terhubung via BazaarLink AI Gateway (${targetModel}).
+IDENTITAS SISWA:
+- Siswa yang sedang berbicara dengan Anda bernama: ${studentName}.
+- Jika siswa bertanya "aku siapa?" atau tentang identitasnya, sebutkan dengan ramah dan yakin bahwa dia adalah ${studentName}.
+IDENTITAS MODEL AI:
+- Anda adalah model AI cerdas berkecepatan tinggi yang disediakan melalui gateway BazaarLink.
+- Berikan bimbingan ramah, cepat, dan berbasis pemahaman konseptual.
+PRINSIP UTAMA (RUBRIK LOGICODIX 2026):
+1. ZERO-ANSWER POLICY: JANGAN PERNAH memberikan jawaban akhir langsung atau membocorkan hasil hitungan akhir kepada siswa. Bimbing siswa untuk menemukan solusinya sendiri.
+2. METODE SOKRATES & PEDAGOGIS: Bimbing siswa dengan pertanyaan reflektif, analogi intuitif (misal: model luas geometri untuk kuadrat suku dua), dan uji angka nyata (kontra-contoh).
+3. MEMORI PERCAKAPAN: Jaga konteks percakapan secara utuh. Ingat pertanyaan sebelumnya dan topik yang telah dibahas dalam sesi ini.
+4. FORMAT: Gunakan Markdown bersih dan notasi KaTeX ($...$ untuk inline, $$...$$ untuk baris formula).`;
+
+  if (activeProblem && activeProblem.steps && activeProblem.steps.length > 0) {
+    systemInstructionText += `\n\nKONTEKS CORETAN SISWA SAAT INI:
+- Langkah coretan siswa: ${activeProblem.steps.map((s, i) => `#${i + 1}: ${s}`).join(" -> ")}
+${activeProblem.faultLine ? `- Titik patah kesalahan logika terdeteksi di baris #${activeProblem.faultLine}` : ""}
+${activeProblem.misconceptionType ? `- Tipe miskonsepsi: ${activeProblem.misconceptionType}` : ""}
+${activeProblem.explanation ? `- Penjelasan galat: ${activeProblem.explanation}` : ""}
+${activeProblem.counterExample?.contradiction_statement ? `- Kontra-contoh aritmetika: ${activeProblem.counterExample.contradiction_statement}` : ""}
+Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentang kesalahannya atau bingung cara memperbaikinya.`;
+  }
+
+  const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+    { role: "system", content: systemInstructionText },
+  ];
+
+  if (conversationHistory && conversationHistory.length > 0) {
+    const recentHistory = conversationHistory.slice(-20);
+    for (const turn of recentHistory) {
+      const text = turn.content?.trim();
+      if (!text) continue;
+      messages.push({
+        role: turn.role === "assistant" ? "assistant" : "user",
+        content: text,
+      });
+    }
+  }
+
+  messages.push({
+    role: "user",
+    content: userMessage,
+  });
+
+  const payload = {
+    model: targetModel,
+    messages: messages,
+    temperature: 0.7,
+    max_tokens: 800,
+  };
+
+  try {
+    const res = await fetch("https://api.bazaarlink.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey.trim()}`,
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const choice = data?.choices?.[0];
+      const text = choice?.message?.content;
+      const modelReturned = data?.model || targetModel;
+      if (text) {
+        let label = "BazaarLink Smart Router";
+        if (modelReturned.includes("deepseek")) {
+          label = "DeepSeek V4 (BazaarLink Free)";
+        } else if (modelReturned.includes("qwen")) {
+          label = "Qwen 3.7 Flash (BazaarLink Free)";
+        }
+        return {
+          text,
+          modelUsed: label,
+        };
+      }
+    }
+
+    const errJson = await res.json().catch(() => null);
+    const errMsg = errJson?.error?.message || errJson?.message || `HTTP ${res.status}`;
+    return {
+      error: errMsg,
+      status: res.status,
+      modelUsed: targetModel,
+    };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : String(err),
+      status: 500,
+      modelUsed: targetModel,
+    };
+  }
+}
+
+/**
+ * Panggilan ke Anthropic Messages API (Claude 3.7 / 3.5 Sonnet).
+ */
+async function callClaudeAPI(
+  userMessage: string,
+  apiKey: string,
+  conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
+  activeProblem?: ActiveProblemContext | null,
+  modelId?: string,
+  userName?: string
+): Promise<UniversalCallResult> {
+  const studentName = userName?.trim() || "Wakhid Pangestu";
+  const targetModel =
+    modelId === "claude-3-7-sonnet"
+      ? "claude-3-7-sonnet-20250219"
+      : "claude-3-5-sonnet-20241022";
+
+  let systemInstructionText = `Anda adalah ZAP (Zero Answer Policy), asisten kognitif dan tutor aljabar cerdas yang ditenagai oleh model Anthropic Claude (${targetModel}).
+IDENTITAS SISWA:
+- Siswa yang sedang berbicara dengan Anda bernama: ${studentName}.
+- Jika siswa bertanya "aku siapa?" atau tentang identitasnya, sebutkan dengan ramah dan yakin bahwa dia adalah ${studentName}.
+IDENTITAS MODEL AI:
+- Anda adalah model resmi Anthropic Claude (${targetModel}).
+PRINSIP UTAMA (RUBRIK LOGICODIX 2026):
+1. ZERO-ANSWER POLICY: JANGAN PERNAH memberikan jawaban akhir langsung atau membocorkan hasil hitungan akhir kepada siswa. Bimbing siswa untuk menemukan solusinya sendiri.
+2. METODE SOKRATES & PEDAGOGIS: Bimbing siswa dengan pertanyaan reflektif, analogi intuitif, dan uji angka nyata (kontra-contoh).
+3. MEMORI PERCAKAPAN: Jaga konteks percakapan secara utuh.
+4. FORMAT: Gunakan Markdown bersih dan notasi KaTeX ($...$ untuk inline, $$...$$ untuk baris formula).`;
+
+  if (activeProblem && activeProblem.steps && activeProblem.steps.length > 0) {
+    systemInstructionText += `\n\nKONTEKS CORETAN SISWA SAAT INI:
+- Langkah coretan siswa: ${activeProblem.steps.map((s, i) => `#${i + 1}: ${s}`).join(" -> ")}
+${activeProblem.faultLine ? `- Titik patah kesalahan logika terdeteksi di baris #${activeProblem.faultLine}` : ""}
+${activeProblem.misconceptionType ? `- Tipe miskonsepsi: ${activeProblem.misconceptionType}` : ""}
+${activeProblem.explanation ? `- Penjelasan galat: ${activeProblem.explanation}` : ""}
+${activeProblem.counterExample?.contradiction_statement ? `- Kontra-contoh aritmetika: ${activeProblem.counterExample.contradiction_statement}` : ""}`;
+  }
+
+  const messages: Array<{ role: "user" | "assistant"; content: string }> = [];
+  if (conversationHistory && conversationHistory.length > 0) {
+    for (const turn of conversationHistory.slice(-20)) {
+      if (turn.content?.trim()) {
+        messages.push({ role: turn.role, content: turn.content.trim() });
+      }
+    }
+  }
+  messages.push({ role: "user", content: userMessage });
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey.trim(),
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: targetModel,
+        system: systemInstructionText,
+        messages: messages,
+        max_tokens: 800,
+        temperature: 0.7,
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const text = data?.content?.[0]?.text;
+      if (text) {
+        return { text, modelUsed: targetModel.includes("3-7") ? "Claude 3.7 Sonnet" : "Claude 3.5 Sonnet" };
+      }
+    }
+
+    const errJson = await res.json().catch(() => null);
+    return {
+      error: errJson?.error?.message || `HTTP ${res.status}`,
+      status: res.status,
+      modelUsed: targetModel,
+    };
+  } catch (err) {
+    return { error: String(err), status: 500, modelUsed: targetModel };
+  }
+}
+
+/**
+ * Panggilan ke OpenAI API (GPT-4o / GPT-4o-mini).
+ */
+async function callOpenAIAPI(
+  userMessage: string,
+  apiKey: string,
+  conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
+  activeProblem?: ActiveProblemContext | null,
+  modelId?: string,
+  userName?: string
+): Promise<UniversalCallResult> {
+  const studentName = userName?.trim() || "Wakhid Pangestu";
+  const targetModel = modelId === "gpt-4o-mini" ? "gpt-4o-mini" : "gpt-4o";
+
+  let systemInstructionText = `Anda adalah ZAP (Zero Answer Policy), asisten kognitif dan tutor aljabar cerdas yang ditenagai oleh model OpenAI (${targetModel}).
+IDENTITAS SISWA:
+- Siswa yang sedang berbicara dengan Anda bernama: ${studentName}.
+PRINSIP UTAMA:
+1. ZERO-ANSWER POLICY: JANGAN PERNAH memberikan jawaban akhir langsung atau hasil kalkulasi akhir kepada siswa.
+2. Bimbing dengan pertanyaan Sokrates dan format Markdown KaTeX ($...$).`;
+
+  if (activeProblem && activeProblem.steps && activeProblem.steps.length > 0) {
+    systemInstructionText += `\n\nKONTEKS CORETAN SISWA: ${activeProblem.steps.join(" -> ")}`;
+  }
+
+  const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+    { role: "system", content: systemInstructionText },
+  ];
+  if (conversationHistory && conversationHistory.length > 0) {
+    for (const turn of conversationHistory.slice(-20)) {
+      if (turn.content?.trim()) {
+        messages.push({ role: turn.role, content: turn.content.trim() });
+      }
+    }
+  }
+  messages.push({ role: "user", content: userMessage });
+
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey.trim()}`,
+      },
+      body: JSON.stringify({
+        model: targetModel,
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 800,
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const text = data?.choices?.[0]?.message?.content;
+      if (text) {
+        return { text, modelUsed: targetModel.toUpperCase() };
+      }
+    }
+
+    const errJson = await res.json().catch(() => null);
+    return {
+      error: errJson?.error?.message || `HTTP ${res.status}`,
+      status: res.status,
+      modelUsed: targetModel,
+    };
+  } catch (err) {
+    return { error: String(err), status: 500, modelUsed: targetModel };
+  }
+}
+
+/**
+ * Panggilan ke Custom Model API (OpenAI-Compatible endpoint: Ollama, vLLM, LMStudio, Proxy).
+ */
+async function callCustomOpenAIAPI(
+  userMessage: string,
+  baseUrl: string,
+  modelName: string,
+  apiKey?: string,
+  conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
+  activeProblem?: ActiveProblemContext | null,
+  userName?: string
+): Promise<UniversalCallResult> {
+  const studentName = userName?.trim() || "Wakhid Pangestu";
+  const cleanBase = (baseUrl || "http://localhost:11434/v1").replace(/\/+$/, "");
+  const targetUrl = cleanBase.endsWith("/chat/completions") ? cleanBase : `${cleanBase}/chat/completions`;
+  const targetModel = modelName?.trim() || "default";
+
+  let systemInstructionText = `Anda adalah ZAP (Zero Answer Policy), asisten kognitif aljabar untuk siswa ${studentName}. JANGAN berikan jawaban akhir aljabar secara langsung. Bimbing dengan pertanyaan Sokrates.`;
+
+  const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+    { role: "system", content: systemInstructionText },
+  ];
+  if (conversationHistory && conversationHistory.length > 0) {
+    for (const turn of conversationHistory.slice(-20)) {
+      if (turn.content?.trim()) {
+        messages.push({ role: turn.role, content: turn.content.trim() });
+      }
+    }
+  }
+  messages.push({ role: "user", content: userMessage });
+
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (apiKey?.trim()) {
+    headers["Authorization"] = `Bearer ${apiKey.trim()}`;
+  }
+
+  try {
+    const res = await fetch(targetUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: targetModel,
+        messages,
+        temperature: 0.7,
+        max_tokens: 800,
+      }),
+      signal: AbortSignal.timeout(12000),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const text = data?.choices?.[0]?.message?.content;
+      if (text) {
+        return { text, modelUsed: `Custom (${targetModel})` };
+      }
+    }
+
+    const errJson = await res.json().catch(() => null);
+    return {
+      error: errJson?.error?.message || errJson?.message || `HTTP ${res.status}`,
+      status: res.status,
+      modelUsed: targetModel,
+    };
+  } catch (err) {
+    return { error: String(err), status: 500, modelUsed: targetModel };
+  }
+}
+
+/**
  * Built-in Socratic Cognitive Agent
  * Memberikan respons cerdas dan kontekstual secara lokal tanpa dependensi eksternal
  */
@@ -368,7 +1124,7 @@ Apakah ada topik aljabar tertentu yang ingin kamu pelajari (seperti faktorisasi,
       const firstStep = activeProblem.steps[0];
       return `Halo! Tentu saja, mau nanya tentang apa? Apakah terkait penurunan aljabar $${firstStep}$ yang sedang kita bahas, atau ada konsep lain yang membingungkanmu? Tanyakan saja!`;
     }
-    return `Halo! Aku LogicoMath, asisten diagnostik aljabar kamu. Ada konsep matematika atau langkah penurunan rumus yang ingin kamu tanyakan atau uji bersama? Kamu bisa bertanya bebas atau langsung memasukkan baris aljabar coretanmu!`;
+    return `Halo! Aku ZAP, asisten diagnostik aljabar kamu. Ada konsep matematika atau langkah penurunan rumus yang ingin kamu tanyakan atau uji bersama? Kamu bisa bertanya bebas atau langsung memasukkan baris aljabar coretanmu!`;
   }
 
   // 3. PERTANYAAN TENTANG KESALAHAN ("Kenapa salah?", "Kenapa baris 2?")
@@ -450,7 +1206,7 @@ Total luas adalah $x^2 + 6x + 9$. Tanpa suku $6x$, luasnya tidak akan pernah len
 
   if (isAskingHowToSolve) {
     if (activeProblem?.steps && activeProblem.steps.length > 0) {
-      return `Sesuai prinsip Sokrates LogicoMath, aku tidak memberikan jawaban akhir secara instan, melainkan memandumu menemukannya sendiri:
+      return `Sesuai prinsip Sokrates ZAP, aku tidak memberikan jawaban akhir secara instan, melainkan memandumu menemukannya sendiri:
 
 1. Ambil ekspresi awalmu: $${activeProblem.steps[0]}$$.
 2. Urai kuadrat binomialnya menjadi bentuk perkalian dua suku.
@@ -460,7 +1216,7 @@ Total luas adalah $x^2 + 6x + 9$. Tanpa suku $6x$, luasnya tidak akan pernah len
 Coba tuliskan perbaikan baris berikutnya di kolom chat dan kirimkan, aku akan langsung menguji keabsahannya untukmu!`;
     }
 
-    return `Tuliskan baris-baris aljabar yang sedang kamu kerjakan (gunakan Enter untuk membuat baris baru). LogicoMath akan memverifikasi setiap langkah secara deterministik dan memberitahumu jika ada aturan aljabar yang terlanggar!`;
+    return `Tuliskan baris-baris aljabar yang sedang kamu kerjakan (gunakan Enter untuk membuat baris baru). ZAP akan memverifikasi setiap langkah secara deterministik dan memberitahumu jika ada aturan aljabar yang terlanggar!`;
   }
 
   // 6. PERTANYAAN TENTANG KONTRADIKSI / KONTRA-CONTOH ("Kenapa x=2?")
@@ -483,22 +1239,22 @@ Ketika $x = 2$ dimasukkan:
 Karena $21 \\neq 9$, ini membuktikan secara mutlak bahwa langkah penurunan tersebut tidak ekuivalen!`;
   }
 
-  // 7. PERTANYAAN UMUM TENTANG LOGICOMATH ATAU CARA PAKAI
+  // 7. PERTANYAAN UMUM TENTANG ZAP ATAU CARA PAKAI
   const isAskingAboutSystem =
-    lower.includes("apa itu logicomath") ||
-    lower.includes("apa itu nalarai") ||
+    lower.includes("apa itu zap") ||
+    lower.includes("apa itu zero answer policy") ||
     lower.includes("siapa kamu") ||
     lower.includes("bisa apa") ||
     lower.includes("cara pakai") ||
     lower.includes("aturan");
 
   if (isAskingAboutSystem) {
-    return `**LogicoMath** adalah asisten diagnostik aljabar otonom berbasis *Hybrid Reasoning* (SymPy CAS + Socratic AI Tutor).
+    return `**ZAP (Zero Answer Policy)** adalah platform pembelajaran matematika 3D interaktif dan tutor Sokratik berbasis *Strict Separation of Concerns* (SymPy CAS + Three.js 3D Canvas + Socratic AI Tutor).
 
-**Filosofi Kami:** *"Don't give them the answer. Debug how they think."*
-- Kami tidak memberikan kunci jawaban langsung agar siswa tidak ketergantungan.
-- Kami memindai coretan matematika baris demi baris, menemukan titik patah kesalahan logika pertama, dan memberikan pertanyaan bimbingan reflektif.
-- Kamu bisa menguji coretanmu dengan mengetik baris aljabar atau memilih contoh soal dari menu samping!`;
+**Filosofi Kami:** *"Don't give them answers. Project the wonder to discover."*
+- Kami tidak memberikan kunci jawaban langsung agar siswa tidak ketergantungan pada contekan instan.
+- Kami memproyeksikan persamaan matematika ke kanvas 3D interaktif secara real-time dan memverifikasi kebenaran logika langkah demi langkah.
+- Kamu bisa menguji aljabar dengan mengetik rumus atau memilih topik matematika dari kanvas 3D!`;
   }
 
   // 8. RESPONS UMUM BERPIKIR SOKRATIK

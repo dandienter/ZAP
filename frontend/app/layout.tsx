@@ -15,8 +15,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "NalarAI — Cognitive Debugger for Student Scratchpads",
-  description: "Autonomous Cognitive Diagnostics Engine for Student Scratchpads (LOGICODIX 2026)",
+  title: "ZAP (Zero Answer Policy) — Interactive 3D Math Canvas & Socratic Engine",
+  description: "Web-First 3D Interactive Math Canvas with Zero-Answer Socratic Scaffolding (LOGICODIX 2026)",
 };
 
 export default function RootLayout({
@@ -26,6 +26,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" className="dark">
+      <head>
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased bg-slate-950 text-slate-100 min-h-screen`}
       >

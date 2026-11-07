@@ -1,5 +1,5 @@
 # AGENTS.md — Repository Operational Contract & Experiential Memory
-**Project:** LogicoMath (Logicodix 2026 Hackathon)  
+**Project:** ZAP (Zero Answer Policy) — Logicodix 2026 Hackathon  
 **Scope:** Universal project-wide rules, architectural boundaries, and crystallized memory-by-experience.
 
 ---

@@ -1,5 +1,5 @@
 """
-NalarAI - Core Cognitive Fault Localization (CFL) Engine
+ZAP (Zero Answer Policy) - Core Cognitive Fault Localization (CFL) Engine
 Memverifikasi invarian logika aljabar langkah demi langkah.
 """
 
@@ -17,6 +17,11 @@ def steps_equivalent(prev: sp.Expr | sp.Eq, nxt: sp.Expr | sp.Eq, var: sp.Symbol
     """
     # Kasus 1: Kedua langkah adalah Persamaan (sp.Eq)
     if isinstance(prev, sp.Eq) and isinstance(nxt, sp.Eq):
+        # Sub-kasus 1a: Transisi ekspresi fungsi f(x) = E1 ke f(x) = E2 dengan LHS identik
+        if prev.lhs == nxt.lhs:
+            if sp.simplify(nxt.rhs - prev.rhs) == 0:
+                return True
+
         s1 = sp.solveset(prev.lhs - prev.rhs, var, domain=sp.S.Reals)
         s2 = sp.solveset(nxt.lhs - nxt.rhs, var, domain=sp.S.Reals)
 
@@ -24,16 +29,16 @@ def steps_equivalent(prev: sp.Expr | sp.Eq, nxt: sp.Expr | sp.Eq, var: sp.Symbol
         if isinstance(s1, sp.ConditionSet) or isinstance(s2, sp.ConditionSet):
             return None
 
+        # Jika kedua persamaan tidak memiliki solusi real (EmptySet),
+        # pastikan ekspresinya identik/ekuivalen secara simbolik
+        if s1 == sp.EmptySet and s2 == sp.EmptySet:
+            return sp.simplify((prev.lhs - prev.rhs) - (nxt.lhs - nxt.rhs)) == 0
+
         return s1 == s2
 
     # Kasus 2: Kedua langkah adalah Ekspresi Aljabar Biasa (sp.Expr)
     if not isinstance(prev, sp.Eq) and not isinstance(nxt, sp.Eq):
         return sp.simplify(nxt - prev) == 0
-
-    # Kasus 3: Transisi ekspresi fungsi f(x) = E1 ke f(x) = E2
-    if isinstance(prev, sp.Eq) and isinstance(nxt, sp.Eq):
-        if prev.lhs == nxt.lhs:
-            return sp.simplify(nxt.rhs - prev.rhs) == 0
 
     return False
 

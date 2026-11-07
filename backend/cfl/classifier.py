@@ -1,5 +1,5 @@
 """
-NalarAI - Misconception Classifier
+ZAP (Zero Answer Policy) - Misconception Classifier
 Mendiagnosis tipe cacat model mental pada domain Aljabar, termasuk deteksi kehilangan akar (ROOT_LOSS).
 """
 

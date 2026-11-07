@@ -1,5 +1,5 @@
 """
-LogicoMath - Backend API Gateway & CFL Orchestrator
+ZAP (Zero Answer Policy) - Backend API Gateway & CFL Orchestrator
 Framework: FastAPI (Production-Ready Spec)
 Rubrik LOGICODIX 2026: Anti-Halusinasi, Zero-Answer Policy, dan Human-in-the-Loop LaTeX Confirmation
 """
@@ -16,7 +16,7 @@ from cfl import (
 )
 
 app = FastAPI(
-    title="LogicoMath Cognitive Diagnostics API",
+    title="ZAP Cognitive Diagnostics API",
     description="Autonomous Cognitive Diagnostics Engine for Student Scratchpads (LOGICODIX 2026)",
     version="2.2.0"
 )
@@ -25,7 +25,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -115,7 +115,7 @@ def health_check():
     """Health check endpoint untuk monitoring service."""
     return {
         "status": "online",
-        "service": "LogicoMath Diagnostic Gateway",
+        "service": "ZAP Diagnostic Gateway",
         "engine": "SymPy CFL Symbolic Reasoning",
         "version": "2.2.0"
     }
@@ -208,15 +208,21 @@ def diagnose_student_scratchpad(request: DiagnoseRequest):
             )
 
         if ce:
+            stmt = ce.get("contradiction_statement")
+            if not stmt and ce.get("lhs_expected") is not None:
+                stmt = (
+                    f"Ketika {target_var} = {ce.get('test_value')}, rumus awal bernilai "
+                    f"{ce.get('lhs_expected')}, tetapi langkahmu menghasilkan {ce.get('rhs_calculated')}."
+                )
+            elif not stmt:
+                stmt = ce.get("note", "Periksa kembali aturan aljabar secara teliti.")
+
             counter_example_obj = CounterExampleResult(
                 test_variable=target_var,
                 test_value=ce.get("test_value"),
                 lhs_expected=ce.get("lhs_expected"),
                 rhs_calculated=ce.get("rhs_calculated"),
-                contradiction_statement=(
-                    f"Ketika {target_var} = {ce.get('test_value')}, rumus awal bernilai "
-                    f"{ce.get('lhs_expected')}, tetapi langkahmu menghasilkan {ce.get('rhs_calculated')}."
-                )
+                contradiction_statement=stmt
             )
 
     elif cfl_status == "UNDECIDABLE_STEP":

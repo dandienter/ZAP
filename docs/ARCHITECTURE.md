@@ -1,57 +1,65 @@
-# ARSITEKTUR SISTEM & SPESIFIKASI TEKNIS NALARAI (V2.0 REVISED)
+# ARSITEKTUR SISTEM & SPESIFIKASI TEKNIS ZAP (V3.0 REVISED)
 
 ---
 
-## 1. IKHTISAR ARSITEKTUR (ARCHITECTURAL OVERVIEW)
+## 1. IKHTISAR ARSITEKTUR SISTEM (ARCHITECTURAL OVERVIEW)
 
-**NalarAI** mengusung arsitektur **Hybrid Perceptual-Symbolic Reasoning**. Arsitektur ini memisahkan secara ketat antara domain persepsi visual (ekstraksi tulisan tangan ke LaTeX) dengan domain verifikasi kebenaran matematika (pengecekan logika deterministik).
+**ZAP (Zero Answer Policy)** mengusung arsitektur **Tri-Tier Hybrid Spatial-Symbolic Reasoning**. Arsitektur ini memisahkan secara ketat antara domain presentasi spasial 3D (Three.js WebGL), domain verifikasi kebenaran matematika deterministik (SymPy CAS), dan domain bimbingan pedagogis percakapan (Gemini / ChatGPT via 1-Click Connect).
 
 ```mermaid
 graph TD
-    subgraph Client ["Client Presentation Tier (Next.js 14)"]
-        UI_Cam["Camera Ingestion / File Uploader"]
-        UI_Confirm["Transcription Confirmation & Editor"]
-        UI_Canvas["Interactive Canvas & Point-to-Inspect"]
-        UI_Console["Socratic Epistemic Console"]
+    subgraph Client ["Client Presentation Tier (Next.js 14 + WebGL)"]
+        UI_Formula["Formula / LaTeX Ingestion"]
+        UI_3D["Dynamic 3D Canvas (Three.js / R3F)"]
+        UI_DualMode["Dual-Mode Controller (Projector / Smartboard)"]
+        UI_Console["Socratic Guidance Console"]
+        UI_Auth["1-Click Universal Connect (Google SSO / ChatGPT)"]
     end
 
-    subgraph Gateway ["API Gateway & Orchestrator (FastAPI)"]
+    subgraph Gateway ["API Gateway & Security Tier (FastAPI)"]
         API_Route["/api/v1/diagnose Endpoint"]
-        Preprocess["Image Preprocessor (OpenCV Grayscale & CLAHE)"]
+        Pre_Parse["Pre-Parse Whitelist & Limiter (Anti-RCE & Anti-DoS)"]
         Guardrail["Robust Zero-Answer Guardrail"]
     end
 
-    subgraph Intelligence ["Hybrid Reasoning Engine"]
-        VLM["Multimodal Perception Engine (Gemini 2.0 / Qwen2-VL)"]
-        CAS["Deterministic Algebraic Engine (SymPy)"]
+    subgraph Intelligence ["Deterministic & Pedagogical Engine"]
+        CAS["Deterministic Algebraic Engine (SymPy CAS)"]
+        MeshGen["3D Mesh & Coordinate Generator"]
         FaultLocator["Cognitive Fault Localizer (CFL Engine)"]
         Scaffolder["Socratic Scaffold Generator"]
+        LLM["Pedagogical LLM Layer (Gemini Flash/Pro / ChatGPT)"]
     end
 
-    UI_Cam -->|Base64 Image| API_Route
-    API_Route --> Preprocess
-    Preprocess --> VLM
-    VLM -->|Transcribed LaTeX Steps| UI_Confirm
-    UI_Confirm -->|Student Confirmed Steps| CAS
+    UI_Formula -->|Math Expression / Steps| API_Route
+    UI_Auth -->|User OAuth Token| LLM
+    API_Route --> Pre_Parse
+    Pre_Parse --> CAS
     CAS --> FaultLocator
+    CAS --> MeshGen
+    MeshGen -->|3D Vertices, Faces & Slices JSON| UI_3D
     FaultLocator -->|Breakpoint & Ast Gap| Scaffolder
-    Scaffolder --> Guardrail
-    Guardrail -->|Sanitized Diagnostic JSON| UI_Console
+    Scaffolder --> LLM
+    LLM --> Guardrail
+    Guardrail -->|Sanitized Socratic Guidance| UI_Console
 ```
 
 ---
 
-## 2. HUMAN-IN-THE-LOOP TRANSCRIPTION CONFIRMATION
+## 2. STRICT SEPARATION OF CONCERNS: THE SYMPY TRUTH SHIELD
 
-Salah satu titik kritis dalam sistem bertenaga Vision AI adalah resiko salah baca karakter optik (*OCR misinterpretation*), misalnya angka `9` terbaca huruf `g`, atau tanda `+` terbaca `t`. Jika AI langsung mendiagnosis tanpa konfirmasi, sistem berpotensi menuduh siswa salah padahal tulisan aslinya benar.
+Dalam sistem ZAP, model AI generatif (Gemini / ChatGPT) **sama sekali dilarang** menghitung aljabar secara independen atau menentukan validitas langkah matematika. Alasan teknis:
+1. **Pencegahan Halusinasi Angka:** Model bahasa alami rentan terhadap kesalahan aritmetika dan tanda minus pada persamaan kuadrat atau matriks 3D.
+2. **Kemandirian Terhadap Tingkat Model (Model Invariance):** Karena SymPy menangani 100% beban komputasi matematika dan penghitungan koordinat poligon, model AI gratisan/ringan sekalipun (seperti Gemini 3.6 Flash) tetap bekerja dengan akurasi 100% mutlak. Model AI murni bertindak sebagai penerjemah pedagogis (*Socratic Communicator*).
 
-### Mekanisme Konfirmasi NalarAI:
-1. Setelah foto kertas buram dipindai, antarmuka web menampilkan popover ringan: **"Tinjau Hasil Bacaan Coretanmu"**.
-2. Tiap baris LaTeX hasil ekstraksi ditampilkan dalam bentuk formula KaTeX bersih.
-3. Siswa dapat mengedit tanda baca yang keliru dalam 2–3 detik sebelum tombol **"Mulai Diagnosa Logika"** ditekan.
-4. **Keuntungan Ganda:**
-   * **Secara Pedagogis:** Mendidik siswa untuk melakukan *metacognitive review* terhadap apa yang baru saja mereka tulis.
-   * **Secara Panggung Demo:** Menghilangkan resiko sistem *crash* atau salah diagnosa di depan dewan juri.
+### Alur Kerja Mesin Verifikasi (CFL & Mesh Engine):
+1. Pengguna memasukkan formula atau deret langkah aljabar.
+2. **Pre-Parse Sanitizer:** Memvalidasi input terhadap whitelist karakter dan identifier, menolak perintah LaTeX berbahaya (`\input`, `\write18`), serta membatasi eksponen numerik $\le 100$ untuk mencegah DoS.
+3. **SymPy Evaluation:** 
+   * Mengevaluasi ekuivalensi simbolik tiap ruas (`simplify(lhs - rhs) == 0`).
+   * Mendeteksi kehilangan akar (`ROOT_LOSS`) saat menyederhanakan pangkat.
+   * Menghasilkan data poligon 3D (koordinat titik sudut, garis kisi, dan irisan bidang).
+4. **Cognitive Fault Localizer:** Mengidentifikasi baris patah logika pertama dan menghitung kontra-contoh konkret (*numerical counter-example*).
+5. **Zero-Answer Policy Guardrail:** Menyaring teks keluaran dari LLM agar tidak memuat formula jawaban final atau angka solusi tunggal.
 
 ---
 
@@ -62,7 +70,6 @@ Salah satu titik kritis dalam sistem bertenaga Vision AI adalah resiko salah bac
 #### Request Payload:
 ```json
 {
-  "image": "base64_encoded_string_or_multipart_stream",
   "confirmed_steps": [
     "(x + 3)^2 - 4",
     "x^2 + 9 - 4",
@@ -72,6 +79,7 @@ Salah satu titik kritis dalam sistem bertenaga Vision AI adalah resiko salah bac
   "client_timestamp": "2026-11-08T10:14:22Z"
 }
 ```
+*(Mendukung backward-compatibility untuk alias `lines` dan `target_var`)*.
 
 #### Response Payload (HTTP 200 OK):
 ```json
@@ -100,20 +108,41 @@ Salah satu titik kritis dalam sistem bertenaga Vision AI adalah resiko salah bac
       "contradiction_statement": "Ketika x = 2, rumus awal bernilai 25, tetapi langkahmu menghasilkan 13."
     }
   },
-  "guardrail_status": {
-    "final_answer_suppressed": true
+  "geometry_3d": {
+    "render_type": "PARABOLA_SURFACE",
+    "equation": "z = (x + 3)^2 - 4",
+    "vertices_count": 1200,
+    "critical_points": [
+      {"label": "Vertex (Puncak)", "coordinates": [-3, 0, -4]}
+    ]
   }
 }
 ```
 
 ---
 
-## 4. KEPATUHAN PRIVASI DATA SISWA & UU NO. 27/2022 (UU PDP)
+## 4. DUAL-MODE HARDWARE TOPOLOGY
 
-Mengingat pengguna utama NalarAI adalah siswa sekolah menengah (kategori anak di bawah umur), kepatuhan terhadap **UU Perlindungan Data Pribadi (UU PDP)** menjadi prioritas arsitektur:
+ZAP dirancang dengan spesifikasi antarmuka yang beradaptasi secara otomatis dengan perangkat fisik di ruang kelas:
 
-1. **Zero Personally Identifiable Information (Zero-PII):** Kertas buram siswa hanya berisi angka dan coretan rumus matematika, tanpa metadata nama, NISN, atau wajah siswa.
-2. **Dual-Inference Pipeline (Cloud vs Air-Gapped Local):**
-   * **Mode Standar (Cloud Demo):** Menggunakan Gemini 2.0 Flash API dengan parameter retensi data dinonaktifkan (*zero data retention agreement*).
-   * **Mode Edukasi Terproteksi (On-Premise / Localhost):** Menjalankan model VLM lokal (Qwen2-VL via Ollama) di mana citra kertas buram diproses 100% di memori perangkat lokal tanpa pernah menyentuh jaringan internet luar.
-3. **In-Memory Volatility:** Gambar kertas buram segera dimusnahkan dari memori server begitu proses ekstraksi teks LaTeX selesai.
+### Topologi A: Mode Proyektor Gantung (Sekolah Reguler)
+* **Arsitektur Tampilan:** Rasio kontras tinggi (High-Contrast Theme), font diperbesar minimal 18pt untuk teks bimbingan agar terbaca dari jarak 8 meter.
+* **Kontrol Input:** Mendukung pintasan keyboard (Spacebar untuk langkah berikutnya, tombol panah untuk memutar kanvas 3D, 'F' untuk mengaktifkan Focus Mode layar penuh).
+* **Focus Mode:** Menyembunyikan panel percakapan chat, menyisakan kanvas 3D 100% untuk bahan ceramah visual guru di dinding kelas.
+
+### Topologi B: Mode Smart Board / IFP (Sekolah Modern)
+* **Arsitektur Tampilan:** Touch-friendly buttons dengan target sentuh minimal 48x48 piksel.
+* **Multi-Touch Gestures:**
+  * 1 Jari: Rotasi orbit kanvas 3D 360 derajat.
+  * 2 Jari: Pinch-to-zoom (perbesaran) dan pergeseran bidang (Pan).
+  * 3 Jari: Reset sudut pandang kamera ke posisi default.
+* **Canvas Annotation Overlay:** Lapisan kanvas transparan di atas objek 3D yang memungkinkan guru/murid mencoret catatan menggunakan pena stylus.
+
+---
+
+## 5. ZERO-FRICTION 1-CLICK AUTHENTICATION ARCHITECTURE
+
+ZAP memecahkan masalah pembiayaan token AI terpusat dengan mengadopsi model **Delegated Client-Side Authentication**:
+1. **Google OAuth 2.0 (Default):** Siswa dan guru masuk dengan 1-klik akun Google mereka. Sistem mengautentikasi akses ke Google Gemini API secara langsung tanpa mengharuskan pengguna menyalin atau memahami konsep API key.
+2. **Universal ChatGPT Connect:** Pengguna yang memiliki akun OpenAI dapat menghubungkan akun mereka untuk mengakses model GPT-4o / o1 secara resmi tanpa ada penurunan (*downgrade*) kemampuan penalaran.
+3. **Privasi & Keamanan Klien:** Token otorisasi disimpan secara lokal pada `localStorage` peramban web dan tidak pernah disimpan secara permanen di basis data server ZAP.

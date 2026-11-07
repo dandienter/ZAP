@@ -1,5 +1,5 @@
 """
-NalarAI - Context-Aware Zero-Answer Guardrail
+ZAP (Zero Answer Policy) - Context-Aware Zero-Answer Guardrail
 Menyaring kebocoran deklaratif kunci jawaban tanpa merusak konteks simulasi Sokrates.
 """
 
@@ -12,13 +12,15 @@ class RobustZeroAnswerGuardrail:
     """
 
     DECLARATIVE_ANSWER_PATTERNS = [
-        # Deteksi eksplisit: "jawaban akhirnya adalah x = 2", "solusinya adalah 5", "hasil akhir adalah -5/2"
+        # Deteksi eksplisit: "jawaban akhirnya adalah x = 2", "jawabannya adalah 5", "solusinya adalah 5", "hasil akhir adalah -5/2", "kunci jawaban adalah 5"
         # Catatan: 'hasil' WAJIB diikuti 'akhir' agar tidak mencocokkan 'hasil dari substitusi adalah...'
-        r"(?:jawaban(?:\s*akhir(?:nya)?)?|solusi(?:nya)?|hasil\s+akhir(?:nya)?)\s*(?:adalah|=|:)\s*(?:[a-zA-Z]\s*=\s*)?[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+|√\d+)",
-        # Deteksi kesimpulan: "maka x = 2", "jadi x = -5", "kesimpulannya x = 2"
-        r"(?:maka|jadi|kesimpulannya),?\s+[a-zA-Z]\s*=\s*[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+|√\d+)",
+        r"(?:jawaban(?:nya)?(?:\s*akhir(?:nya)?)?|solusi(?:nya)?|hasil\s+akhir(?:nya)?|kunci\s+jawaban(?:nya)?)\s*(?:adalah|=|:)\s*(?:[a-zA-Z]\s*=\s*)?[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+|√\d+)",
+        # Deteksi kesimpulan: "maka x = 2", "jadi x = -5", "kesimpulannya x = 2", "sehingga x = 5", "diperoleh x = 5"
+        r"(?:maka|jadi|kesimpulannya|sehingga|diperoleh|didapatkan),?\s+(?:nilai\s+)?[a-zA-Z]\s*=\s*[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+|√\d+)",
+        # Deteksi deklarasi nilai variabel langsung: "nilai x adalah 5", "nilai dari x = -2"
+        r"(?:nilai\s+(?:dari\s+|variabel\s+)?[a-zA-Z])\s*(?:adalah|=|:)\s*[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+|√\d+)",
         # Bahasa Inggris fallback
-        r"(?:the\s+(?:final\s+)?answer\s+is|therefore\s+[a-zA-Z]\s*=)\s*[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+)"
+        r"(?:the\s+(?:final\s+)?answer\s+is|therefore\s+[a-zA-Z]\s*=|we\s+get\s+[a-zA-Z]\s*=)\s*[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+)"
     ]
 
     @classmethod

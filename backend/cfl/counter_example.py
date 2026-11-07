@@ -1,5 +1,5 @@
 """
-NalarAI - Socratic Minimal Counter-Example Generator
+ZAP (Zero Answer Policy) - Socratic Minimal Counter-Example Generator
 Mencari nilai substitusi integer terkecil untuk memunculkan disonansi kognitif.
 """
 

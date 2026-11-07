@@ -1,5 +1,5 @@
 """
-NalarAI - API Integration Verification Suite (Root Forwarder)
+ZAP (Zero Answer Policy) - API Integration Verification Suite (Root Forwarder)
 """
 import sys
 import os

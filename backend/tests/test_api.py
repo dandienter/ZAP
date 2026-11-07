@@ -1,5 +1,5 @@
 """
-NalarAI - API Integration Verification Suite
+ZAP (Zero Answer Policy) - API Integration Verification Suite
 Framework: FastAPI TestClient + Pytest
 Memverifikasi endpoint /api/v1/diagnose, kepatuhan schema, dan penanganan celah keamanan via HTTP.
 """
@@ -17,7 +17,7 @@ from main import app
 client = TestClient(app)
 
 
-class TestNalarAIAPI:
+class TestZAPAPI:
 
     def test_health_check(self):
         """Memverifikasi endpoint health check mengembalikan status online."""

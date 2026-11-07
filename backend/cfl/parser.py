@@ -1,5 +1,5 @@
 """
-NalarAI - Robust Mathematical Step Parser
+ZAP (Zero Answer Policy) - Robust Mathematical Step Parser
 Mendukung input LaTeX maupun notasi aljabar teks dengan implicit multiplication (2x -> 2*x).
 Dilengkapi sanitasi whitelist ketat untuk memblokir eksekusi eval() dan perintah LaTeX non-matematika,
 serta pembatasan eksponen numerik untuk mencegah serangan Denial of Service (DoS).
@@ -70,17 +70,17 @@ def _is_safe_latex(text: str) -> bool:
 def _has_dangerous_exponents(text: str) -> bool:
     """
     Mencegah serangan Denial of Service (DoS) dari komputasi eksponen raksasa / pangkat bertingkat:
-    1. Menolak eksponen numerik > 100 pada format bare, kurung, maupun kurung kurawal.
+    1. Menolak eksponen numerik > 100 (positif maupun negatif) pada format bare, kurung, maupun kurung kurawal.
     2. Menolak indeks akar LaTeX di atas 100: \\sqrt[n]{...}.
-    3. Menolak rantai pangkat bertingkat langsung maupun bersarang tanda kurung.
+    3. Menolak rantai pangkat bertingkat langsung maupun bersarang tanda kurung (^ atau **).
     """
     s = re.sub(r"\s+", "", text)
 
-    # 1. Cek eksponen numerik besar setelah ^ atau **:
-    # Mendukung format: ^123, ^{123}, ^(123), ^((123)), **123, **(123)
-    for m in re.finditer(r"(?:\^|\*\*)[({]*(\d+)[)}]*", s):
+    # 1. Cek eksponen numerik besar (positif maupun negatif) setelah ^ atau **:
+    # Mendukung format: ^123, ^-123, ^{123}, ^(-123), **123, **-123, **(-123)
+    for m in re.finditer(r"(?:\^|\*\*)[({]*(-?\d+)[)}]*", s):
         try:
-            val = int(m.group(1))
+            val = abs(int(m.group(1)))
             if val > 100:
                 return True
         except ValueError:
@@ -95,16 +95,16 @@ def _has_dangerous_exponents(text: str) -> bool:
         except ValueError:
             return True
 
-    # 3. Cek pangkat bertingkat langsung: a^b^c
-    if re.search(r"(\^|\*\*)[^+\-=/(),]+\^", s):
+    # 3. Cek pangkat bertingkat langsung: a^b^c, a**b**c, a^b**c, a**b^c
+    if re.search(r"(\^|\*\*)[^+\-=/(),]+(\^|\*\*)", s):
         return True
 
     # 4. Cek pangkat bertingkat format LaTeX: ^{...^...} atau ^{...}^{...}
-    if re.search(r"\^\{[^}]*\^", s) or re.search(r"\^\{[^}]*\}\s*\^", s):
+    if re.search(r"\^\{[^}]*(\^|\*\*)", s) or re.search(r"\^\{[^}]*\}\s*(\^|\*\*)", s):
         return True
 
-    # 5. Cek pangkat bertingkat format kurung bersarang: ^\(.*?\^.*?\)|^\(.*?\)|\(.*?^.*?\)\s*\^
-    if re.search(r"(?:\^|\*\*)\([^)]*?(\^|\*\*)", s) or re.search(r"\([^)]*?(\^|\*\*)[^)]*?\)\s*(?:\^|\*\*)", s):
+    # 5. Cek pangkat bertingkat format kurung bersarang: ((9^9))^9, (9^9)^9, ^(...^...)
+    if re.search(r"(?:\^|\*\*)\(.*?(\^|\*\*)", s) or re.search(r"\(.*?(\^|\*\*).*?\)\s*(\^|\*\*)", s):
         return True
 
     return False

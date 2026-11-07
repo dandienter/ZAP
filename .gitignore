@@ -38,3 +38,8 @@ out/
 .env.local
 .DS_Store
 Thumbs.db
+
+# Temporary local verification scripts
+test_bazaarlink.py
+test_mistral.py
+bazaarlink_claude_proxy.py
