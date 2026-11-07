@@ -132,11 +132,14 @@ export async function POST(req: Request) {
   }
 }
 
+// Cache nama model resmi yang terbukti sukses dan aktif di akun API Key ini
+let cachedWorkingModel: string | null = null;
+
 /**
  * Panggilan ultra-cepat ke Google Gemini REST API (v1beta).
  * Mendukung memori percakapan (multi-turn conversationHistory),
- * model Gemini 2.0 Flash (tercepat & tercerdas), Gemini 1.5 Pro,
- * serta failover dengan batas timeout ketat (< 5.5 detik) agar tidak lagging.
+ * deteksi otomatis model resmi via ListModels,
+ * serta failover dengan batas timeout ketat (< 5 detik) agar bebas dari error 404.
  */
 async function callGeminiAPI(
   userMessage: string,
@@ -205,79 +208,114 @@ Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentan
     },
   };
 
-  // 2. Pemilihan Model Paling Kencang & Pintar
-  let primaryModel = "gemini-3.8-flash";
-  if (modelId === "gemini-3.8-flash") {
-    primaryModel = "gemini-3.8-flash";
-  } else if (modelId === "gemini-2.0-flash") {
-    primaryModel = "gemini-2.0-flash";
-  } else if (modelId === "gemini-1.5-pro") {
-    primaryModel = "gemini-1.5-pro";
-  } else if (modelId === "gemini-1.5-flash") {
-    primaryModel = "gemini-1.5-flash";
-  } else {
-    // Default: Gemini 3.8 Flash (Model frontier generasi terbaru)
-    primaryModel = "gemini-3.8-flash";
-  }
-
-  // Prioritas kandidat model: model terpilih -> gemini-3.8-flash -> gemini-2.0-flash -> gemini-1.5-flash
-  const modelsToTry = Array.from(new Set([
-    primaryModel,
-    "gemini-3.8-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash",
-    "gemini-2.0-flash-lite-preview-02-05",
-  ]));
-
-  let lastError = "";
-  let lastStatus = 0;
-
-  for (const model of modelsToTry) {
-    const cleanModel = model.replace(/^models\//, "");
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${apiKey}`;
-
+  // Helper pemanggil model tunggal dengan batas timeout 5s
+  const invokeModel = async (
+    modelName: string
+  ): Promise<{ success: boolean; text?: string; error?: string; status?: number }> => {
+    const clean = modelName.replace(/^models\//, "");
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${clean}:generateContent?key=${apiKey}`;
     try {
-      const response = await fetch(url, {
+      const res = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "x-goog-api-key": apiKey,
         },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(5500), // Timeout ketat 5.5s agar tidak pernah stuck/hang
+        signal: AbortSignal.timeout(5000),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        const candidateText =
-          data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
-        if (candidateText) {
-          return { text: candidateText, modelUsed: cleanModel };
-        }
-      } else {
-        lastStatus = response.status;
-        const errJson = await response.json().catch(() => null);
-        const errMsg = errJson?.error?.message || `HTTP ${response.status}`;
-        lastError = errMsg;
-
-        // Hanya hentikan percobaan jika API Key ditolak secara mutlak (kunci invalid)
-        const isAuthError =
-          response.status === 403 ||
-          errMsg.toLowerCase().includes("api_key_invalid") ||
-          errMsg.toLowerCase().includes("api key not valid");
-
-        if (isAuthError) {
-          return { error: errMsg, status: response.status, modelUsed: cleanModel };
+      if (res.ok) {
+        const data = await res.json();
+        const candidate = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (candidate) {
+          cachedWorkingModel = clean;
+          return { success: true, text: candidate };
         }
       }
-    } catch (netErr) {
-      lastError = netErr instanceof Error ? netErr.message : String(netErr);
+
+      const errJson = await res.json().catch(() => null);
+      const errMsg = errJson?.error?.message || `HTTP ${res.status}`;
+      return { success: false, error: errMsg, status: res.status };
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : String(err),
+        status: 500,
+      };
     }
+  };
+
+  // 2. Jalur Cepat: Coba langsung model yang diminta atau model yang sudah terbukti sukses
+  const fastCandidate =
+    modelId === "gemini-1.5-pro"
+      ? "gemini-1.5-pro"
+      : modelId === "gemini-1.5-flash"
+      ? "gemini-1.5-flash"
+      : cachedWorkingModel || (modelId === "gemini-2.0-flash" ? "gemini-2.0-flash" : "gemini-1.5-flash");
+
+  const fastAttempt = await invokeModel(fastCandidate);
+  if (fastAttempt.success && fastAttempt.text) {
+    return { text: fastAttempt.text, modelUsed: fastCandidate };
+  }
+
+  // Jika error adalah API key invalid (400 / 403), langsung laporkan tanpa buang waktu
+  if (fastAttempt.status === 400 || fastAttempt.status === 403) {
+    return { error: fastAttempt.error, status: fastAttempt.status, modelUsed: fastCandidate };
+  }
+
+  // 3. Jalur Adaptif: Jika 404 (nama model tidak cocok di akun ini), tanya langsung ke Google AI Studio daftar model resminya
+  try {
+    const listRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+      {
+        method: "GET",
+        headers: { "x-goog-api-key": apiKey },
+        signal: AbortSignal.timeout(4000),
+      }
+    );
+
+    if (listRes.ok) {
+      const listData = await listRes.json();
+      const modelsList: Array<{ name: string; supportedGenerationMethods?: string[] }> =
+        listData?.models || [];
+
+      // Filter hanya model yang mendukung generateContent
+      const supported = modelsList.filter((m) =>
+        m.supportedGenerationMethods?.includes("generateContent")
+      );
+
+      // Urutkan prioritas model teks murni: 2.0-flash -> 1.5-flash -> 1.5-pro
+      const scored = supported.map((m) => {
+        let score = 0;
+        const n = m.name.toLowerCase();
+        if (n.includes("2.0-flash")) score += 50;
+        else if (n.includes("1.5-flash")) score += 40;
+        else if (n.includes("1.5-pro")) score += 20;
+        return { name: m.name, score };
+      });
+      scored.sort((a, b) => b.score - a.score);
+
+      for (const item of scored) {
+        const attempt = await invokeModel(item.name);
+        if (attempt.success && attempt.text) {
+          return { text: attempt.text, modelUsed: item.name.replace(/^models\//, "") };
+        }
+      }
+    }
+  } catch (listErr) {
+    console.warn("Dynamic model discovery failed:", listErr);
+  }
+
+  // Fallback terakhir: coba gemini-1.5-flash
+  const finalAttempt = await invokeModel("gemini-1.5-flash");
+  if (finalAttempt.success && finalAttempt.text) {
+    return { text: finalAttempt.text, modelUsed: "gemini-1.5-flash" };
   }
 
   return {
-    error: lastError || "Tidak dapat menghasilkan respon dari model Gemini",
-    status: lastStatus || 500,
+    error: fastAttempt.error || finalAttempt.error || "Tidak dapat menghasilkan respon dari model Gemini",
+    status: fastAttempt.status || 500,
   };
 }
 
