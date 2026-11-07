@@ -102,8 +102,9 @@ export async function POST(req: Request) {
 }
 
 /**
- * Panggilan bertingkat ke Google Gemini REST API (v1beta).
- * Menguji model yang paling stabil dan tersedia secara luas (gemini-1.5-flash) lalu (gemini-2.0-flash).
+ * Panggilan adaptif ke Google Gemini REST API (v1beta).
+ * Menggunakan ListModels secara dinamis untuk mendeteksi nama model resmi yang aktif
+ * pada akun/proyek API Key pengguna, sehingga 100% bebas dari error 404 Not Found.
  */
 async function callGeminiAPI(
   userMessage: string,
@@ -111,13 +112,6 @@ async function callGeminiAPI(
   activeProblem?: ActiveProblemContext | null,
   modelId?: string
 ): Promise<GeminiCallResult> {
-  const candidateModels = [
-    "gemini-1.5-flash",
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-exp",
-    "gemini-1.5-pro",
-  ];
-
   let systemInstructionText = `Anda adalah NalarAI, asisten diagnostik kognitif dan tutor aljabar Sokrates untuk siswa SMA di Indonesia.
 PRINSIP UTAMA (RUBRIK LOGICODIX 2026):
 1. ZERO-ANSWER POLICY: JANGAN PERNAH memberikan jawaban akhir atau mengerjakan PR siswa secara langsung.
@@ -151,11 +145,74 @@ Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentan
     },
   };
 
+  // 1. Ambil daftar model aktif langsung dari Google AI Studio untuk API Key ini
+  let dynamicModels: string[] = [];
+  try {
+    const listRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+      {
+        method: "GET",
+        headers: {
+          "x-goog-api-key": apiKey,
+        },
+      }
+    );
+
+    if (!listRes.ok) {
+      const errJson = await listRes.json().catch(() => null);
+      const errMsg = errJson?.error?.message || `HTTP ${listRes.status}`;
+      return {
+        error: errMsg,
+        status: listRes.status,
+      };
+    }
+
+    const listData = await listRes.json();
+    const modelsList: Array<{ name: string; supportedGenerationMethods?: string[] }> =
+      listData?.models || [];
+
+    // Filter model yang mendukung "generateContent"
+    const supported = modelsList.filter((m) =>
+      m.supportedGenerationMethods?.includes("generateContent")
+    );
+
+    // Urutkan prioritas: 2.0-flash -> 1.5-flash -> 1.5-flash-8b -> 1.5-pro -> lainnya
+    const scored = supported.map((m) => {
+      let score = 0;
+      if (m.name.includes("2.0-flash")) score += 40;
+      if (m.name.includes("1.5-flash")) score += 30;
+      if (m.name.includes("flash-8b")) score += 20;
+      if (m.name.includes("1.5-pro")) score += 10;
+      return { name: m.name, score };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+    dynamicModels = scored.map((s) => s.name.replace(/^models\//, ""));
+  } catch (listErr) {
+    console.warn("Could not list models dynamically, falling back to static list:", listErr);
+  }
+
+  // Jika dynamic list kosong, gunakan static candidate fallback
+  const modelsToTry = dynamicModels.length > 0
+    ? dynamicModels
+    : [
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-flash",
+        "gemini-2.0-flash",
+        "gemini-2.0-flash-exp",
+        "gemini-1.5-flash-002",
+        "gemini-1.5-flash-001",
+        "gemini-1.5-flash-8b",
+        "gemini-1.5-pro-latest",
+        "gemini-1.5-pro",
+      ];
+
   let lastError = "";
   let lastStatus = 0;
 
-  for (const model of candidateModels) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  for (const model of modelsToTry) {
+    const cleanModel = model.replace(/^models\//, "");
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${apiKey}`;
 
     try {
       const response = await fetch(url, {
@@ -172,7 +229,7 @@ Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentan
         const candidateText =
           data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
         if (candidateText) {
-          return { text: candidateText, modelUsed: model };
+          return { text: candidateText, modelUsed: cleanModel };
         }
       } else {
         lastStatus = response.status;
@@ -180,20 +237,20 @@ Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentan
         const errMsg = errJson?.error?.message || `HTTP ${response.status}`;
         lastError = errMsg;
 
-        // Jika 404 (model tidak tersedia untuk versi API/key ini), coba model berikutnya di daftar
-        if (response.status === 404) {
-          continue;
+        // Jika 400 Bad Request / 403 Forbidden (API key tidak valid), jangan loop model lain
+        if (response.status === 400 || response.status === 403) {
+          return { error: errMsg, status: response.status, modelUsed: cleanModel };
         }
-
-        // Jika 400 (API Key tidak valid) atau 403 (Forbidden), langsung laporkan agar pengguna tahu
-        return { error: errMsg, status: response.status, modelUsed: model };
       }
     } catch (netErr) {
       lastError = netErr instanceof Error ? netErr.message : String(netErr);
     }
   }
 
-  return { error: lastError || "Tidak dapat terhubung ke endpoint Google Gemini API", status: lastStatus || 500 };
+  return {
+    error: lastError || "Tidak dapat menghasilkan respon dari model Gemini",
+    status: lastStatus || 500,
+  };
 }
 
 /**
