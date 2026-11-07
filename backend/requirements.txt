@@ -16,3 +16,6 @@ uvicorn==0.54.0
 httpx==0.28.1
 pydantic==2.14.1
 python-multipart==0.0.32
+
+# Platform Core (zapcore): enkripsi AES-256-GCM untuk isi chat & kunci connector
+cryptography==50.0.2

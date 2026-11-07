@@ -6,22 +6,16 @@ import {
   ShieldCheck,
   Zap,
   Sparkles,
-  Layers,
   ArrowRight,
   Lock,
   Box,
   Cpu,
-  GraduationCap,
-  Users,
   CheckCircle2,
   Code2,
   Globe,
-  SlidersHorizontal,
   ChevronRight,
   Database,
-  EyeOff,
   Server,
-  Tv,
 } from "lucide-react";
 
 // Minimalist Z Logo
@@ -77,7 +71,7 @@ export default function LandingPage() {
           <a href="#fitur" className="hover:text-white transition">Fitur 3D & CAS</a>
           <a href="#jenjang" className="hover:text-white transition">SD hingga S3</a>
           <Link href="/connector" className="hover:text-white transition text-blue-300 font-semibold">Plugin Connector Hub</Link>
-          <a href="#privasi" className="hover:text-white transition">Keamanan SHA-256</a>
+          <a href="#privasi" className="hover:text-white transition">Keamanan & Privasi</a>
         </div>
 
         {/* Action CTAs */}
@@ -135,7 +129,7 @@ export default function LandingPage() {
             className="w-full sm:w-auto px-7 py-3 rounded-2xl bg-[#121622] hover:bg-[#1a2030] border border-white/[0.1] text-slate-200 hover:text-white font-medium text-sm flex items-center justify-center gap-2 transition"
           >
             <Zap className="w-4 h-4 text-blue-400" />
-            <span>Login Google (Auto Gemini)</span>
+            <span>Login Google (Langsung Pakai)</span>
           </Link>
         </div>
 
@@ -413,7 +407,7 @@ export default function LandingPage() {
               Universal Model Connector Hub
             </h2>
             <p className="text-xs sm:text-sm text-slate-400 max-w-xl mx-auto">
-              Auto Gemini aktif secara default, namun kamu bebas menghubungkan model AI favoritmu dengan API key kustom.
+              Gemini dari server platform aktif secara default, namun kamu bebas menghubungkan model AI favoritmu dengan API key kustom milikmu sendiri.
             </p>
           </div>
 
@@ -421,7 +415,7 @@ export default function LandingPage() {
             <div className="p-4 rounded-2xl bg-[#0f131c] border border-blue-500/30 text-center space-y-2">
               <Zap className="w-6 h-6 text-blue-400 mx-auto" />
               <div className="text-xs font-semibold text-white">Google Gemini</div>
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-mono">Auto Cloud</span>
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-mono">Platform</span>
             </div>
 
             <div className="p-4 rounded-2xl bg-[#0f131c] border border-white/[0.06] text-center space-y-2">
@@ -461,7 +455,7 @@ export default function LandingPage() {
       <section id="privasi" className="py-20 px-6 sm:px-12 max-w-5xl mx-auto space-y-12">
         <div className="text-center space-y-3">
           <span className="text-xs font-mono text-emerald-400 uppercase tracking-widest">
-            Privacy & Autonomous Training Loop
+            Privacy & Learning Loop
           </span>
           <h2 className="text-2xl sm:text-4xl font-bold text-white">
             Apakah Chat Siswa di /chat Bisa Diintip?
@@ -476,10 +470,10 @@ export default function LandingPage() {
           <div className="p-6 rounded-3xl bg-[#0d1017] border border-white/[0.08] space-y-3">
             <div className="flex items-center gap-2 text-sm font-bold text-white">
               <Lock className="w-5 h-5 text-emerald-400" />
-              <span>Proteksi Kriptografi SHA-256</span>
+              <span>Enkripsi AES-256 & Integritas SHA-256</span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Setiap sesi obrolan di `/chat` diamankan dengan verifikasi integritas <strong>SHA-256</strong> dan enkripsi sisi klien (*client-side encrypted storage*). Data percakapan tidak dapat disadap atau dimanipulasi di tengah jalan.
+              Percakapan di `/chat` tersimpan terenkripsi <strong>AES-256-GCM</strong> di server platform, terkirim lewat koneksi TLS, dan dijaga sidik jari integritas <strong>SHA-256</strong>. Kunci API connector milikmu terenkripsi dan tidak dibagikan ke siapa pun.
             </p>
           </div>
 
@@ -487,10 +481,10 @@ export default function LandingPage() {
           <div className="p-6 rounded-3xl bg-[#0d1017] border border-white/[0.08] space-y-3">
             <div className="flex items-center gap-2 text-sm font-bold text-white">
               <Database className="w-5 h-5 text-blue-400" />
-              <span>Self-Training Flywheel Terkelompok</span>
+              <span>Basis Pengetahuan yang Tumbuh</span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              ZAP mengekstrak pola kesalahan aljabar abstrak secara anonim (tanpa identitas siswa). Data ini dikelompokkan otomatis oleh sistem ke kluster miskonsepsi untuk melatih model lokal ZAP agar semakin cerdas memahami kesulitan belajar siswa.
+              Materi yang kamu bagikan secara sukarela (opt-in) disaring dari data pribadi, diverifikasi dengan SymPy, lalu dikelompokkan otomatis per topik dan jenjang menjadi basis pengetahuan tutor. Chat privatmu tidak pernah dipakai tanpa izin eksplisit, dan identitasmu tidak disertakan.
             </p>
           </div>
         </div>
@@ -518,7 +512,7 @@ export default function LandingPage() {
               href="/login"
               className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-[#141824] hover:bg-[#1e2333] border border-white/[0.1] text-slate-200 text-sm font-medium flex items-center justify-center transition"
             >
-              <span>Login Google (Auto Gemini)</span>
+              <span>Login Google (Langsung Pakai)</span>
             </Link>
           </div>
         </div>

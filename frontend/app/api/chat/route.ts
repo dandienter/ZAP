@@ -38,9 +38,9 @@ interface UniversalCallResult {
   modelUsed?: string;
 }
 
-interface GeminiCallResult extends UniversalCallResult {}
-interface MistralCallResult extends UniversalCallResult {}
-interface BazaarLinkCallResult extends UniversalCallResult {}
+type GeminiCallResult = UniversalCallResult;
+type MistralCallResult = UniversalCallResult;
+type BazaarLinkCallResult = UniversalCallResult;
 
 const ZERO_ANSWER_PATTERNS = [
   /(?:jawaban(?:nya)?(?:\s*akhir(?:nya)?)?|solusi(?:nya)?|hasil\s+akhir(?:nya)?|kunci\s+jawaban(?:nya)?)\s*(?:adalah|=|:)\s*(?:[a-zA-Z]\s*=\s*)?[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+|√\d+)/gi,
@@ -393,6 +393,37 @@ export async function POST(req: Request) {
         model: "SymPy CFL Engine (Local Deterministic 0ms)",
         source: "local-sympy",
       });
+    }
+
+    // 2b. Model platform bawaan server (opsional, diatur lewat env):
+    // Bila tidak ada kunci Gemini dan server dikonfigurasi dengan endpoint
+    // kompatibel OpenAI (mis. DeepSeek lewat NVIDIA NIM), layani chat dari sana.
+    const platformBase = process.env.ZAP_PLATFORM_LLM_BASE_URL?.trim();
+    const platformModel = process.env.ZAP_PLATFORM_LLM_MODEL?.trim();
+    const platformKey = process.env.ZAP_PLATFORM_LLM_API_KEY?.trim();
+    if (platformBase && platformModel && platformKey) {
+      try {
+        const platformRes = await callCustomOpenAIAPI(
+          message,
+          platformBase,
+          platformModel,
+          platformKey,
+          conversationHistory,
+          activeProblem,
+          userName,
+          90000
+        );
+        if (platformRes.text) {
+          return NextResponse.json({
+            reply: sanitizeZeroAnswer(platformRes.text),
+            model: platformRes.modelUsed || platformModel,
+            source: "platform-llm",
+          });
+        }
+        console.warn("Platform LLM returned error:", platformRes.error);
+      } catch (platformErr) {
+        console.warn("Platform LLM call failed:", platformErr);
+      }
     }
 
     // 3. Fallback Offline: Gunakan Built-in Socratic Cognitive Agent
@@ -1017,14 +1048,15 @@ async function callCustomOpenAIAPI(
   apiKey?: string,
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
   activeProblem?: ActiveProblemContext | null,
-  userName?: string
+  userName?: string,
+  timeoutMs: number = 12000
 ): Promise<UniversalCallResult> {
   const studentName = userName?.trim() || "Wakhid Pangestu";
   const cleanBase = (baseUrl || "http://localhost:11434/v1").replace(/\/+$/, "");
   const targetUrl = cleanBase.endsWith("/chat/completions") ? cleanBase : `${cleanBase}/chat/completions`;
   const targetModel = modelName?.trim() || "default";
 
-  let systemInstructionText = `Anda adalah ZAP (Zero Answer Policy), asisten kognitif aljabar untuk siswa ${studentName}. JANGAN berikan jawaban akhir aljabar secara langsung. Bimbing dengan pertanyaan Sokrates.`;
+  const systemInstructionText = `Anda adalah ZAP (Zero Answer Policy), asisten kognitif aljabar untuk siswa ${studentName}. JANGAN berikan jawaban akhir aljabar secara langsung. Bimbing dengan pertanyaan Sokrates.`;
 
   const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
     { role: "system", content: systemInstructionText },
@@ -1053,7 +1085,7 @@ async function callCustomOpenAIAPI(
         temperature: 0.7,
         max_tokens: 800,
       }),
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
 
     if (res.ok) {

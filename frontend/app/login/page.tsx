@@ -5,10 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import GoogleAuthButton, { type ZAPUser } from "@/components/GoogleAuthButton";
 import {
-  ShieldCheck,
   Zap,
-  Sparkles,
-  Layers,
   ArrowRight,
   Lock,
   ChevronLeft,
@@ -40,7 +37,7 @@ function ZLogo({ className = "w-6 h-6" }: { className?: string }) {
 
 export default function LoginPage() {
   const router = useRouter();
-  const [user, setUser] = useState<ZAPUser | null>(null);
+  const [, setUser] = useState<ZAPUser | null>(null);
 
   const handleUserChange = (u: ZAPUser | null) => {
     setUser(u);
@@ -97,7 +94,7 @@ export default function LoginPage() {
           <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-950/60 to-indigo-950/40 border border-blue-500/20 space-y-1.5 text-xs">
             <div className="flex items-center gap-1.5 text-blue-300 font-semibold text-[11px]">
               <Zap className="w-3.5 h-3.5 text-blue-400" />
-              <span>Auto Gemini Connection (Tanpa Ribet API Key)</span>
+              <span>Gemini Platform (Tanpa Ribet API Key)</span>
             </div>
             <p className="text-[10px] text-slate-300 leading-normal">
               Saat kamu login via Google, backend ZAP otomatis mengaktifkan integrasi <strong>Google Gemini AI</strong> dari server pool. Kamu tidak perlu menyalin atau membuat API key manual.
@@ -140,7 +137,7 @@ export default function LoginPage() {
             </div>
             <div className="flex items-start gap-2">
               <Lock className="w-3.5 h-3.5 text-blue-400 flex-shrink-0 mt-0.5" />
-              <span><strong>Privasi Terenkripsi:</strong> Chat dilindungi verifikasi integritas SHA-256.</span>
+              <span><strong>Privasi Terenkripsi:</strong> Chat terenkripsi AES-256-GCM saat tersimpan, dengan integritas SHA-256.</span>
             </div>
           </div>
         </div>
