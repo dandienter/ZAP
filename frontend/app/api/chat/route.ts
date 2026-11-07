@@ -171,18 +171,36 @@ Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentan
     const modelsList: Array<{ name: string; supportedGenerationMethods?: string[] }> =
       listData?.models || [];
 
-    // Filter model yang mendukung "generateContent"
-    const supported = modelsList.filter((m) =>
-      m.supportedGenerationMethods?.includes("generateContent")
-    );
+    // Filter HANYA model teks interaktif (tolak audio, tts, embedding, imagen, video)
+    const textModels = modelsList.filter((m) => {
+      const name = m.name.toLowerCase();
+      const isExcluded =
+        name.includes("tts") ||
+        name.includes("audio") ||
+        name.includes("embedding") ||
+        name.includes("imagen") ||
+        name.includes("image") ||
+        name.includes("realtime") ||
+        name.includes("robotics");
 
-    // Urutkan prioritas: 2.0-flash -> 1.5-flash -> 1.5-flash-8b -> 1.5-pro -> lainnya
-    const scored = supported.map((m) => {
+      const isGenContent = m.supportedGenerationMethods?.includes("generateContent");
+      return !isExcluded && isGenContent;
+    });
+
+    // Urutkan prioritas model teks murni:
+    // 1. gemini-1.5-flash (paling stabil & teruji untuk percakapan teks)
+    // 2. gemini-2.0-flash
+    // 3. gemini-1.5-pro / 2.0-pro
+    // 4. gemini-1.5-flash-8b
+    const scored = textModels.map((m) => {
       let score = 0;
-      if (m.name.includes("2.0-flash")) score += 40;
-      if (m.name.includes("1.5-flash")) score += 30;
-      if (m.name.includes("flash-8b")) score += 20;
-      if (m.name.includes("1.5-pro")) score += 10;
+      const n = m.name.toLowerCase();
+      if (n.includes("1.5-flash")) score += 100;
+      else if (n.includes("2.0-flash")) score += 95;
+      else if (n.includes("1.5-pro")) score += 80;
+      else if (n.includes("2.0-pro")) score += 75;
+      else if (n.includes("flash-8b")) score += 70;
+      else if (n.includes("gemini")) score += 50;
       return { name: m.name, score };
     });
 
@@ -237,10 +255,16 @@ Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentan
         const errMsg = errJson?.error?.message || `HTTP ${response.status}`;
         lastError = errMsg;
 
-        // Jika 400 Bad Request / 403 Forbidden (API key tidak valid), jangan loop model lain
-        if (response.status === 400 || response.status === 403) {
+        // Hanya hentikan percobaan jika API Key ditolak secara mutlak (kunci invalid)
+        const isAuthError =
+          response.status === 403 ||
+          errMsg.toLowerCase().includes("api_key_invalid") ||
+          errMsg.toLowerCase().includes("api key not valid");
+
+        if (isAuthError) {
           return { error: errMsg, status: response.status, modelUsed: cleanModel };
         }
+        // Jika error terkait modalitas/model tertentu, lanjutkan mencoba model teks berikutnya di daftar
       }
     } catch (netErr) {
       lastError = netErr instanceof Error ? netErr.message : String(netErr);
