@@ -206,19 +206,24 @@ Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentan
   };
 
   // 2. Pemilihan Model Paling Kencang & Pintar
-  let primaryModel = "gemini-2.0-flash";
-  if (modelId === "gemini-1.5-pro") {
+  let primaryModel = "gemini-3.8-flash";
+  if (modelId === "gemini-3.8-flash") {
+    primaryModel = "gemini-3.8-flash";
+  } else if (modelId === "gemini-2.0-flash") {
+    primaryModel = "gemini-2.0-flash";
+  } else if (modelId === "gemini-1.5-pro") {
     primaryModel = "gemini-1.5-pro";
   } else if (modelId === "gemini-1.5-flash") {
     primaryModel = "gemini-1.5-flash";
   } else {
-    // Default: Gemini 2.0 Flash (Model tercepat dan terpintar generasi terbaru)
-    primaryModel = "gemini-2.0-flash";
+    // Default: Gemini 3.8 Flash (Model frontier generasi terbaru)
+    primaryModel = "gemini-3.8-flash";
   }
 
-  // Prioritas kandidat model: model terpilih -> gemini-2.0-flash -> gemini-1.5-flash
+  // Prioritas kandidat model: model terpilih -> gemini-3.8-flash -> gemini-2.0-flash -> gemini-1.5-flash
   const modelsToTry = Array.from(new Set([
     primaryModel,
+    "gemini-3.8-flash",
     "gemini-2.0-flash",
     "gemini-1.5-flash",
     "gemini-2.0-flash-lite-preview-02-05",
