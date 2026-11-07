@@ -49,13 +49,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Pesan tidak boleh kosong" }, { status: 400 });
     }
 
+    // 1. Tanggapi sapaan singkat secara instan (0 ms latency) tanpa menunggu round-trip cloud
+    const lower = message.toLowerCase().trim();
+    const isQuickGreeting =
+      /^(hai|halo|pagi|siang|malam|sore|assalamu|permisi|tes|ping|woi|hei|hi|hello)\b/i.test(lower) &&
+      lower.split(/\s+/).length <= 3;
+
+    if (isQuickGreeting) {
+      const quickReply = generateSocraticFallbackResponse(message, activeProblem);
+      return NextResponse.json({
+        reply: quickReply,
+        model: "NalarAI Socratic Engine (Instant 0ms)",
+        source: "instant-greeting",
+      });
+    }
+
     const effectiveApiKey =
       apiKey?.trim() ||
       process.env.GEMINI_API_KEY?.trim() ||
       process.env.GOOGLE_API_KEY?.trim() ||
       "";
 
-    // 1. Coba panggil Google Gemini API jika API Key tersedia
+    // 2. Coba panggil Google Gemini API jika API Key tersedia
     if (effectiveApiKey) {
       try {
         const geminiResult = await callGeminiAPI(message, effectiveApiKey, activeProblem, modelId);
@@ -101,10 +116,13 @@ export async function POST(req: Request) {
   }
 }
 
+// In-memory cache model tercepat untuk zero-latency direct routing
+let cachedWorkingModel = "gemini-1.5-flash";
+
 /**
- * Panggilan adaptif ke Google Gemini REST API (v1beta).
- * Menggunakan ListModels secara dinamis untuk mendeteksi nama model resmi yang aktif
- * pada akun/proyek API Key pengguna, sehingga 100% bebas dari error 404 Not Found.
+ * Panggilan ultra-cepat ke Google Gemini REST API (v1beta).
+ * Jalur Cepat (Zero-Hop): Memanggil gemini-1.5-flash secara langsung tanpa round-trip ListModels.
+ * Jalur Adaptif (Slow Fallback): Hanya dipanggil jika model default tidak tersedia.
  */
 async function callGeminiAPI(
   userMessage: string,
@@ -141,11 +159,53 @@ Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentan
     ],
     generationConfig: {
       temperature: 0.7,
-      maxOutputTokens: 800,
+      maxOutputTokens: 500, // Ringkas dan responsif untuk memaksimalkan kecepatan
     },
   };
 
-  // 1. Ambil daftar model aktif langsung dari Google AI Studio untuk API Key ini
+  // ========================================================
+  // JALUR CEPAT (ZERO-HOP): Panggil langsung model tercepat
+  // ========================================================
+  const fastUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cachedWorkingModel}:generateContent?key=${apiKey}`;
+
+  try {
+    const fastRes = await fetch(fastUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (fastRes.ok) {
+      const data = await fastRes.json();
+      const candidateText =
+        data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
+      if (candidateText) {
+        return { text: candidateText, modelUsed: cachedWorkingModel };
+      }
+    } else {
+      const errJson = await fastRes.json().catch(() => null);
+      const errMsg = errJson?.error?.message || `HTTP ${fastRes.status}`;
+
+      // Jika error autentikasi kunci API (400 Invalid key / 403), tidak perlu coba model lain
+      const isAuthError =
+        fastRes.status === 403 ||
+        errMsg.toLowerCase().includes("api_key_invalid") ||
+        errMsg.toLowerCase().includes("api key not valid");
+
+      if (isAuthError) {
+        return { error: errMsg, status: fastRes.status, modelUsed: cachedWorkingModel };
+      }
+    }
+  } catch (fastErr) {
+    console.warn("Direct fast call failed, falling back to dynamic search:", fastErr);
+  }
+
+  // ========================================================
+  // JALUR ADAPTIF (Hanya dieksekusi jika model default gagal)
+  // ========================================================
   let dynamicModels: string[] = [];
   try {
     const listRes = await fetch(
@@ -247,6 +307,7 @@ Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentan
         const candidateText =
           data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
         if (candidateText) {
+          cachedWorkingModel = cleanModel; // Simpan model yang sukses ke cache
           return { text: candidateText, modelUsed: cleanModel };
         }
       } else {

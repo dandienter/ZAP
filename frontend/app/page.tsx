@@ -128,6 +128,7 @@ export default function ChatGPTStyleNalarAI() {
   const [selectedModel, setSelectedModel] = useState<AIModel>(AVAILABLE_MODELS[0]);
   const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>("medium");
   const [loading, setLoading] = useState<boolean>(false);
+  const [loadingStatus, setLoadingStatus] = useState<string>("Menganalisis langkah aljabar...");
   const [backendStatus, setBackendStatus] = useState<"checking" | "online" | "offline">("checking");
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [activeProblemFirstStep, setActiveProblemFirstStep] = useState<string | null>(null);
@@ -205,6 +206,7 @@ export default function ChatGPTStyleNalarAI() {
       setMessages((prev) => [...prev, userMsg]);
       setInputText("");
       setLoading(true);
+      setLoadingStatus("NalarAI sedang merancang bimbingan...");
 
       try {
         const storedKey = typeof window !== "undefined" ? localStorage.getItem("nalar_gemini_api_key") || "" : "";
@@ -270,6 +272,7 @@ export default function ChatGPTStyleNalarAI() {
     setInputText("");
     setSidebarOpen(false);
     setLoading(true);
+    setLoadingStatus("Menganalisis konsistensi aljabar dengan SymPy CAS...");
 
     try {
       const res = await fetch("http://127.0.0.1:8000/api/v1/diagnose", {
@@ -719,8 +722,9 @@ export default function ChatGPTStyleNalarAI() {
                 <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400">
                   <Cpu className="w-3.5 h-3.5 animate-pulse" />
                 </div>
-                <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-400">
-                  Menganalisis langkah aljabar dengan SymPy...
+                <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-400 flex items-center gap-2 shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>{loadingStatus}</span>
                 </div>
               </div>
             )}
