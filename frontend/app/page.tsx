@@ -121,7 +121,9 @@ const PRESET_SAMPLES: PresetSample[] = [
   },
 ];
 
-export default function ChatGPTStyleNalarAI() {
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
+
+export default function LogicoMathApp() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState<string>("");
   const [targetVar, setTargetVar] = useState<string>("x");
@@ -147,7 +149,7 @@ export default function ChatGPTStyleNalarAI() {
 
   const checkHealth = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/health", { method: "GET" });
+      const res = await fetch(`${BACKEND_URL}/health`, { method: "GET" });
       if (res.ok) setBackendStatus("online");
       else setBackendStatus("offline");
     } catch {
@@ -206,7 +208,7 @@ export default function ChatGPTStyleNalarAI() {
       setMessages((prev) => [...prev, userMsg]);
       setInputText("");
       setLoading(true);
-      setLoadingStatus("NalarAI sedang merancang bimbingan...");
+      setLoadingStatus("LogicoMath sedang merancang bimbingan...");
 
       try {
         const storedKey = typeof window !== "undefined" ? localStorage.getItem("nalar_gemini_api_key") || "" : "";
@@ -275,7 +277,7 @@ export default function ChatGPTStyleNalarAI() {
     setLoadingStatus("Menganalisis konsistensi aljabar dengan SymPy CAS...");
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/v1/diagnose", {
+      const res = await fetch(`${BACKEND_URL}/api/v1/diagnose`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -472,7 +474,7 @@ export default function ChatGPTStyleNalarAI() {
             </button>
 
             <span className="font-semibold text-sm text-zinc-100 flex items-center gap-1.5 truncate">
-              <span>NalarAI</span>
+              <span>LogicoMath</span>
               <span className="text-[10px] text-zinc-400 px-1.5 py-0.2 rounded bg-zinc-900 border border-zinc-800 font-mono hidden xs:inline-block">
                 2.2
               </span>
@@ -505,7 +507,7 @@ export default function ChatGPTStyleNalarAI() {
                   Diagnostik Kognitif Aljabar
                 </h1>
                 <p className="text-xs text-zinc-400 max-w-sm mb-6 leading-relaxed">
-                  Tuliskan baris langkah hitungan matematika siswa. NalarAI melacak letak kesalahan tanpa membocorkan kunci jawaban.
+                  Tuliskan baris langkah hitungan matematika siswa. LogicoMath melacak letak kesalahan tanpa membocorkan kunci jawaban.
                 </p>
 
                 {/* 3 Starter Cards - Flat & Responsive */}

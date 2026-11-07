@@ -1,5 +1,5 @@
 """
-NalarAI - Backend API Gateway & CFL Orchestrator
+LogicoMath - Backend API Gateway & CFL Orchestrator
 Framework: FastAPI (Production-Ready Spec)
 Rubrik LOGICODIX 2026: Anti-Halusinasi, Zero-Answer Policy, dan Human-in-the-Loop LaTeX Confirmation
 """
@@ -16,7 +16,7 @@ from cfl import (
 )
 
 app = FastAPI(
-    title="NalarAI Cognitive Diagnostics API",
+    title="LogicoMath Cognitive Diagnostics API",
     description="Autonomous Cognitive Diagnostics Engine for Student Scratchpads (LOGICODIX 2026)",
     version="2.2.0"
 )
@@ -115,7 +115,7 @@ def health_check():
     """Health check endpoint untuk monitoring service."""
     return {
         "status": "online",
-        "service": "NalarAI Diagnostic Gateway",
+        "service": "LogicoMath Diagnostic Gateway",
         "engine": "SymPy CFL Symbolic Reasoning",
         "version": "2.2.0"
     }

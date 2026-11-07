@@ -59,7 +59,7 @@ export async function POST(req: Request) {
       const quickReply = generateSocraticFallbackResponse(message, activeProblem);
       return NextResponse.json({
         reply: quickReply,
-        model: "NalarAI Socratic Engine (Instant 0ms)",
+        model: "LogicoMath Socratic Engine (Instant 0ms)",
         source: "instant-greeting",
       });
     }
@@ -104,7 +104,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       reply: socraticReply,
-      model: "NalarAI Socratic Engine (Local Hybrid)",
+      model: "LogicoMath Socratic Engine (Local Hybrid)",
       source: "built-in-socratic",
     });
   } catch (error) {
@@ -130,7 +130,7 @@ async function callGeminiAPI(
   activeProblem?: ActiveProblemContext | null,
   modelId?: string
 ): Promise<GeminiCallResult> {
-  let systemInstructionText = `Anda adalah NalarAI, asisten diagnostik kognitif dan tutor aljabar Sokrates untuk siswa SMA di Indonesia.
+  let systemInstructionText = `Anda adalah LogicoMath, asisten diagnostik kognitif dan tutor aljabar Sokrates untuk siswa SMA di Indonesia.
 PRINSIP UTAMA (RUBRIK LOGICODIX 2026):
 1. ZERO-ANSWER POLICY: JANGAN PERNAH memberikan jawaban akhir atau mengerjakan PR siswa secara langsung.
 2. METODE SOKRATES: Bimbing siswa dengan pertanyaan reflektif, analogi intuitif (misal: model luas geometri untuk kuadrat suku dua), dan uji angka nyata (kontra-contoh).
@@ -387,7 +387,7 @@ Apakah ada topik aljabar tertentu yang ingin kamu pelajari (seperti faktorisasi,
       const firstStep = activeProblem.steps[0];
       return `Halo! Tentu saja, mau nanya tentang apa? Apakah terkait penurunan aljabar $${firstStep}$ yang sedang kita bahas, atau ada konsep lain yang membingungkanmu? Tanyakan saja!`;
     }
-    return `Halo! Aku NalarAI, asisten diagnostik aljabar kamu. Ada konsep matematika atau langkah penurunan rumus yang ingin kamu tanyakan atau uji bersama? Kamu bisa bertanya bebas atau langsung memasukkan baris aljabar coretanmu!`;
+    return `Halo! Aku LogicoMath, asisten diagnostik aljabar kamu. Ada konsep matematika atau langkah penurunan rumus yang ingin kamu tanyakan atau uji bersama? Kamu bisa bertanya bebas atau langsung memasukkan baris aljabar coretanmu!`;
   }
 
   // 3. PERTANYAAN TENTANG KESALAHAN ("Kenapa salah?", "Kenapa baris 2?")
@@ -469,7 +469,7 @@ Total luas adalah $x^2 + 6x + 9$. Tanpa suku $6x$, luasnya tidak akan pernah len
 
   if (isAskingHowToSolve) {
     if (activeProblem?.steps && activeProblem.steps.length > 0) {
-      return `Sesuai prinsip Sokrates NalarAI, aku tidak memberikan jawaban akhir secara instan, melainkan memandumu menemukannya sendiri:
+      return `Sesuai prinsip Sokrates LogicoMath, aku tidak memberikan jawaban akhir secara instan, melainkan memandumu menemukannya sendiri:
 
 1. Ambil ekspresi awalmu: $${activeProblem.steps[0]}$$.
 2. Urai kuadrat binomialnya menjadi bentuk perkalian dua suku.
@@ -479,7 +479,7 @@ Total luas adalah $x^2 + 6x + 9$. Tanpa suku $6x$, luasnya tidak akan pernah len
 Coba tuliskan perbaikan baris berikutnya di kolom chat dan kirimkan, aku akan langsung menguji keabsahannya untukmu!`;
     }
 
-    return `Tuliskan baris-baris aljabar yang sedang kamu kerjakan (gunakan Enter untuk membuat baris baru). NalarAI akan memverifikasi setiap langkah secara deterministik dan memberitahumu jika ada aturan aljabar yang terlanggar!`;
+    return `Tuliskan baris-baris aljabar yang sedang kamu kerjakan (gunakan Enter untuk membuat baris baru). LogicoMath akan memverifikasi setiap langkah secara deterministik dan memberitahumu jika ada aturan aljabar yang terlanggar!`;
   }
 
   // 6. PERTANYAAN TENTANG KONTRADIKSI / KONTRA-CONTOH ("Kenapa x=2?")
@@ -502,8 +502,9 @@ Ketika $x = 2$ dimasukkan:
 Karena $21 \\neq 9$, ini membuktikan secara mutlak bahwa langkah penurunan tersebut tidak ekuivalen!`;
   }
 
-  // 7. PERTANYAAN UMUM TENTANG NALARAI ATAU CARA PAKAI
+  // 7. PERTANYAAN UMUM TENTANG LOGICOMATH ATAU CARA PAKAI
   const isAskingAboutSystem =
+    lower.includes("apa itu logicomath") ||
     lower.includes("apa itu nalarai") ||
     lower.includes("siapa kamu") ||
     lower.includes("bisa apa") ||
@@ -511,7 +512,7 @@ Karena $21 \\neq 9$, ini membuktikan secara mutlak bahwa langkah penurunan terse
     lower.includes("aturan");
 
   if (isAskingAboutSystem) {
-    return `**NalarAI** adalah asisten diagnostik aljabar otonom berbasis *Hybrid Reasoning* (SymPy CAS + Socratic AI Tutor).
+    return `**LogicoMath** adalah asisten diagnostik aljabar otonom berbasis *Hybrid Reasoning* (SymPy CAS + Socratic AI Tutor).
 
 **Filosofi Kami:** *"Don't give them the answer. Debug how they think."*
 - Kami tidak memberikan kunci jawaban langsung agar siswa tidak ketergantungan.

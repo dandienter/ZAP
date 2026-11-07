@@ -1,19 +1,19 @@
-# NalarAI — Cognitive Debugger for Student Scratchpads
+# LogicoMath — Cognitive Debugger for Student Scratchpads
 
-[![Logicodix 2026](https://img.shields.io/badge/LOGICODIX-2026-6366F1?style=for-the-badge&logo=codeforces&logoColor=white)](https://github.com/[your-team]/nalar-ai)
-[![Subtheme](https://img.shields.io/badge/Subtheme-Smart_%26_Fun_Education-10B981?style=for-the-badge)](https://github.com/[your-team]/nalar-ai)
+[![Logicodix 2026](https://img.shields.io/badge/LOGICODIX-2026-6366F1?style=for-the-badge&logo=codeforces&logoColor=white)](https://github.com/[your-team]/logicomath)
+[![Subtheme](https://img.shields.io/badge/Subtheme-Smart_%26_Fun_Education-10B981?style=for-the-badge)](https://github.com/[your-team]/logicomath)
 [![License: MIT](https://img.shields.io/badge/License-MIT-38BDF8?style=for-the-badge)](LICENSE)
-[![Localhost Ready](https://img.shields.io/badge/Localhost-Offline_Tested-F59E0B?style=for-the-badge)](https://github.com/[your-team]/nalar-ai)
+[![Localhost Ready](https://img.shields.io/badge/Localhost-Offline_Tested-F59E0B?style=for-the-badge)](https://github.com/[your-team]/logicomath)
 [![Pytest Passing](https://img.shields.io/badge/Pytest-22%2F22_Passing-10B981?style=for-the-badge)](backend/tests/)
 
 > **"Don't give them the answer. Debug how they think."**  
-> NalarAI adalah sistem diagnostik kognitif yang membedah cacat logika berpikir siswa langsung dari foto kertas buram (orat-oretan tangan) mereka, memadukan Vision-Language Model dengan mesin aljabar simbolik deterministik (**SymPy**).
+> LogicoMath adalah sistem diagnostik kognitif yang membedah cacat logika berpikir siswa langsung dari kertas buram (orat-oretan tangan) mereka, memadukan antarmuka dialog Sokrates dengan mesin aljabar simbolik deterministik (**SymPy**).
 
 ---
 
-## 🌟 Mengapa NalarAI Berbeda?
+## 🌟 Mengapa LogicoMath Berbeda?
 
-| Fitur / Pendekatan | Answer Engines Umum (Photomath, ChatGPT) | NalarAI (Cognitive Debugger) |
+| Fitur / Pendekatan | Answer Engines Umum (Photomath, ChatGPT) | LogicoMath (Cognitive Debugger) |
 | :--- | :--- | :--- |
 | **Objek Input** | Foto soal bersih dari buku cetak | Foto kertas buram orat-oretan tangan siswa |
 | **Keluaran Sistem** | Rumus jadi & jawaban akhir instan | Diagnosa titik patah logika & pertanyaan Sokrates |
@@ -25,8 +25,8 @@
 
 ## 🏗️ Arsitektur Sistem
 
-NalarAI menggunakan arsitektur **Hybrid Perceptual-Symbolic Reasoning**:
-1. **Perceptual Layer:** Multimodal Vision Model (Gemini 2.0 / Qwen2-VL lokal) membaca tulisan tangan menjadi urutan ekspresi LaTeX terstruktur.
+LogicoMath menggunakan arsitektur **Hybrid Perceptual-Symbolic Reasoning**:
+1. **Perceptual Layer:** Multimodal Vision Model / Input terstruktur membaca tulisan aljabar siswa menjadi urutan ekspresi LaTeX terstruktur.
 2. **Human-in-the-Loop Safeguard:** Antarmuka konfirmasi cepat bagi siswa untuk memastikan simbol matematika terbaca presisi sebelum kalkulasi dijalankan.
 3. **Deterministic Layer (`backend/cfl`):** Modul Python berbasis **SymPy** yang memverifikasi ekuivalensi aljabar deterministik, mendeteksi `ROOT_LOSS`, menangani kondisi `ConditionSet`, memblokir eksekusi di luar whitelist sebelum `parse_expr`, menolak perintah LaTeX non-matematika, serta mencegah serangan DoS eksponen raksasa (`9^9^9`).
 4. **Socratic Scaffolding Layer:** Menghasilkan kontra-contoh konkret (*counter-examples*) dan pemicu pertanyaan refleksi kognitif tanpa membocorkan kunci jawaban.
