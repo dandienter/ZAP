@@ -23,6 +23,13 @@ interface ChatRequestBody {
   apiKey?: string;
 }
 
+interface GeminiCallResult {
+  text?: string;
+  error?: string;
+  status?: number;
+  modelUsed?: string;
+}
+
 export async function POST(req: Request) {
   try {
     let body: ChatRequestBody;
@@ -51,16 +58,29 @@ export async function POST(req: Request) {
     // 1. Coba panggil Google Gemini API jika API Key tersedia
     if (effectiveApiKey) {
       try {
-        const geminiReply = await callGeminiAPI(message, effectiveApiKey, activeProblem, modelId);
-        if (geminiReply) {
+        const geminiResult = await callGeminiAPI(message, effectiveApiKey, activeProblem, modelId);
+        
+        if (geminiResult.text) {
           return NextResponse.json({
-            reply: geminiReply,
-            model: "Gemini 2.0 Flash (Cloud API)",
+            reply: geminiResult.text,
+            model: `${geminiResult.modelUsed || "Gemini 1.5 Flash"} (Cloud API)`,
             source: "gemini-api",
           });
         }
+
+        // Jika API Key diberikan tetapi Google API mengembalikan error eksplisit (misal: 400 Invalid Key / 403 / 429)
+        if (geminiResult.error) {
+          console.warn("Gemini API returned error:", geminiResult);
+          const socraticFallback = generateSocraticFallbackResponse(message, activeProblem);
+          
+          return NextResponse.json({
+            reply: `⚠️ **Catatan Koneksi Google Gemini API (Status ${geminiResult.status || 400}):**\n${geminiResult.error}\n\n*Periksa kembali API Key kamu di menu model (kanan atas) atau buat kunci baru di [Google AI Studio](https://aistudio.google.com).*  \n*Sementara ini, asisten lokal kami menjawab pertanyaanmu di bawah:*\n\n---\n\n${socraticFallback}`,
+            model: "Local Socratic (API Warning)",
+            source: "fallback-with-warning",
+          });
+        }
       } catch (geminiError) {
-        console.warn("Gemini API call failed, falling back to built-in Socratic agent:", geminiError);
+        console.warn("Gemini API call failed with exception:", geminiError);
       }
     }
 
@@ -82,18 +102,21 @@ export async function POST(req: Request) {
 }
 
 /**
- * Panggilan langsung ke REST API Gemini 2.0 Flash dengan System Prompt Pedagogis Sokratik
+ * Panggilan bertingkat ke Google Gemini REST API (v1beta).
+ * Menguji model yang paling stabil dan tersedia secara luas (gemini-1.5-flash) lalu (gemini-2.0-flash).
  */
 async function callGeminiAPI(
   userMessage: string,
   apiKey: string,
   activeProblem?: ActiveProblemContext | null,
   modelId?: string
-): Promise<string | null> {
-  const modelName =
-    modelId?.includes("gemini") || !modelId ? "gemini-2.0-flash" : "gemini-1.5-flash";
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+): Promise<GeminiCallResult> {
+  const candidateModels = [
+    "gemini-1.5-flash",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-exp",
+    "gemini-1.5-pro",
+  ];
 
   let systemInstructionText = `Anda adalah NalarAI, asisten diagnostik kognitif dan tutor aljabar Sokrates untuk siswa SMA di Indonesia.
 PRINSIP UTAMA (RUBRIK LOGICODIX 2026):
@@ -128,23 +151,49 @@ Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentan
     },
   };
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  let lastError = "";
+  let lastStatus = 0;
 
-  if (!response.ok) {
-    const errText = await response.text();
-    console.error("Gemini API error status:", response.status, errText);
-    return null;
+  for (const model of candidateModels) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const candidateText =
+          data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
+        if (candidateText) {
+          return { text: candidateText, modelUsed: model };
+        }
+      } else {
+        lastStatus = response.status;
+        const errJson = await response.json().catch(() => null);
+        const errMsg = errJson?.error?.message || `HTTP ${response.status}`;
+        lastError = errMsg;
+
+        // Jika 404 (model tidak tersedia untuk versi API/key ini), coba model berikutnya di daftar
+        if (response.status === 404) {
+          continue;
+        }
+
+        // Jika 400 (API Key tidak valid) atau 403 (Forbidden), langsung laporkan agar pengguna tahu
+        return { error: errMsg, status: response.status, modelUsed: model };
+      }
+    } catch (netErr) {
+      lastError = netErr instanceof Error ? netErr.message : String(netErr);
+    }
   }
 
-  const data = await response.json();
-  const candidateText =
-    data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
-
-  return candidateText;
+  return { error: lastError || "Tidak dapat terhubung ke endpoint Google Gemini API", status: lastStatus || 500 };
 }
 
 /**
@@ -157,7 +206,27 @@ function generateSocraticFallbackResponse(
 ): string {
   const lower = message.toLowerCase().trim();
 
-  // 1. SAPAAN & INTERAKSI AWAL
+  // 1. DEFINISI & KONSEP ALJABAR
+  const isAskingAlgebraDefinition =
+    lower.includes("apa itu aljabar") ||
+    lower.includes("aljabar itu apa") ||
+    lower.includes("arti aljabar") ||
+    lower.includes("maksud aljabar") ||
+    lower.includes("kenapa belajar aljabar") ||
+    lower === "aljabar";
+
+  if (isAskingAlgebraDefinition) {
+    return `**Aljabar** adalah cabang matematika yang menggunakan simbol atau huruf (seperti $x$, $y$, $a$, $b$) untuk mewakili angka atau kuantitas yang belum diketahui (*variabel*).
+
+**Mengapa Aljabar Sangat Penting?**
+1. **Menemukan Nilai yang Belum Diketahui:** Aljabar membantu kita menyelesaikan teka-teki kuantitatif secara sistematis, misalnya: $2x + 4 = 10 \\implies x = 3$.
+2. **Merumuskan Pola & Hukum Umum:** Alih-alih menghitung satu per satu, kita bisa merumuskan hubungan umum seperti ekspansi kuadrat $(a + b)^2 = a^2 + 2ab + b^2$.
+3. **Fondasi Sains & Teknologi:** Dunia kecerdasan buatan, pemrograman, grafika komputer, hingga rumus fisika modern semuanya dirancang menggunakan bahasa aljabar.
+
+Apakah ada topik aljabar tertentu yang ingin kamu pelajari (seperti faktorisasi, kuadrat sempurna, atau pindah ruas)? Atau kamu ingin menguji langkah coretan rumus yang sedang kamu hitung?`;
+  }
+
+  // 2. SAPAAN & INTERAKSI AWAL
   const isGreeting =
     /^(hai|halo|pagi|siang|malam|sore|assalamu|permisi|tes|ping|woi|hei|hi|hello)/.test(lower) ||
     lower === "hai" ||
@@ -179,7 +248,7 @@ function generateSocraticFallbackResponse(
     return `Halo! Aku NalarAI, asisten diagnostik aljabar kamu. Ada konsep matematika atau langkah penurunan rumus yang ingin kamu tanyakan atau uji bersama? Kamu bisa bertanya bebas atau langsung memasukkan baris aljabar coretanmu!`;
   }
 
-  // 2. PERTANYAAN TENTANG KESALAHAN ("Kenapa salah?", "Kenapa baris 2?")
+  // 3. PERTANYAAN TENTANG KESALAHAN ("Kenapa salah?", "Kenapa baris 2?")
   const isAskingWhyWrong =
     lower.includes("kenapa salah") ||
     lower.includes("salahnya di mana") ||
@@ -222,7 +291,7 @@ Coba telaah kembali aturan operasi yang menghubungkan baris tersebut dengan bari
     return `Untuk memeriksa letak kesalahan, sistem kami membandingkan ekuivalensi aljabar baris demi baris menggunakan SymPy CAS. Masukkan baris coretan aljabarmu dan sistem akan menandai titik patah logikanya!`;
   }
 
-  // 3. PERTANYAAN TENTANG KONSEP KUADRAT SUKU DUA / SUKU TENGAH
+  // 4. PERTANYAAN TENTANG KONSEP KUADRAT SUKU DUA / SUKU TENGAH
   const isAskingBinomial =
     lower.includes("6x") ||
     lower.includes("2ab") ||
@@ -246,7 +315,7 @@ Luas total persegi tersebut tersusun dari 4 bidang:
 Total luas adalah $x^2 + 6x + 9$. Tanpa suku $6x$, luasnya tidak akan pernah lengkap!`;
   }
 
-  // 4. PERTANYAAN TENTANG CARA MENYELESAIKAN / PETUNJUK ("Gimana caranya?", "Bantu benerin")
+  // 5. PERTANYAAN TENTANG CARA MENYELESAIKAN / PETUNJUK ("Gimana caranya?", "Bantu benerin")
   const isAskingHowToSolve =
     lower.includes("gimana cara") ||
     lower.includes("bagaimana cara") ||
@@ -271,7 +340,7 @@ Coba tuliskan perbaikan baris berikutnya di kolom chat dan kirimkan, aku akan la
     return `Tuliskan baris-baris aljabar yang sedang kamu kerjakan (gunakan Enter untuk membuat baris baru). NalarAI akan memverifikasi setiap langkah secara deterministik dan memberitahumu jika ada aturan aljabar yang terlanggar!`;
   }
 
-  // 5. PERTANYAAN TENTANG KONTRADIKSI / KONTRA-CONTOH ("Kenapa x=2?")
+  // 6. PERTANYAAN TENTANG KONTRADIKSI / KONTRA-CONTOH ("Kenapa x=2?")
   const isAskingCounterExample =
     lower.includes("x = 2") ||
     lower.includes("x=2") ||
@@ -291,7 +360,7 @@ Ketika $x = 2$ dimasukkan:
 Karena $21 \\neq 9$, ini membuktikan secara mutlak bahwa langkah penurunan tersebut tidak ekuivalen!`;
   }
 
-  // 6. PERTANYAAN UMUM TENTANG NALARAI ATAU CARA PAKAI
+  // 7. PERTANYAAN UMUM TENTANG NALARAI ATAU CARA PAKAI
   const isAskingAboutSystem =
     lower.includes("apa itu nalarai") ||
     lower.includes("siapa kamu") ||
@@ -308,12 +377,10 @@ Karena $21 \\neq 9$, ini membuktikan secara mutlak bahwa langkah penurunan terse
 - Kamu bisa menguji coretanmu dengan mengetik baris aljabar atau memilih contoh soal dari menu samping!`;
   }
 
-  // 7. RESPONS UMUM BERPIKIR SOKRATIK
-  return `Aku mendengar pertanyaanmu: *"id: ${message}"*. 
+  // 8. RESPONS UMUM BERPIKIR SOKRATIK
+  return `Pertanyaan yang bagus mengenai "${message}".
 
-Sebagai asisten kognitif aljabar, aku siap membimbingmu memahami konsep ini secara mendalam. Apakah kamu ingin:
-1. Membahas konsep rumus aljabar tertentu (misal: faktorisasi, kuadrat sempurna, pindah ruas)?
-2. Menguji baris coretan penurunan rumus yang sedang kamu hitung?
-
-Silakan tuliskan apa yang ingin kita eksplorasi bersama!`;
+Sebagai tutor kognitif aljabar, mari kita telusuri bersama:
+- Jika ini pertanyaan konsep matematika, bagian mana yang paling ingin kamu pahami lebih dalam?
+- Jika ini soal perhitungan dari latihan sekolahmu, kamu bisa langsung mengetikkan baris penurunan rumusmu agar aku bisa memverifikasi validitas logikanya baris demi baris!`;
 }
