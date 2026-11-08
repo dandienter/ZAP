@@ -3060,26 +3060,6 @@ export default function ZAPApp() {
           </div>
 
           <div className="flex items-center gap-1.5">
-            {/* CAS Status indicator */}
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] text-zinc-500">
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  backendStatus === "online" ? "bg-emerald-400 animate-pulse" : "bg-zinc-600"
-                }`}
-              />
-              <span className="font-mono hidden sm:inline">
-                {backendStatus === "online" ? "CAS Online" : "CAS Offline"}
-              </span>
-              <button
-                type="button"
-                onClick={checkHealth}
-                title="Cek koneksi CAS"
-                className="text-zinc-500 hover:text-white ml-0.5"
-              >
-                <RotateCw className="w-3 h-3" />
-              </button>
-            </div>
-
             {/* Tombol Bagikan Percakapan */}
             {messages.length > 0 && (
               <button
