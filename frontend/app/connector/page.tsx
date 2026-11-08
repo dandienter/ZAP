@@ -473,7 +473,7 @@ export default function ConnectorPage() {
   const ActiveModelBrandIcon = currentActiveModelObj.icon;
 
   return (
-    <div className="min-h-screen bg-[#07090e] text-zinc-100 font-sans selection:bg-blue-600 selection:text-white pb-24">
+    <div className="min-h-screen bg-[#07090e] text-zinc-100 font-sans selection:bg-zinc-800 selection:text-white pb-24">
       {/* 1. TOP NAVBAR */}
       <nav className="h-14 px-4 sm:px-8 border-b border-white/[0.08] bg-[#0c0e14]/90 backdrop-blur-md sticky top-0 z-40 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -497,7 +497,7 @@ export default function ConnectorPage() {
           <button
             type="button"
             onClick={() => router.push("/chat")}
-            className="text-xs font-medium px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+            className="text-xs font-semibold px-3.5 py-1.5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 transition flex items-center gap-1.5 cursor-pointer shadow-sm"
           >
             <span>Buka Chat</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -510,7 +510,7 @@ export default function ConnectorPage() {
         {/* Page Title & Intro */}
         <div className="space-y-1.5">
           <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2.5">
-            <LocalEnclaveEmblem className="w-6 h-6 text-blue-400" />
+            <LocalEnclaveEmblem className="w-6 h-6 text-zinc-300" />
             <span>Model Connectors &amp; Pengaturan Kunci API</span>
           </h1>
           <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed max-w-2xl">
@@ -533,7 +533,7 @@ export default function ConnectorPage() {
                 </span>
                 <div className="text-sm font-semibold text-white flex items-center gap-2">
                   <span>{currentActiveModelObj.name}</span>
-                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-white/[0.08] text-zinc-200 border border-white/[0.1] font-medium">
                     Aktif
                   </span>
                 </div>
@@ -543,7 +543,7 @@ export default function ConnectorPage() {
             <button
               type="button"
               onClick={() => router.push("/chat")}
-              className="text-xs font-medium text-blue-400 hover:text-blue-300 flex items-center gap-1 cursor-pointer transition self-start sm:self-auto"
+              className="text-xs font-medium text-zinc-300 hover:text-white flex items-center gap-1 cursor-pointer transition self-start sm:self-auto"
             >
               <span>Mulai chat sekarang</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -551,8 +551,8 @@ export default function ConnectorPage() {
           </div>
 
           {activeModelNotice && (
-            <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-800/40 text-emerald-300 text-xs font-medium flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div className="p-2.5 rounded-xl bg-white/[0.06] border border-white/[0.1] text-zinc-200 text-xs font-medium flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-zinc-300 shrink-0" />
               <span>{activeModelNotice}</span>
             </div>
           )}
@@ -580,7 +580,7 @@ export default function ConnectorPage() {
                     onClick={() => handleSelectActiveModel(item.id, item.label)}
                     className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center justify-between gap-2 ${
                       isSelected
-                        ? "bg-blue-600/15 border-blue-500/40 text-white shadow-sm"
+                        ? "bg-white/[0.08] border-white/[0.2] text-white shadow-sm"
                         : "bg-white/[0.02] border-white/[0.06] text-zinc-300 hover:bg-white/[0.05] hover:border-white/[0.12]"
                     }`}
                   >
@@ -593,7 +593,7 @@ export default function ConnectorPage() {
                         <div className="text-[11px] text-zinc-500 truncate">{item.sub}</div>
                       </div>
                     </div>
-                    {isSelected && <Check className="w-4 h-4 text-blue-400 shrink-0" />}
+                    {isSelected && <Check className="w-4 h-4 text-white shrink-0" />}
                   </button>
                 );
               })}
@@ -655,12 +655,12 @@ export default function ConnectorPage() {
                       {/* Status Badge & Tutorial Trigger */}
                       <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
                         {hasKey ? (
-                          <span className="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium flex items-center gap-1">
+                          <span className="text-xs px-2.5 py-1 rounded-lg bg-white/[0.08] text-zinc-200 border border-white/[0.12] font-medium flex items-center gap-1">
                             <Check className="w-3.5 h-3.5" />
                             <span>Kunci Tersimpan</span>
                           </span>
                         ) : provider.id === "gemini" ? (
-                          <span className="text-xs px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 font-medium">
+                          <span className="text-xs px-2.5 py-1 rounded-lg bg-white/[0.06] text-zinc-300 border border-white/[0.08] font-medium">
                             Auto Server Pool
                           </span>
                         ) : (
@@ -672,7 +672,7 @@ export default function ConnectorPage() {
                         <button
                           type="button"
                           onClick={() => toggleTutorial(provider.id)}
-                          className="text-xs text-blue-400 hover:text-blue-300 px-2.5 py-1 rounded-lg hover:bg-blue-500/10 transition cursor-pointer flex items-center gap-1"
+                          className="text-xs text-zinc-300 hover:text-white px-2.5 py-1 rounded-lg hover:bg-white/[0.06] transition cursor-pointer flex items-center gap-1"
                         >
                           <span>Panduan Setup</span>
                           {isTutorialOpen ? (
@@ -686,20 +686,20 @@ export default function ConnectorPage() {
 
                     {/* Tutorial / Panduan Step-by-Step (Accordion) */}
                     {isTutorialOpen && (
-                      <div className="p-3.5 rounded-xl bg-[#141722] border border-blue-500/20 space-y-2.5 text-xs">
+                      <div className="p-3.5 rounded-xl bg-[#14151b] border border-white/[0.08] space-y-2.5 text-xs">
                         <div className="flex items-center justify-between pb-1.5 border-b border-white/[0.06]">
-                          <span className="font-semibold text-blue-300 flex items-center gap-1.5">
-                            <Key className="w-3.5 h-3.5 text-blue-400" />
+                          <span className="font-semibold text-zinc-200 flex items-center gap-1.5">
+                            <Key className="w-3.5 h-3.5 text-zinc-400" />
                             <span>Cara Mendapatkan Kunci API {provider.name}:</span>
                           </span>
                           <a
                             href={provider.docUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-xs text-blue-400 hover:text-blue-300 inline-flex items-center gap-1 font-medium underline"
+                            className="text-xs text-zinc-300 hover:text-white inline-flex items-center gap-1 font-medium underline"
                           >
                             <span>Buka {provider.docLabel}</span>
-                            <ExternalLink className="w-3 h-3" />
+                            <ExternalLink className="w-3 h-3 text-zinc-400" />
                           </a>
                         </div>
 
@@ -733,7 +733,7 @@ export default function ConnectorPage() {
                               value={customBaseUrl}
                               onChange={(e) => setCustomBaseUrl(e.target.value)}
                               placeholder="http://localhost:11434/v1"
-                              className="w-full bg-[#0a0c12] border border-white/[0.1] rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 font-mono transition"
+                              className="w-full bg-[#0a0c12] border border-white/[0.1] rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/40 font-mono transition"
                             />
                           </div>
                           <div>
@@ -745,7 +745,7 @@ export default function ConnectorPage() {
                               value={customModelName}
                               onChange={(e) => setCustomModelName(e.target.value)}
                               placeholder="llama3.3"
-                              className="w-full bg-[#0a0c12] border border-white/[0.1] rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 font-mono transition"
+                              className="w-full bg-[#0a0c12] border border-white/[0.1] rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/40 font-mono transition"
                             />
                           </div>
                         </div>
@@ -758,7 +758,7 @@ export default function ConnectorPage() {
                               setKeys((prev) => ({ ...prev, custom: e.target.value }))
                             }
                             placeholder="API Key opsional (Bearer token jika endpoint memerlukan sandi)"
-                            className="flex-1 bg-[#0a0c12] border border-white/[0.1] rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 font-mono transition"
+                            className="flex-1 bg-[#0a0c12] border border-white/[0.1] rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/40 font-mono transition"
                           />
                           <button
                             type="button"
@@ -771,7 +771,7 @@ export default function ConnectorPage() {
                           <button
                             type="button"
                             onClick={handleSaveCustomSettings}
-                            className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition cursor-pointer shrink-0"
+                            className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 text-xs font-semibold transition cursor-pointer shrink-0"
                           >
                             Simpan
                           </button>
@@ -788,7 +788,7 @@ export default function ConnectorPage() {
                               setKeys((prev) => ({ ...prev, [provider.id]: e.target.value }))
                             }
                             placeholder={provider.placeholder}
-                            className="w-full bg-[#0a0c12] border border-white/[0.1] rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 font-mono transition"
+                            className="w-full bg-[#0a0c12] border border-white/[0.1] rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/40 font-mono transition"
                           />
                         </div>
 
@@ -811,7 +811,7 @@ export default function ConnectorPage() {
                               provider.name
                             )
                           }
-                          className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition cursor-pointer shrink-0 shadow-sm"
+                          className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 text-xs font-semibold transition cursor-pointer shrink-0 shadow-sm"
                         >
                           Simpan
                         </button>
@@ -822,7 +822,7 @@ export default function ConnectorPage() {
                             onClick={() =>
                               handleDeleteKey(provider.id, provider.storageKey, provider.name)
                             }
-                            className="p-2 rounded-xl bg-white/[0.04] hover:bg-rose-500/20 text-zinc-400 hover:text-rose-300 border border-white/[0.08] transition cursor-pointer"
+                            className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/[0.08] transition cursor-pointer"
                             title="Hapus kunci API ini"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -838,7 +838,7 @@ export default function ConnectorPage() {
                           type="button"
                           onClick={() => handleTestConnection(provider)}
                           disabled={isTesting}
-                          className="text-xs font-medium text-blue-400 hover:text-blue-300 inline-flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
+                          className="text-xs font-medium text-zinc-300 hover:text-white inline-flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
                         >
                           {isTesting ? (
                             <>
@@ -847,7 +847,7 @@ export default function ConnectorPage() {
                             </>
                           ) : (
                             <>
-                              <Zap className="w-3.5 h-3.5" />
+                              <Zap className="w-3.5 h-3.5 text-zinc-400" />
                               <span>Uji Koneksi API</span>
                             </>
                           )}
@@ -856,7 +856,7 @@ export default function ConnectorPage() {
 
                       <div className="flex items-center gap-2">
                         {isModelSelected ? (
-                          <span className="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1 font-medium">
+                          <span className="text-[11px] font-mono text-zinc-200 bg-white/[0.08] px-2 py-0.5 rounded border border-white/[0.1] flex items-center gap-1 font-medium">
                             <Check className="w-3 h-3" />
                             <span>Aktif di Chat</span>
                           </span>
@@ -879,12 +879,12 @@ export default function ConnectorPage() {
                       <div
                         className={`p-2.5 rounded-xl text-xs leading-relaxed flex items-start gap-2 ${
                           testResult.success
-                            ? "bg-emerald-950/40 border border-emerald-800/40 text-emerald-300"
+                            ? "bg-white/[0.06] border border-white/[0.1] text-zinc-200"
                             : "bg-rose-950/40 border border-rose-800/40 text-rose-300"
                         }`}
                       >
                         {testResult.success ? (
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                          <CheckCircle2 className="w-4 h-4 text-zinc-300 shrink-0 mt-0.5" />
                         ) : (
                           <XCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                         )}
@@ -903,7 +903,7 @@ export default function ConnectorPage() {
         {/* =================================================================== */}
         <section className="p-4 sm:p-5 rounded-2xl bg-[#0f1118] border border-white/[0.08] space-y-2.5 text-xs text-zinc-400">
           <div className="flex items-center gap-2 text-white font-semibold">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <ShieldCheck className="w-4 h-4 text-zinc-300" />
             <span>Kepatuhan Privasi Data &amp; Kebijakan Zero-Answer (ZAP)</span>
           </div>
           <div className="space-y-1.5 leading-relaxed">

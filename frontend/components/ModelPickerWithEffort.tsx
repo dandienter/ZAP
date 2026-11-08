@@ -382,16 +382,16 @@ export default function ModelPickerWithEffort({
                         onClick={() => handleSelectModel(model)}
                         className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition cursor-pointer text-left ${
                           isSelected
-                            ? "bg-blue-50 dark:bg-white/[0.08] text-blue-600 dark:text-white font-medium"
-                            : "text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-white/[0.04] hover:text-slate-900 dark:hover:text-white"
+                            ? "bg-slate-100 dark:bg-white/[0.08] text-slate-900 dark:text-white font-medium"
+                            : "text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-white/[0.04] hover:text-slate-900 dark:hover:text-white"
                         }`}
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <Icon className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-400 flex-shrink-0" />
+                          <Icon className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 flex-shrink-0" />
                           <span className="truncate">{model.name}</span>
                         </div>
                         {isSelected && (
-                          <Check className="w-3.5 h-3.5 text-blue-600 dark:text-white flex-shrink-0 ml-1.5" />
+                          <Check className="w-3.5 h-3.5 text-slate-900 dark:text-white flex-shrink-0 ml-1.5" />
                         )}
                       </button>
                     );
@@ -404,10 +404,10 @@ export default function ModelPickerWithEffort({
                     setIsOpen(false);
                     setActiveSubmenu(null);
                   }}
-                  className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-white/[0.04] transition"
+                  className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.04] transition"
                 >
                   <span>Kelola API Key & Hub...</span>
-                  <ExternalLink className="w-3 h-3" />
+                  <ExternalLink className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
                 </Link>
               </div>
             )}
@@ -438,13 +438,13 @@ export default function ModelPickerWithEffort({
                         onClick={() => handleSelectEffort(opt)}
                         className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition cursor-pointer text-left ${
                           isSelected
-                            ? "bg-blue-50 dark:bg-white/[0.08] text-blue-600 dark:text-white font-medium"
-                            : "text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-white/[0.04] hover:text-slate-900 dark:hover:text-white"
+                            ? "bg-slate-100 dark:bg-white/[0.08] text-slate-900 dark:text-white font-medium"
+                            : "text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-white/[0.04] hover:text-slate-900 dark:hover:text-white"
                         }`}
                       >
                         <span>{formatEffort(opt)}</span>
                         {isSelected && (
-                          <Check className="w-3.5 h-3.5 text-blue-600 dark:text-white flex-shrink-0" />
+                          <Check className="w-3.5 h-3.5 text-slate-900 dark:text-white flex-shrink-0" />
                         )}
                       </button>
                     );

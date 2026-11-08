@@ -172,15 +172,15 @@ export default function SharedChatView({ shareId }: { shareId: string }) {
       <header className="sticky top-0 z-40 backdrop-blur-xl bg-[#0d0f12]/80 border-b border-zinc-800/60 px-4 sm:px-8 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link href="/chat" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center shadow-md shadow-sky-500/20">
+            <div className="w-8 h-8 rounded-xl bg-white/[0.08] border border-white/[0.1] flex items-center justify-center shadow-sm">
               <ZapLogo className="w-4 h-4 text-white" />
             </div>
-            <span className="font-bold text-base tracking-tight text-white group-hover:text-sky-400 transition-colors">
+            <span className="font-bold text-base tracking-tight text-white group-hover:text-zinc-300 transition-colors">
               ChatZAP
             </span>
           </Link>
-          <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-zinc-800/80 text-zinc-400 border border-zinc-700/50">
-            <Share2 className="w-3 h-3 text-sky-400" />
+          <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-zinc-800/80 text-zinc-300 border border-zinc-700/50">
+            <Share2 className="w-3 h-3 text-zinc-400" />
             Shared Chat
           </span>
         </div>
@@ -196,9 +196,9 @@ export default function SharedChatView({ shareId }: { shareId: string }) {
 
           <button
             onClick={handleCopyLink}
-            className={`px-3.5 py-2 rounded-xl text-xs font-medium border transition-all flex items-center gap-1.5 ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-medium border transition-all flex items-center gap-1.5 cursor-pointer ${
               copied
-                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                ? "bg-white/[0.1] border-white/[0.2] text-white"
                 : "bg-zinc-900 border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white"
             }`}
           >
@@ -217,7 +217,7 @@ export default function SharedChatView({ shareId }: { shareId: string }) {
 
           <button
             onClick={handleContinueChat}
-            className="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-zinc-950 font-semibold text-xs transition-all shadow-md shadow-sky-500/20 flex items-center gap-1.5"
+            className="px-4 py-2 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-semibold text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
           >
             <span>Buka di ChatZAP</span>
             <ExternalLink className="w-3.5 h-3.5" />
@@ -283,11 +283,11 @@ export default function SharedChatView({ shareId }: { shareId: string }) {
             return (
               <div key={msg.id || index} className="flex gap-3.5 sm:gap-4 items-start">
                 <div className="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700/60 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-                  <ZapLogo className="w-4 h-4 text-sky-400" />
+                  <ZapLogo className="w-4 h-4 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2.5 mb-1.5 text-xs">
-                    <span className="font-semibold text-sky-400">ChatZAP Socratic</span>
+                    <span className="font-semibold text-zinc-200">ChatZAP Socratic</span>
                     {msg.modelName && (
                       <span className="text-[11px] text-zinc-500 font-mono">
                         {msg.modelName}
@@ -305,15 +305,15 @@ export default function SharedChatView({ shareId }: { shareId: string }) {
 
                     {/* 3D Smartboard card preview if present */}
                     {msg.smartboardItem && (
-                      <div className="mt-4 p-4 rounded-xl bg-zinc-900/90 border border-sky-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="mt-4 p-4 rounded-xl bg-zinc-900/90 border border-zinc-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 shrink-0">
+                          <div className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.1] flex items-center justify-center text-zinc-300 shrink-0">
                             <Box className="w-5 h-5" />
                           </div>
                           <div>
                             <div className="text-xs font-semibold text-zinc-200 flex items-center gap-1.5">
                               Papan Tulis Virtual 3D
-                              <span className="px-1.5 py-0.5 rounded text-[10px] bg-sky-500/20 text-sky-300 font-mono">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] bg-white/[0.08] text-zinc-300 font-mono">
                                 {msg.smartboardItem.solidKind || msg.smartboardItem.model || "Geometri 3D"}
                               </span>
                             </div>
@@ -325,7 +325,7 @@ export default function SharedChatView({ shareId }: { shareId: string }) {
 
                         <button
                           onClick={handleContinueChat}
-                          className="px-3 py-1.5 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 text-xs font-medium transition-colors inline-flex items-center gap-1.5 self-end sm:self-auto"
+                          className="px-3 py-1.5 rounded-lg bg-white/[0.08] hover:bg-white/[0.14] text-zinc-200 border border-white/[0.1] text-xs font-medium transition-colors inline-flex items-center gap-1.5 self-end sm:self-auto cursor-pointer"
                         >
                           Lihat 3D di ZAP
                           <ArrowRight className="w-3.5 h-3.5" />
@@ -344,7 +344,7 @@ export default function SharedChatView({ shareId }: { shareId: string }) {
       <div className="fixed bottom-0 inset-x-0 z-40 bg-gradient-to-t from-[#0d0f12] via-[#0d0f12]/95 to-transparent pt-6 pb-6 px-4">
         <div className="max-w-2xl mx-auto rounded-2xl bg-zinc-900/90 border border-zinc-800/90 shadow-2xl backdrop-blur-xl p-3 sm:p-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-white/[0.06] border border-white/[0.1] flex items-center justify-center text-zinc-300 shrink-0">
               <Sparkles className="w-4 h-4" />
             </div>
             <div className="min-w-0">
@@ -359,7 +359,7 @@ export default function SharedChatView({ shareId }: { shareId: string }) {
 
           <button
             onClick={handleContinueChat}
-            className="px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-zinc-950 font-bold text-xs transition-all shadow-lg shadow-sky-500/25 shrink-0 flex items-center gap-2"
+            className="px-4 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-bold text-xs transition-all shadow-lg shrink-0 flex items-center gap-2 cursor-pointer"
           >
             <span>Lanjutkan di ZAP</span>
             <ArrowRight className="w-4 h-4" />

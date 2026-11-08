@@ -1397,7 +1397,7 @@ export default function InteractiveCanvas3D({
               onClick={() => selectModel("solids")}
               className={`px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition cursor-pointer ${
                 is3DModel
-                  ? "bg-blue-600 text-white shadow-sm"
+                  ? "bg-white dark:bg-white/[0.16] text-slate-900 dark:text-white shadow-sm font-semibold"
                   : "dark:text-zinc-400 text-slate-600 dark:hover:text-white hover:text-slate-900"
               }`}
               title="Geometri 3D Ruang"
@@ -1410,7 +1410,7 @@ export default function InteractiveCanvas3D({
               onClick={() => selectModel("2d_quadratic")}
               className={`px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition cursor-pointer ${
                 is2DGraphModel
-                  ? "bg-blue-600 text-white shadow-sm"
+                  ? "bg-white dark:bg-white/[0.16] text-slate-900 dark:text-white shadow-sm font-semibold"
                   : "dark:text-zinc-400 text-slate-600 dark:hover:text-white hover:text-slate-900"
               }`}
               title="Grafik 2D Kartesius"
@@ -1422,7 +1422,7 @@ export default function InteractiveCanvas3D({
               onClick={() => selectModel("empty")}
               className={`px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition cursor-pointer ${
                 activeModel === "empty"
-                  ? "bg-blue-600 text-white shadow-sm"
+                  ? "bg-white dark:bg-white/[0.16] text-slate-900 dark:text-white shadow-sm font-semibold"
                   : "dark:text-zinc-400 text-slate-600 dark:hover:text-white hover:text-slate-900"
               }`}
               title="Papan Tulis Kosong"
@@ -1435,7 +1435,7 @@ export default function InteractiveCanvas3D({
             <button
               type="button"
               onClick={() => selectModel("empty")}
-              className="p-1.5 rounded-xl dark:bg-white/[0.04] bg-slate-100 hover:bg-rose-500/20 text-slate-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-300 border dark:border-white/[0.08] border-slate-200 transition cursor-pointer"
+              className="p-1.5 rounded-xl dark:bg-white/[0.04] bg-slate-100 hover:bg-slate-200 dark:hover:bg-white/[0.08] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border dark:border-white/[0.08] border-slate-200 transition cursor-pointer"
               title="Reset / Bersihkan Kanvas"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -1451,17 +1451,17 @@ export default function InteractiveCanvas3D({
           }}
           className="flex-1 min-w-0 max-w-xs relative flex items-center"
         >
-          <Sparkles className="w-3.5 h-3.5 absolute left-2.5 text-blue-500 pointer-events-none" />
+          <Sparkles className="w-3.5 h-3.5 absolute left-2.5 text-slate-400 dark:text-zinc-500 pointer-events-none" />
           <input
             type="text"
             value={formulaInput}
             onChange={(e) => setFormulaInput(e.target.value)}
             placeholder="Ketik: cube 10cm, y=x²-3..."
-            className="w-full dark:bg-[#141724] bg-slate-100 border dark:border-white/[0.08] border-slate-200 rounded-xl pl-8 pr-14 py-1 text-xs dark:text-white text-slate-900 dark:placeholder-zinc-500 placeholder-slate-400 focus:outline-none focus:border-blue-500/60 transition truncate"
+            className="w-full dark:bg-[#141724] bg-slate-100 border dark:border-white/[0.08] border-slate-200 rounded-xl pl-8 pr-14 py-1 text-xs dark:text-white text-slate-900 dark:placeholder-zinc-500 placeholder-slate-400 focus:outline-none focus:border-slate-400 dark:focus:border-white/30 transition truncate"
           />
           <button
             type="submit"
-            className="absolute right-1 px-2 py-0.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-medium transition cursor-pointer"
+            className="absolute right-1 px-2 py-0.5 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-950 text-[11px] font-semibold transition cursor-pointer"
             title="Render bangun geometri atau rumus"
           >
             Gambar
@@ -1481,7 +1481,7 @@ export default function InteractiveCanvas3D({
             }}
             className={`p-1.5 rounded-xl text-xs transition cursor-pointer ${
               isDrawingToolActive && drawingMode === "pen"
-                ? "bg-blue-600 text-white shadow-sm"
+                ? "bg-slate-900 text-white dark:bg-white dark:text-zinc-950 shadow-sm font-semibold"
                 : "dark:bg-white/[0.04] bg-slate-100 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border dark:border-white/[0.06] border-slate-200"
             }`}
             title="Pena Kapur Tulis"
@@ -1500,7 +1500,7 @@ export default function InteractiveCanvas3D({
             }}
             className={`p-1.5 rounded-xl text-xs transition cursor-pointer ${
               isDrawingToolActive && drawingMode === "eraser"
-                ? "bg-rose-600 text-white shadow-sm"
+                ? "bg-slate-800 text-white shadow-sm font-semibold"
                 : "dark:bg-white/[0.04] bg-slate-100 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border dark:border-white/[0.06] border-slate-200"
             }`}
             title="Penghapus Kapur"
@@ -1512,7 +1512,7 @@ export default function InteractiveCanvas3D({
             <button
               type="button"
               onClick={clearDrawCanvas}
-              className="p-1.5 rounded-xl dark:bg-white/[0.04] bg-slate-100 hover:bg-rose-500/20 text-slate-600 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-300 border dark:border-white/[0.06] border-slate-200 transition cursor-pointer"
+              className="p-1.5 rounded-xl dark:bg-white/[0.04] bg-slate-100 hover:bg-slate-200 dark:hover:bg-white/[0.08] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border dark:border-white/[0.06] border-slate-200 transition cursor-pointer"
               title="Hapus Semua Coretan"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -1526,7 +1526,7 @@ export default function InteractiveCanvas3D({
                 onClick={() => setWireframe(!wireframe)}
                 className={`p-1.5 rounded-xl text-xs transition border cursor-pointer ${
                   wireframe
-                    ? "bg-blue-500/20 text-blue-600 dark:text-blue-300 border-blue-500/40"
+                    ? "bg-slate-200 dark:bg-white/[0.16] text-slate-900 dark:text-white border-slate-300 dark:border-white/[0.2]"
                     : "dark:bg-white/[0.04] bg-slate-100 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white dark:border-white/[0.06] border-slate-200"
                 }`}
                 title="Toggle Wireframe Rangka Kawat"
@@ -1539,7 +1539,7 @@ export default function InteractiveCanvas3D({
                 onClick={() => setAutoRotate(!autoRotate)}
                 className={`p-1.5 rounded-xl text-xs transition border cursor-pointer ${
                   autoRotate
-                    ? "bg-blue-500/20 text-blue-600 dark:text-blue-300 border-blue-500/40"
+                    ? "bg-slate-200 dark:bg-white/[0.16] text-slate-900 dark:text-white border-slate-300 dark:border-white/[0.2]"
                     : "dark:bg-white/[0.04] bg-slate-100 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white dark:border-white/[0.06] border-slate-200"
                 }`}
                 title="Toggle Rotasi Otomatis 360°"
@@ -1552,7 +1552,7 @@ export default function InteractiveCanvas3D({
                 onClick={() => setIsHudVisible(!isHudVisible)}
                 className={`p-1.5 rounded-xl text-xs transition border cursor-pointer ${
                   isHudVisible
-                    ? "bg-blue-500/20 text-blue-600 dark:text-blue-300 border-blue-500/40"
+                    ? "bg-slate-200 dark:bg-white/[0.16] text-slate-900 dark:text-white border-slate-300 dark:border-white/[0.2]"
                     : "dark:bg-white/[0.04] bg-slate-100 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white dark:border-white/[0.06] border-slate-200"
                 }`}
                 title={isHudVisible ? "Sembunyikan Panel Kontrol Metrik" : "Tampilkan Panel Kontrol Metrik"}
@@ -1568,7 +1568,7 @@ export default function InteractiveCanvas3D({
               onClick={onToggleProjector}
               className={`p-1.5 rounded-xl border transition cursor-pointer ${
                 isProjectorMode
-                  ? "bg-blue-600/20 text-blue-300 border-blue-500/40"
+                  ? "bg-slate-200 dark:bg-white/[0.16] text-slate-900 dark:text-white border-slate-300 dark:border-white/[0.2]"
                   : "bg-white/[0.04] text-zinc-400 hover:text-white border-white/[0.06]"
               }`}
               title="Mode Layar Proyektor"
@@ -1581,7 +1581,7 @@ export default function InteractiveCanvas3D({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-xl bg-white/[0.04] hover:bg-rose-500/20 text-zinc-400 hover:text-rose-300 border border-white/[0.06] transition cursor-pointer"
+              className="p-1.5 rounded-xl bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/[0.06] transition cursor-pointer"
               title="Tutup Papan Tulis"
             >
               <X className="w-3.5 h-3.5" />
@@ -1596,7 +1596,7 @@ export default function InteractiveCanvas3D({
         {activeModel === "empty" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-0 select-none">
             <div className="w-full max-w-md space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mx-auto text-blue-400">
+              <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mx-auto text-zinc-300">
                 <Pencil className="w-6 h-6" />
               </div>
 
@@ -1625,7 +1625,7 @@ export default function InteractiveCanvas3D({
                       else setShowSlicePlane(false);
                       selectModel(preset.model);
                     }}
-                    className="px-3 py-1.5 rounded-xl bg-[#121520] hover:bg-[#1a1f30] border border-white/[0.08] hover:border-blue-500/40 text-xs text-zinc-200 transition cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl bg-[#121520] hover:bg-[#1a1f30] border border-white/[0.08] hover:border-white/20 text-xs text-zinc-200 transition cursor-pointer"
                   >
                     <span>{preset.label}</span>
                   </button>
@@ -1647,7 +1647,7 @@ export default function InteractiveCanvas3D({
           {is2DGraphModel && (
             <div className="absolute bottom-3 inset-x-4 flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-2xl bg-[#0f121d]/90 border border-white/[0.08] backdrop-blur-md shadow-xl z-20 text-xs">
               <div className="flex items-center gap-3">
-                <span className="font-semibold text-blue-300">
+                <span className="font-semibold text-white font-mono">
                   {activeModel === "2d_quadratic"
                     ? `y = ${paramA}x² ${paramB >= 0 ? `+ ${paramB}x` : `- ${Math.abs(paramB)}x`} ${paramC >= 0 ? `+ ${paramC}` : `- ${Math.abs(paramC)}`}`
                     : activeModel === "2d_trig"
@@ -1667,7 +1667,7 @@ export default function InteractiveCanvas3D({
                     step="0.5"
                     value={paramA}
                     onChange={(e) => setParamA(parseFloat(e.target.value))}
-                    className="w-20 accent-blue-500"
+                    className="w-20 accent-zinc-400"
                   />
                 </div>
 
@@ -1686,7 +1686,7 @@ export default function InteractiveCanvas3D({
                       if (activeModel === "2d_quadratic") setParamC(val);
                       else setParamB(val);
                     }}
-                    className="w-20 accent-purple-500"
+                    className="w-20 accent-zinc-400"
                   />
                 </div>
               </div>
@@ -1709,17 +1709,17 @@ export default function InteractiveCanvas3D({
               <button
                 type="button"
                 onClick={() => setIsHudMinimized(false)}
-                className="px-3 py-1.5 rounded-xl dark:bg-[#0f121d]/90 bg-white/95 dark:hover:bg-[#151928] hover:bg-slate-50 border dark:border-white/[0.1] border-slate-200 hover:border-blue-500/40 backdrop-blur-md shadow-xl text-xs dark:text-zinc-200 text-slate-800 flex items-center gap-2 transition cursor-pointer"
+                className="px-3 py-1.5 rounded-xl dark:bg-[#0f121d]/90 bg-white/95 dark:hover:bg-[#151928] hover:bg-slate-50 border dark:border-white/[0.1] border-slate-200 hover:border-slate-400 dark:hover:border-white/20 backdrop-blur-md shadow-xl text-xs dark:text-zinc-200 text-slate-800 flex items-center gap-2 transition cursor-pointer"
                 title="Tampilkan Panel Metrik & Kontrol"
               >
-                <Box className="w-3.5 h-3.5 text-blue-500" />
+                <Box className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-300" />
                 <span className="font-medium">Metrik ({paramA} {unit})</span>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-400" />
               </button>
               <button
                 type="button"
                 onClick={() => setIsHudVisible(false)}
-                className="p-1.5 rounded-xl dark:bg-[#0f121d]/90 bg-white/95 dark:hover:bg-[#151928] hover:bg-slate-50 border dark:border-white/[0.1] border-slate-200 text-slate-400 dark:text-zinc-400 hover:text-rose-500 transition cursor-pointer"
+                className="p-1.5 rounded-xl dark:bg-[#0f121d]/90 bg-white/95 dark:hover:bg-[#151928] hover:bg-slate-50 border dark:border-white/[0.1] border-slate-200 text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
                 title="Sembunyikan Panel"
               >
                 <X className="w-3.5 h-3.5" />
@@ -1729,7 +1729,7 @@ export default function InteractiveCanvas3D({
             <div className="absolute top-3 right-3 p-3.5 rounded-2xl dark:bg-[#0f121d]/90 bg-white/95 border dark:border-white/[0.08] border-slate-200 backdrop-blur-md shadow-2xl z-20 text-xs w-64 space-y-2.5 dark:text-zinc-200 text-slate-800">
               <div className="flex items-center justify-between border-b dark:border-white/[0.08] border-slate-200 pb-2">
                 <span className="font-semibold dark:text-white text-slate-900 flex items-center gap-1.5">
-                  <Box className="w-3.5 h-3.5 text-blue-500" />
+                  <Box className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-300" />
                   {solidKind === "kubus"
                     ? showSlicePlane
                       ? "Kubus 3D (Irisan)"
@@ -1782,7 +1782,7 @@ export default function InteractiveCanvas3D({
                       ? "Sisi Alas Persegi (s):"
                       : "Panjang Sisi (s):"}
                   </span>
-                  <span className="font-mono text-blue-300 font-semibold">{paramA} {unit}</span>
+                  <span className="font-mono text-white font-semibold">{paramA} {unit}</span>
                 </div>
                 <input
                   type="range"
@@ -1795,7 +1795,7 @@ export default function InteractiveCanvas3D({
                     setParamA(val);
                     onParamsChange?.(val, paramB, paramC, unit);
                   }}
-                  className="w-full accent-blue-500 cursor-pointer"
+                  className="w-full accent-zinc-400 cursor-pointer"
                 />
                 <p className="text-[10px] text-zinc-500 italic">
                   💡 Tip: Arahkan kursor &amp; tarik sudut objek untuk resize langsung.
@@ -1809,11 +1809,11 @@ export default function InteractiveCanvas3D({
                     <div className="flex justify-between items-center text-zinc-300">
                       <span>Bidang Potongan:</span>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-rose-300 font-semibold">{Math.round(sliceProgress * 100)}%</span>
+                        <span className="font-mono text-white font-semibold">{Math.round(sliceProgress * 100)}%</span>
                         <button
                           type="button"
                           onClick={() => setShowSlicePlane(false)}
-                          className="text-[10px] text-zinc-500 hover:text-rose-400 px-1 py-0.5 rounded cursor-pointer"
+                          className="text-[10px] text-zinc-500 hover:text-white px-1 py-0.5 rounded cursor-pointer"
                           title="Hapus bidang irisan"
                         >
                           Tutup
@@ -1827,17 +1827,17 @@ export default function InteractiveCanvas3D({
                       step="0.02"
                       value={sliceProgress}
                       onChange={(e) => setSliceProgress(parseFloat(e.target.value))}
-                      className="w-full accent-rose-500 cursor-pointer"
+                      className="w-full accent-zinc-400 cursor-pointer"
                     />
                   </div>
                 ) : (
                   <button
                     type="button"
                     onClick={() => setShowSlicePlane(true)}
-                    className="w-full py-1.5 px-2.5 rounded-xl bg-white/[0.04] hover:bg-blue-600/20 text-zinc-300 hover:text-blue-300 border border-white/[0.08] hover:border-blue-500/40 flex items-center justify-center gap-1.5 transition text-xs font-medium cursor-pointer"
+                    className="w-full py-1.5 px-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border border-white/[0.08] hover:border-white/20 flex items-center justify-center gap-1.5 transition text-xs font-medium cursor-pointer"
                     title="Tambahkan bidang irisan penampang 3D"
                   >
-                    <Scissors className="w-3.5 h-3.5 text-rose-400" />
+                    <Scissors className="w-3.5 h-3.5 text-zinc-400" />
                     <span>+ Tambah Irisan Bidang</span>
                   </button>
                 )
@@ -1871,7 +1871,7 @@ export default function InteractiveCanvas3D({
         {/* Visual Eraser Indicator Circle */}
         {isDrawingToolActive && drawingMode === "eraser" && pointerPos && (
           <div
-            className="pointer-events-none absolute rounded-full border-2 border-rose-400/90 bg-rose-500/20 shadow-sm z-30 transform -translate-x-1/2 -translate-y-1/2 transition-none"
+            className="pointer-events-none absolute rounded-full border-2 border-white/60 bg-white/10 shadow-sm z-30 transform -translate-x-1/2 -translate-y-1/2 transition-none"
             style={{
               left: pointerPos.x,
               top: pointerPos.y,
@@ -1891,7 +1891,7 @@ export default function InteractiveCanvas3D({
                 onClick={() => setDrawingMode("pen")}
                 className={`px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition cursor-pointer ${
                   drawingMode === "pen"
-                    ? "bg-blue-600 text-white shadow-sm"
+                    ? "bg-white text-zinc-950 shadow-sm font-semibold"
                     : "text-zinc-400 hover:text-white"
                 }`}
                 title="Pena Kapur (Menulis / Menggambar)"
@@ -1905,7 +1905,7 @@ export default function InteractiveCanvas3D({
                 onClick={() => setDrawingMode("eraser")}
                 className={`px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition cursor-pointer ${
                   drawingMode === "eraser"
-                    ? "bg-rose-600 text-white shadow-sm"
+                    ? "bg-slate-700 text-white shadow-sm font-semibold"
                     : "text-zinc-400 hover:text-white"
                 }`}
                 title="Penghapus Kapur (Hapus Goresan)"
@@ -1923,10 +1923,10 @@ export default function InteractiveCanvas3D({
                 {/* Color Swatches */}
                 {[
                   { color: "#f8fafc", name: "Kapur Putih" },
-                  { color: "#38bdf8", name: "Cyan" },
-                  { color: "#34d399", name: "Emerald" },
-                  { color: "#facc15", name: "Kuning" },
-                  { color: "#fb7185", name: "Coral" },
+                  { color: "#cbd5e1", name: "Abu-Abu Terang" },
+                  { color: "#94a3b8", name: "Abu-Abu Medium" },
+                  { color: "#64748b", name: "Slate" },
+                  { color: "#38bdf8", name: "Aksen Biru Dingin" },
                 ].map((swatch) => (
                   <button
                     key={swatch.color}
@@ -1971,7 +1971,7 @@ export default function InteractiveCanvas3D({
                     onClick={() => setEraserSize(item.size)}
                     className={`px-2 py-0.5 rounded text-xs transition cursor-pointer font-mono ${
                       eraserSize === item.size
-                        ? "bg-rose-500/20 text-rose-300 border border-rose-500/40"
+                        ? "bg-white/[0.12] text-white border border-white/[0.2]"
                         : "text-zinc-400 hover:text-white hover:bg-white/[0.04]"
                     }`}
                     title={`Penghapus ${item.label} (${item.size}px)`}

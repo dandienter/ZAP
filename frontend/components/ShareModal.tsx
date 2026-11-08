@@ -163,8 +163,8 @@ export default function ShareModal({
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center shadow-md shadow-sky-500/20">
-              <Share2 className="w-4 h-4 text-white" />
+            <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-white/[0.08] flex items-center justify-center text-slate-800 dark:text-white border border-slate-200 dark:border-white/[0.08] shadow-sm">
+              <Share2 className="w-4 h-4" />
             </div>
             <div>
               <h2 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
@@ -186,7 +186,7 @@ export default function ShareModal({
 
         {/* Snapshot Summary Box */}
         <div className="p-4 rounded-xl bg-slate-50 dark:bg-zinc-900/80 border border-slate-200 dark:border-zinc-800/80 flex items-start gap-3">
-          <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-500 shrink-0 mt-0.5">
+          <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/[0.08] flex items-center justify-center text-slate-700 dark:text-zinc-300 shrink-0 mt-0.5">
             <MessageSquare className="w-4 h-4" />
           </div>
           <div className="flex-1 min-w-0">
@@ -208,25 +208,13 @@ export default function ShareModal({
         {/* Security & Public Access Control Toggle */}
         <div className="p-3.5 rounded-xl bg-slate-100/70 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            {isPublic ? (
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0">
-                <Globe className="w-3.5 h-3.5" />
-              </div>
-            ) : (
-              <div className="w-7 h-7 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500 shrink-0">
-                <Lock className="w-3.5 h-3.5" />
-              </div>
-            )}
+            <div className="w-7 h-7 rounded-lg bg-slate-200/80 dark:bg-white/[0.08] border border-slate-300 dark:border-white/[0.1] flex items-center justify-center text-slate-700 dark:text-zinc-300 shrink-0">
+              {isPublic ? <Globe className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+            </div>
             <div>
               <div className="text-xs font-semibold text-slate-900 dark:text-zinc-100 flex items-center gap-1.5">
                 <span>{isPublic ? "Akses Publik Aktif" : "Akses Publik Dinonaktifkan (Privat)"}</span>
-                <span
-                  className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-medium ${
-                    isPublic
-                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                      : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
-                  }`}
-                >
+                <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-medium bg-slate-200 dark:bg-white/[0.1] text-slate-800 dark:text-zinc-200">
                   {isPublic ? "Bisa Dilihat" : "Terkunci"}
                 </span>
               </div>
@@ -242,10 +230,10 @@ export default function ShareModal({
             type="button"
             disabled={isGenerating}
             onClick={() => handleTogglePublic(!isPublic)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 cursor-pointer ${
               isPublic
-                ? "bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20"
-                : "bg-emerald-500 hover:bg-emerald-400 text-white shadow-sm"
+                ? "bg-slate-200 hover:bg-slate-300 dark:bg-white/[0.1] dark:hover:bg-white/[0.16] text-slate-800 dark:text-zinc-200 border border-slate-300 dark:border-white/[0.1]"
+                : "bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-zinc-200 shadow-sm"
             }`}
           >
             {isPublic ? "Kunci / Matikan" : "Aktifkan Publik"}
@@ -259,13 +247,13 @@ export default function ShareModal({
               type="checkbox"
               checked={includeAuthor}
               onChange={(e) => setIncludeAuthor(e.target.checked)}
-              className="w-4 h-4 rounded border-slate-300 dark:border-zinc-700 text-sky-500 focus:ring-sky-500 focus:ring-offset-0 bg-white dark:bg-zinc-800 cursor-pointer"
+              className="w-4 h-4 rounded border-slate-300 dark:border-zinc-700 text-slate-900 dark:text-white focus:ring-slate-500 focus:ring-offset-0 bg-white dark:bg-zinc-800 cursor-pointer"
             />
             <span>Sertakan nama akun saya ({currentUser?.name || "Pengguna"})</span>
           </label>
 
-          <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-            <ShieldCheck className="w-3.5 h-3.5" />
+          <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 dark:text-zinc-400 font-medium">
+            <ShieldCheck className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
             API Key & Sesi Privat Aman
           </span>
         </div>
@@ -275,7 +263,7 @@ export default function ShareModal({
           <label className="text-[11px] font-medium text-slate-500 dark:text-zinc-400 flex items-center justify-between">
             <span>Tautan Percakapan Publik</span>
             {!isPublic && (
-              <span className="text-rose-500 flex items-center gap-1">
+              <span className="text-slate-500 dark:text-zinc-400 flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3" />
                 Tautan saat ini tidak aktif
               </span>
@@ -296,12 +284,12 @@ export default function ShareModal({
                 className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-zinc-900 border text-xs font-mono select-all focus:outline-none ${
                   isPublic
                     ? "border-slate-300 dark:border-zinc-700/80 text-slate-800 dark:text-zinc-200"
-                    : "border-rose-300 dark:border-rose-900/50 text-slate-400 dark:text-zinc-500 line-through"
+                    : "border-slate-300 dark:border-zinc-700/80 text-slate-400 dark:text-zinc-500 line-through"
                 }`}
               />
               {isGenerating && (
                 <div className="absolute right-3">
-                  <Loader2 className="w-4 h-4 text-sky-400 animate-spin" />
+                  <Loader2 className="w-4 h-4 text-slate-500 animate-spin" />
                 </div>
               )}
             </div>
@@ -310,12 +298,12 @@ export default function ShareModal({
               type="button"
               onClick={handleCopy}
               disabled={isGenerating || !shareUrl || !isPublic}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 shadow-sm ${
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 shadow-sm cursor-pointer ${
                 copied
-                  ? "bg-emerald-500 text-white"
+                  ? "bg-slate-800 text-white dark:bg-white dark:text-slate-900"
                   : isPublic
-                  ? "bg-sky-500 hover:bg-sky-400 text-zinc-950 disabled:opacity-50"
-                  : "bg-zinc-300 dark:bg-zinc-800 text-zinc-500 cursor-not-allowed"
+                  ? "bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-zinc-200 disabled:opacity-50"
+                  : "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed"
               }`}
             >
               {copied ? (
@@ -340,7 +328,7 @@ export default function ShareModal({
             type="button"
             onClick={handleOpenExternal}
             disabled={!shareUrl || isGenerating || !isPublic}
-            className="text-xs text-sky-500 hover:text-sky-400 font-medium inline-flex items-center gap-1.5 disabled:opacity-40"
+            className="text-xs text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white font-medium inline-flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
           >
             <span>Buka pratinjau publik</span>
             <ExternalLink className="w-3.5 h-3.5" />
@@ -349,7 +337,7 @@ export default function ShareModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition"
+            className="px-4 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer"
           >
             Selesai
           </button>
