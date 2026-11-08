@@ -23,6 +23,7 @@ import {
   type StoredConversation,
 } from "@/utils/chat-memory";
 import { syncAccountBackup, restoreAccountData } from "@/utils/account-sync";
+import { useTheme } from "@/utils/theme";
 import {
   Plus,
   PlusCircle,
@@ -72,6 +73,14 @@ import {
   ChevronRight,
   BookOpen,
   FileCode,
+  Settings,
+  Sun,
+  Moon,
+  SunMoon,
+  Palette,
+  Laptop,
+  Cloud,
+  ShieldCheck,
 } from "lucide-react";
 
 interface DetectedSmartboardItem {
@@ -679,11 +688,11 @@ function PromptActionBarLeft({
       {showAttachMenu && (
         <div
           ref={attachMenuRef}
-          className="absolute left-0 bottom-full mb-2.5 w-72 bg-[#18191f] border border-white/[0.1] rounded-2xl shadow-2xl p-1.5 z-50 text-xs text-zinc-300 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
+          className="absolute left-0 bottom-full mb-2.5 w-72 bg-white dark:bg-[#18191f] border border-slate-200 dark:border-white/[0.1] rounded-2xl shadow-2xl p-1.5 z-50 text-xs text-slate-700 dark:text-zinc-300 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
         >
-          <div className="px-3 py-2 flex items-center justify-between border-b border-white/[0.06] text-zinc-400 font-medium text-[11px]">
-            <span className="flex items-center gap-1.5 text-zinc-200">
-              <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+          <div className="px-3 py-2 flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] text-slate-500 dark:text-zinc-400 font-medium text-[11px]">
+            <span className="flex items-center gap-1.5 text-slate-800 dark:text-zinc-200">
+              <Sparkles className="w-3.5 h-3.5 text-blue-500" />
               Lampirkan ke ChatZAP
             </span>
             <button
@@ -692,7 +701,7 @@ function PromptActionBarLeft({
                 setShowAttachMenu(false);
                 setShowSubUploadMenu(false);
               }}
-              className="p-1 hover:text-white rounded-lg transition cursor-pointer"
+              className="p-1 hover:text-slate-900 dark:hover:text-white rounded-lg transition cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -706,12 +715,12 @@ function PromptActionBarLeft({
                 setShowAttachMenu(false);
                 onUploadFilesClick();
               }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/[0.06] text-left transition group cursor-pointer"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/[0.06] text-left transition group cursor-pointer"
             >
-              <Paperclip className="w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform flex-shrink-0" />
+              <Paperclip className="w-4 h-4 text-blue-500 group-hover:scale-110 transition-transform flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <div className="font-medium text-zinc-100">Unggah berkas</div>
-                <div className="text-[10px] text-zinc-500 truncate">PDF, TXT, skrip Python, CSV, Markdown</div>
+                <div className="font-medium text-slate-800 dark:text-zinc-100">Unggah berkas</div>
+                <div className="text-[10px] text-slate-400 dark:text-zinc-500 truncate">PDF, TXT, skrip Python, CSV, Markdown</div>
               </div>
             </button>
 
@@ -722,12 +731,12 @@ function PromptActionBarLeft({
                 setShowAttachMenu(false);
                 onCameraClick();
               }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/[0.06] text-left transition group cursor-pointer"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/[0.06] text-left transition group cursor-pointer"
             >
-              <Camera className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform flex-shrink-0" />
+              <Camera className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <div className="font-medium text-zinc-100">Foto soal / coretan</div>
-                <div className="text-[10px] text-zinc-500 truncate">Ambil foto coretan matematika dari HP/kamera</div>
+                <div className="font-medium text-slate-800 dark:text-zinc-100">Foto soal / coretan</div>
+                <div className="text-[10px] text-slate-400 dark:text-zinc-500 truncate">Ambil foto coretan matematika dari HP/kamera</div>
               </div>
             </button>
 
@@ -736,17 +745,17 @@ function PromptActionBarLeft({
               <button
                 type="button"
                 onClick={() => setShowSubUploadMenu((prev) => !prev)}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-white/[0.06] text-left transition cursor-pointer"
+                className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/[0.06] text-left transition cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
-                  <LayoutGrid className="w-4 h-4 text-indigo-400 flex-shrink-0" />
-                  <span className="font-medium text-zinc-100">Format &amp; data lainnya</span>
+                  <LayoutGrid className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                  <span className="font-medium text-slate-800 dark:text-zinc-100">Format &amp; data lainnya</span>
                 </div>
-                <ChevronRight className="w-3.5 h-3.5 text-zinc-500" />
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500" />
               </button>
 
               {showSubUploadMenu && (
-                <div className="absolute left-full bottom-0 ml-1.5 w-60 bg-[#18191f] border border-white/[0.1] rounded-2xl shadow-2xl p-1.5 z-50 text-xs">
+                <div className="absolute left-full bottom-0 ml-1.5 w-60 bg-white dark:bg-[#18191f] border border-slate-200 dark:border-white/[0.1] rounded-2xl shadow-2xl p-1.5 z-50 text-xs">
                   <button
                     type="button"
                     onClick={() => {
@@ -754,12 +763,12 @@ function PromptActionBarLeft({
                       setShowSubUploadMenu(false);
                       onInsertLatex();
                     }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white/[0.06] text-left transition cursor-pointer"
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] text-left transition cursor-pointer"
                   >
-                    <Code2 className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
+                    <Code2 className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
                     <div>
-                      <div className="font-medium text-zinc-200">Impor formula LaTeX</div>
-                      <div className="text-[10px] text-zinc-500">Template sistem persamaan</div>
+                      <div className="font-medium text-slate-800 dark:text-zinc-200">Impor formula LaTeX</div>
+                      <div className="text-[10px] text-slate-400 dark:text-zinc-500">Template sistem persamaan</div>
                     </div>
                   </button>
                   <button
@@ -769,12 +778,12 @@ function PromptActionBarLeft({
                       setShowSubUploadMenu(false);
                       onInsertPython();
                     }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white/[0.06] text-left transition cursor-pointer"
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] text-left transition cursor-pointer"
                   >
-                    <FileCode className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                    <FileCode className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
                     <div>
-                      <div className="font-medium text-zinc-200">Impor skrip SymPy CAS</div>
-                      <div className="text-[10px] text-zinc-500">Kode aljabar deterministik</div>
+                      <div className="font-medium text-slate-800 dark:text-zinc-200">Impor skrip SymPy CAS</div>
+                      <div className="text-[10px] text-slate-400 dark:text-zinc-500">Kode aljabar deterministik</div>
                     </div>
                   </button>
                   <button
@@ -784,19 +793,19 @@ function PromptActionBarLeft({
                       setShowSubUploadMenu(false);
                       onOpenWorkspaceFiles();
                     }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white/[0.06] text-left transition cursor-pointer"
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] text-left transition cursor-pointer"
                   >
-                    <Folder className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
+                    <Folder className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" />
                     <div>
-                      <div className="font-medium text-zinc-200">Berkas Workspace</div>
-                      <div className="text-[10px] text-zinc-500">{workspaceFilesCount} berkas tersimpan</div>
+                      <div className="font-medium text-slate-800 dark:text-zinc-200">Berkas Workspace</div>
+                      <div className="text-[10px] text-slate-400 dark:text-zinc-500">{workspaceFilesCount} berkas tersimpan</div>
                     </div>
                   </button>
                 </div>
               )}
             </div>
 
-            <div className="h-px bg-white/[0.06] my-1" />
+            <div className="h-px bg-slate-100 dark:bg-white/[0.06] my-1" />
 
             {/* 4. Open 3D Smartboard */}
             <button
@@ -805,15 +814,15 @@ function PromptActionBarLeft({
                 setShowAttachMenu(false);
                 onOpenSmartboard();
               }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/[0.06] text-left transition group cursor-pointer"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/[0.06] text-left transition group cursor-pointer"
             >
-              <Box className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform flex-shrink-0" />
+              <Box className="w-4 h-4 text-cyan-500 group-hover:scale-110 transition-transform flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <div className="font-medium text-zinc-100 flex items-center gap-1.5">
+                <div className="font-medium text-slate-800 dark:text-zinc-100 flex items-center gap-1.5">
                   <span>Papan Tulis Pintar 3D</span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 font-mono">2D/3D</span>
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/10 dark:bg-cyan-500/20 text-cyan-600 dark:cyan-300 font-mono">2D/3D</span>
                 </div>
-                <div className="text-[10px] text-zinc-500 truncate">Kanvas 3D, simulasi kubus/balok &amp; grafik 2D</div>
+                <div className="text-[10px] text-slate-400 dark:text-zinc-500 truncate">Kanvas 3D, simulasi kubus/balok &amp; grafik 2D</div>
               </div>
             </button>
 
@@ -824,12 +833,12 @@ function PromptActionBarLeft({
                 setShowAttachMenu(false);
                 onInsertExample();
               }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/[0.06] text-left transition group cursor-pointer"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/[0.06] text-left transition group cursor-pointer"
             >
-              <BookOpen className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform flex-shrink-0" />
+              <BookOpen className="w-4 h-4 text-amber-500 group-hover:scale-110 transition-transform flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <div className="font-medium text-zinc-100">Contoh Soal Aljabar</div>
-                <div className="text-[10px] text-zinc-500 truncate">Muat contoh coretan penurunan rumus untuk diuji</div>
+                <div className="font-medium text-slate-800 dark:text-zinc-100">Contoh Soal Aljabar</div>
+                <div className="text-[10px] text-slate-400 dark:text-zinc-500 truncate">Muat contoh coretan penurunan rumus untuk diuji</div>
               </div>
             </button>
           </div>
@@ -840,14 +849,14 @@ function PromptActionBarLeft({
       {showWorkspaceMenu && (
         <div
           ref={workspaceMenuRef}
-          className="absolute left-6 bottom-full mb-2.5 w-72 bg-[#18191f] border border-white/[0.1] rounded-2xl shadow-2xl p-2 z-50 text-xs text-zinc-300 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
+          className="absolute left-6 bottom-full mb-2.5 w-72 bg-white dark:bg-[#18191f] border border-slate-200 dark:border-white/[0.1] rounded-2xl shadow-2xl p-2 z-50 text-xs text-slate-700 dark:text-zinc-300 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
         >
-          <div className="px-2.5 py-1.5 flex items-center justify-between border-b border-white/[0.06] text-zinc-400 font-medium text-[11px]">
-            <span className="text-zinc-200">Mode &amp; Izin Workspace</span>
+          <div className="px-2.5 py-1.5 flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] text-slate-500 dark:text-zinc-400 font-medium text-[11px]">
+            <span className="text-slate-800 dark:text-zinc-200">Mode &amp; Izin Workspace</span>
             <button
               type="button"
               onClick={() => setShowWorkspaceMenu(false)}
-              className="p-1 hover:text-white rounded-lg transition cursor-pointer"
+              className="p-1 hover:text-slate-900 dark:hover:text-white rounded-lg transition cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -865,19 +874,19 @@ function PromptActionBarLeft({
               }}
               className={`w-full flex items-start gap-2.5 p-2 rounded-xl text-left transition cursor-pointer ${
                 workspaceMode === "write"
-                  ? "bg-blue-600/15 border border-blue-500/30 text-white"
-                  : "hover:bg-white/[0.05] text-zinc-300"
+                  ? "bg-blue-50 dark:bg-blue-600/15 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-white"
+                  : "hover:bg-slate-100 dark:hover:bg-white/[0.05] text-slate-700 dark:text-zinc-300"
               }`}
             >
-              <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 mt-0.5">
+              <div className="p-1.5 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 mt-0.5">
                 <Edit3 className="w-3.5 h-3.5" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-xs flex items-center justify-between">
                   <span>Workspace Write</span>
-                  {workspaceMode === "write" && <Check className="w-3.5 h-3.5 text-blue-400" />}
+                  {workspaceMode === "write" && <Check className="w-3.5 h-3.5 text-blue-500" />}
                 </div>
-                <div className="text-[10px] text-zinc-400 leading-tight mt-0.5">
+                <div className="text-[10px] text-slate-400 dark:text-zinc-400 leading-tight mt-0.5">
                   AI dapat menyimpan catatan, mengeksekusi perhitungan CAS &amp; membuat berkas
                 </div>
               </div>
@@ -894,30 +903,30 @@ function PromptActionBarLeft({
               }}
               className={`w-full flex items-start gap-2.5 p-2 rounded-xl text-left transition cursor-pointer ${
                 workspaceMode === "read"
-                  ? "bg-blue-600/15 border border-blue-500/30 text-white"
-                  : "hover:bg-white/[0.05] text-zinc-300"
+                  ? "bg-blue-50 dark:bg-blue-600/15 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-white"
+                  : "hover:bg-slate-100 dark:hover:bg-white/[0.05] text-slate-700 dark:text-zinc-300"
               }`}
             >
-              <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 mt-0.5">
+              <div className="p-1.5 rounded-lg bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 mt-0.5">
                 <Eye className="w-3.5 h-3.5" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-xs flex items-center justify-between">
                   <span>Workspace Read-Only</span>
-                  {workspaceMode === "read" && <Check className="w-3.5 h-3.5 text-blue-400" />}
+                  {workspaceMode === "read" && <Check className="w-3.5 h-3.5 text-blue-500" />}
                 </div>
-                <div className="text-[10px] text-zinc-400 leading-tight mt-0.5">
+                <div className="text-[10px] text-slate-400 dark:text-zinc-400 leading-tight mt-0.5">
                   Hanya diskusi Sokratik &amp; verifikasi matematika tanpa memodifikasi berkas
                 </div>
               </div>
             </button>
           </div>
 
-          <div className="h-px bg-white/[0.06] my-1" />
+          <div className="h-px bg-slate-100 dark:bg-white/[0.06] my-1" />
 
           {/* Section 2: Pilih Active Workspace */}
           <div className="px-2 py-1">
-            <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">
+            <div className="text-[10px] font-semibold text-slate-400 dark:text-zinc-500 uppercase tracking-wider mb-1">
               Ruang Kerja Aktif
             </div>
             <div className="space-y-0.5 max-h-32 overflow-y-auto">
@@ -931,25 +940,21 @@ function PromptActionBarLeft({
                   }}
                   className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs transition cursor-pointer ${
                     activeWorkspaceId === ws.id
-                      ? "bg-white/[0.08] text-white font-medium"
-                      : "hover:bg-white/[0.04] text-zinc-400 hover:text-zinc-200"
+                      ? "bg-blue-50 dark:bg-white/[0.08] text-blue-700 dark:text-white font-medium"
+                      : "hover:bg-slate-100 dark:hover:bg-white/[0.04] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
                   }`}
                 >
                   <div className="flex items-center gap-2 truncate">
-                    <Folder className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                    <Folder className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
                     <span className="truncate">{ws.name}</span>
                   </div>
-                  {activeWorkspaceId === ws.id && (
-                    <span className="text-[9px] px-1 py-0.2 bg-blue-500/20 text-blue-300 rounded font-mono">
-                      Aktif
-                    </span>
-                  )}
+                  {activeWorkspaceId === ws.id && <Check className="w-3 h-3 text-blue-500 flex-shrink-0" />}
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="h-px bg-white/[0.06] my-1" />
+          <div className="h-px bg-slate-100 dark:bg-white/[0.06] my-1" />
 
           {/* Quick Action: Buka Berkas Workspace */}
           <button
@@ -958,7 +963,7 @@ function PromptActionBarLeft({
               setShowWorkspaceMenu(false);
               onOpenWorkspaceFiles();
             }}
-            className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-white/[0.06] text-xs text-blue-400 hover:text-blue-300 transition cursor-pointer"
+            className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition cursor-pointer"
           >
             <div className="flex items-center gap-2">
               <Folder className="w-3.5 h-3.5" />
@@ -1060,6 +1065,13 @@ export default function ZAPApp() {
   const [canvasShowSlice, setCanvasShowSlice] = useState<boolean>(false);
   const [showFaultComparison, setShowFaultComparison] = useState<boolean>(false);
   const [isProjectorMode, setIsProjectorMode] = useState<boolean>(false);
+
+  // Theme & Settings modal
+  const { theme, resolvedTheme, setTheme, isDark } = useTheme();
+  const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
+  const [settingsTab, setSettingsTab] = useState<"appearance" | "general" | "sync" | "models">("appearance");
+  const [syncSuccessToast, setSyncSuccessToast] = useState<boolean>(false);
+  const [autoScrollChat, setAutoScrollChat] = useState<boolean>(true);
 
   // State untuk aksi pesan asisten & pengguna (Audio, Copy, Share, Feedback)
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
@@ -2098,7 +2110,7 @@ export default function ZAPApp() {
   // CHAT STUDIO VIEW (Hanya tampil setelah pengguna login)
   // =========================================================================
   return (
-    <div className="flex h-screen bg-[#0e0f12] text-zinc-200 overflow-hidden font-sans select-none text-xs">
+    <div className="flex h-screen bg-[#f8fafc] dark:bg-[#0e0f12] text-slate-800 dark:text-zinc-200 overflow-hidden font-sans select-none text-xs">
       {/* Hidden Global File Inputs (Selalu ter-mount di DOM agar tombol upload berfungsi di semua tab & status percakapan) */}
       <input
         ref={fileInputRef}
@@ -2119,20 +2131,20 @@ export default function ZAPApp() {
 
       {/* 1. LEFT SIDEBAR (Persis seperti Screenshot 0 & 1) */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-[#131418] border-r border-white/[0.06] flex flex-col transition-transform duration-200 ease-in-out sm:static sm:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-[#131418] border-r border-slate-200 dark:border-white/[0.06] flex flex-col transition-transform duration-200 ease-in-out sm:static sm:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full sm:hidden"
         }`}
       >
         {/* Brand Header: ChatZAP + Toggle button */}
         <div className="h-12 px-3.5 flex items-center justify-between border-b border-transparent">
           <div className="flex items-center gap-2">
-            <ZapLogo className="w-5 h-5 text-white" />
-            <span className="font-bold text-sm tracking-tight text-white">ChatZAP</span>
+            <ZapLogo className="w-5 h-5 text-blue-600 dark:text-white" />
+            <span className="font-bold text-sm tracking-tight text-slate-900 dark:text-white">ChatZAP</span>
           </div>
           <button
             type="button"
             onClick={() => setSidebarOpen(false)}
-            className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-white/[0.06] transition"
+            className="p-1.5 rounded-lg text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition"
             title="Ciutkan sidebar"
           >
             <PanelLeft className="w-4 h-4" />
@@ -2143,9 +2155,9 @@ export default function ZAPApp() {
         <div className="px-3 py-2">
           <button
             onClick={startNewChat}
-            className="w-full py-2 px-3 rounded-xl bg-[#1e2025] hover:bg-[#272a32] text-zinc-200 font-medium text-xs flex items-center justify-center gap-2 transition border border-white/[0.04] active:scale-[0.99]"
+            className="w-full py-2 px-3 rounded-xl bg-slate-100 dark:bg-[#1e2025] hover:bg-slate-200 dark:hover:bg-[#272a32] text-slate-800 dark:text-zinc-200 font-medium text-xs flex items-center justify-center gap-2 transition border border-slate-200 dark:border-white/[0.04] active:scale-[0.99] cursor-pointer"
           >
-            <PlusCircle className="w-4 h-4 text-zinc-400" />
+            <PlusCircle className="w-4 h-4 text-slate-500 dark:text-zinc-400" />
             <span>New Session</span>
           </button>
         </div>
@@ -2155,43 +2167,43 @@ export default function ZAPApp() {
           <button
             type="button"
             onClick={() => setShowPluginModal(true)}
-            className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-white hover:bg-white/[0.05] transition text-left cursor-pointer"
+            className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.05] transition text-left cursor-pointer"
           >
-            <Sparkles className="w-3.5 h-3.5 text-zinc-400" />
+            <Sparkles className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-400" />
             <span>Plugins</span>
           </button>
 
           <button
             type="button"
             onClick={() => setShowTasksModal(true)}
-            className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-white hover:bg-white/[0.05] transition text-left cursor-pointer"
+            className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.05] transition text-left cursor-pointer"
           >
-            <Clock className="w-3.5 h-3.5 text-zinc-400" />
+            <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-400" />
             <span>Automation tasks</span>
           </button>
 
           <button
             type="button"
             onClick={() => setShowMoreModal(true)}
-            className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-white hover:bg-white/[0.05] transition text-left cursor-pointer"
+            className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.05] transition text-left cursor-pointer"
           >
-            <LayoutGrid className="w-3.5 h-3.5 text-zinc-400" />
+            <LayoutGrid className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-400" />
             <span>More</span>
           </button>
         </div>
 
         {/* Workspaces Section */}
         <div className="flex-1 flex flex-col min-h-0 pt-3">
-          <div className="flex items-center justify-between px-3.5 pb-1.5 text-zinc-400">
-            <span className="text-[11px] font-medium text-zinc-400">Workspaces</span>
+          <div className="flex items-center justify-between px-3.5 pb-1.5 text-slate-400 dark:text-zinc-400">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-zinc-400">Workspaces</span>
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => setIsSearchingSession(!isSearchingSession)}
                 className={`p-1 rounded transition ${
                   isSearchingSession
-                    ? "bg-blue-600/20 text-blue-400 border border-blue-500/30"
-                    : "hover:bg-white/[0.06] text-zinc-500 hover:text-zinc-300"
+                    ? "bg-blue-600/10 text-blue-600 border border-blue-500/30 dark:bg-blue-600/20 dark:text-blue-400"
+                    : "hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-300"
                 }`}
                 title="Cari sesi aljabar"
               >
@@ -2202,8 +2214,8 @@ export default function ZAPApp() {
                 onClick={() => setShowWorkspaceFilter(!showWorkspaceFilter)}
                 className={`p-1 rounded transition ${
                   showWorkspaceFilter || workspaceStatusFilter !== "all"
-                    ? "bg-blue-600/20 text-blue-400 border border-blue-500/30"
-                    : "hover:bg-white/[0.06] text-zinc-500 hover:text-zinc-300"
+                    ? "bg-blue-600/10 text-blue-600 border border-blue-500/30 dark:bg-blue-600/20 dark:text-blue-400"
+                    : "hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-300"
                 }`}
                 title="Filter workspaces & status"
               >
@@ -2212,7 +2224,7 @@ export default function ZAPApp() {
               <button
                 type="button"
                 onClick={() => setShowNewWorkspaceModal(true)}
-                className="p-1 rounded hover:bg-white/[0.06] text-zinc-500 hover:text-zinc-300 transition"
+                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-300 transition cursor-pointer"
                 title="Buat workspace baru"
               >
                 <FolderPlus className="w-3.5 h-3.5" />
@@ -2223,21 +2235,21 @@ export default function ZAPApp() {
           {/* Quick Search Session Bar */}
           {isSearchingSession && (
             <div className="px-3 pb-2 pt-1">
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#18191e] border border-white/[0.08] text-xs">
-                <Search className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" />
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-100 dark:bg-[#18191e] border border-slate-200 dark:border-white/[0.08] text-xs">
+                <Search className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 flex-shrink-0" />
                 <input
                   type="text"
                   value={sessionSearchQuery}
                   onChange={(e) => setSessionSearchQuery(e.target.value)}
                   placeholder="Cari sesi atau materi..."
-                  className="w-full bg-transparent text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none"
+                  className="w-full bg-transparent text-xs text-slate-800 dark:text-zinc-200 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none"
                   autoFocus
                 />
                 {sessionSearchQuery && (
                   <button
                     type="button"
                     onClick={() => setSessionSearchQuery("")}
-                    className="text-zinc-500 hover:text-white"
+                    className="text-slate-400 dark:text-zinc-500 hover:text-slate-800 dark:hover:text-white"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -2248,13 +2260,13 @@ export default function ZAPApp() {
 
           {/* Workspace Filter Popover */}
           {showWorkspaceFilter && (
-            <div className="mx-3 mb-2 p-2.5 rounded-xl bg-[#191b22] border border-white/[0.1] text-xs space-y-2 shadow-2xl">
-              <div className="flex items-center justify-between text-[11px] text-zinc-300 font-medium pb-1.5 border-b border-white/[0.06]">
+            <div className="mx-3 mb-2 p-2.5 rounded-xl bg-white dark:bg-[#191b22] border border-slate-200 dark:border-white/[0.1] text-xs space-y-2 shadow-xl">
+              <div className="flex items-center justify-between text-[11px] text-slate-700 dark:text-zinc-300 font-medium pb-1.5 border-b border-slate-100 dark:border-white/[0.06]">
                 <span>Filter &amp; Pengelompokan</span>
                 <button
                   type="button"
                   onClick={() => setShowWorkspaceFilter(false)}
-                  className="text-zinc-500 hover:text-white"
+                  className="text-slate-400 dark:text-zinc-500 hover:text-slate-800 dark:hover:text-white"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -2262,11 +2274,11 @@ export default function ZAPApp() {
 
               {/* Workspace Picker */}
               <div className="space-y-1">
-                <label className="text-[10px] text-zinc-500 uppercase font-mono">Workspace</label>
+                <label className="text-[10px] text-slate-400 dark:text-zinc-500 uppercase font-mono">Workspace</label>
                 <select
                   value={activeWorkspaceId}
                   onChange={(e) => setActiveWorkspaceId(e.target.value)}
-                  className="w-full bg-[#121318] border border-white/[0.08] rounded-lg px-2 py-1 text-xs text-zinc-200 focus:outline-none cursor-pointer"
+                  className="w-full bg-slate-50 dark:bg-[#121318] border border-slate-200 dark:border-white/[0.08] rounded-lg px-2 py-1 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none cursor-pointer"
                 >
                   {workspaces.map((ws) => (
                     <option key={ws.id} value={ws.id}>
@@ -2278,7 +2290,7 @@ export default function ZAPApp() {
 
               {/* Status Filter */}
               <div className="space-y-1">
-                <label className="text-[10px] text-zinc-500 uppercase font-mono">Status Sesi</label>
+                <label className="text-[10px] text-slate-400 dark:text-zinc-500 uppercase font-mono">Status Sesi</label>
                 <div className="grid grid-cols-2 gap-1 text-[10px]">
                   {[
                     { id: "all", label: "Semua Sesi" },
@@ -2293,7 +2305,7 @@ export default function ZAPApp() {
                       className={`px-2 py-1 rounded text-center transition cursor-pointer ${
                         workspaceStatusFilter === item.id
                           ? "bg-blue-600 text-white font-medium"
-                          : "bg-white/[0.03] text-zinc-400 hover:text-white hover:bg-white/[0.06]"
+                          : "bg-slate-100 dark:bg-white/[0.03] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/[0.06]"
                       }`}
                     >
                       {item.label}
@@ -2306,14 +2318,14 @@ export default function ZAPApp() {
 
           <div className="flex-1 overflow-y-auto px-2 space-y-0.5">
             {/* Active Workspace Tree Item */}
-            <div className="flex items-center justify-between px-2.5 py-1 text-xs text-zinc-300 font-medium">
+            <div className="flex items-center justify-between px-2.5 py-1 text-xs text-slate-700 dark:text-zinc-300 font-medium">
               <div className="flex items-center gap-2 truncate">
-                <Folder className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                <Folder className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
                 <span className="truncate">
                   {workspaces.find((w) => w.id === activeWorkspaceId)?.name || "Default workspace"}
                 </span>
               </div>
-              <span className="text-[10px] font-mono text-zinc-500">
+              <span className="text-[10px] font-mono text-slate-400 dark:text-zinc-500">
                 {conversations.length}
               </span>
             </div>
@@ -2323,7 +2335,7 @@ export default function ZAPApp() {
               {/* Active Session */}
               <div
                 onClick={() => {}}
-                className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[#1e2025] text-white text-xs font-medium cursor-pointer"
+                className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-[#1e2025] text-blue-700 dark:text-white text-xs font-medium cursor-pointer border border-blue-200/60 dark:border-transparent"
               >
                 <span className="truncate">
                   {messages.length === 0 ? "New Session" : conversations.find((c) => c.id === activeConversationId)?.title || "Current Session"}
@@ -2357,7 +2369,7 @@ export default function ZAPApp() {
 
                 if (filtered.length === 0 && (sessionSearchQuery || workspaceStatusFilter !== "all")) {
                   return (
-                    <div className="px-2.5 py-3 text-center text-zinc-500 text-[11px] italic">
+                    <div className="px-2.5 py-3 text-center text-slate-400 dark:text-zinc-500 text-[11px] italic">
                       Tidak ada sesi yang cocok dengan filter
                     </div>
                   );
@@ -2367,16 +2379,16 @@ export default function ZAPApp() {
                   <div
                     key={conv.id}
                     onClick={() => openConversation(conv.id)}
-                    className="group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04] transition cursor-pointer"
+                    className="group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition cursor-pointer"
                   >
                     <span className="truncate flex-1">{conv.title}</span>
-                    <span className="text-[10px] text-zinc-600 group-hover:hidden flex-shrink-0">
+                    <span className="text-[10px] text-slate-400 dark:text-zinc-600 group-hover:hidden flex-shrink-0">
                       {formatRelativeTime(conv.updatedAt)}
                     </span>
                     <button
                       type="button"
                       onClick={(e) => deleteConversation(conv.id, e)}
-                      className="hidden group-hover:block text-zinc-500 hover:text-rose-400 flex-shrink-0"
+                      className="hidden group-hover:block text-slate-400 dark:text-zinc-500 hover:text-rose-500 dark:hover:text-rose-400 flex-shrink-0"
                       title="Hapus sesi"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -2388,13 +2400,13 @@ export default function ZAPApp() {
           </div>
         </div>
 
-        {/* Sidebar Footer: Signed in to ChatZAP + Clean Dropdown */}
-        <div className="p-3 border-t border-white/[0.06] relative" ref={profileDropdownRef}>
+        {/* Sidebar Footer: Signed in to ChatZAP + Clean Dropdown Popup */}
+        <div className="p-3 border-t border-slate-200 dark:border-white/[0.06] relative" ref={profileDropdownRef}>
           <div
             onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-            className="flex items-center justify-between w-full hover:bg-white/[0.04] p-1.5 rounded-xl cursor-pointer transition"
+            className="flex items-center justify-between w-full hover:bg-slate-100 dark:hover:bg-white/[0.04] p-1.5 rounded-xl cursor-pointer transition"
           >
-            <div className="flex items-center gap-2 text-xs text-zinc-300 min-w-0">
+            <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-zinc-300 min-w-0">
               {currentUser?.avatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={currentUser.avatar} alt={currentUser.name} className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
@@ -2407,35 +2419,139 @@ export default function ZAPApp() {
                 {currentUser?.name ? `Signed in as ${currentUser.name}` : "Signed in to ChatZAP"}
               </span>
             </div>
-            <ChevronDown className="w-3 h-3 text-zinc-500 flex-shrink-0" />
+            <ChevronDown className="w-3 h-3 text-slate-400 dark:text-zinc-500 flex-shrink-0" />
           </div>
 
-          {/* Profile Dropdown */}
+          {/* Profile Dropdown Popup (Settings, Appearance, Models, Logout) */}
           {profileDropdownOpen && (
-            <div className="absolute left-3 right-3 bottom-full mb-2 bg-[#1a1c22] border border-white/[0.1] rounded-xl shadow-2xl p-2.5 z-50 text-xs text-zinc-200">
-              <div className="pb-2 border-b border-white/[0.08] mb-1.5">
-                <div className="font-semibold text-white truncate">{currentUser?.name}</div>
-                <div className="text-[10px] text-zinc-400 truncate">{currentUser?.email}</div>
-                <div className="text-[9px] font-mono text-emerald-400 uppercase mt-0.5">
-                  {currentUser?.role || "Siswa"} • {currentUser?.jenjang || "SMA"}
+            <div className="absolute left-2 right-2 bottom-full mb-2 bg-white dark:bg-[#1a1c22] border border-slate-200 dark:border-white/[0.1] rounded-2xl shadow-2xl p-2.5 z-50 text-xs text-slate-800 dark:text-zinc-200 animate-in fade-in zoom-in-95 duration-150">
+              {/* User Identity Header */}
+              <div className="pb-2.5 border-b border-slate-100 dark:border-white/[0.08] mb-2 px-1">
+                <div className="flex items-center gap-2.5">
+                  {currentUser?.avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={currentUser.avatar} alt={currentUser.name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-xs text-white flex-shrink-0 font-bold">
+                      {currentUser?.name?.charAt(0) || "U"}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-slate-900 dark:text-white truncate text-xs">{currentUser?.name}</div>
+                    <div className="text-[10px] text-slate-500 dark:text-zinc-400 truncate">{currentUser?.email}</div>
+                    <div className="text-[9px] font-mono text-emerald-600 dark:text-emerald-400 uppercase mt-0.5 font-medium">
+                      {currentUser?.role || "Siswa"} • {currentUser?.jenjang || "SMA"}
+                    </div>
+                  </div>
                 </div>
               </div>
-              <Link
-                href="/connector"
-                onClick={() => setProfileDropdownOpen(false)}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/[0.06] text-zinc-300 hover:text-white transition"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-                <span>Model Connector &amp; Keys</span>
-              </Link>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-rose-950/40 text-rose-400 hover:text-rose-300 transition text-left mt-1 border-t border-white/[0.06] pt-1.5 cursor-pointer"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Keluar Akun</span>
-              </button>
+
+              {/* Menu Actions */}
+              <div className="space-y-1">
+                {/* 1. Settings (Pengaturan) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSettingsTab("general");
+                    setShowSettingsModal(true);
+                    setProfileDropdownOpen(false);
+                  }}
+                  className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-700 dark:text-zinc-200 transition text-left cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2">
+                    <Settings className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 group-hover:text-blue-500 transition" />
+                    <span className="font-medium text-xs">Pengaturan</span>
+                  </div>
+                  <ChevronRight className="w-3 h-3 text-slate-400 dark:text-zinc-600" />
+                </button>
+
+                {/* 2. Appearance (Tampilan & Quick Theme Switcher) */}
+                <div className="px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.04] space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSettingsTab("appearance");
+                        setShowSettingsModal(true);
+                        setProfileDropdownOpen(false);
+                      }}
+                      className="flex items-center gap-1.5 text-xs font-medium text-slate-700 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer"
+                    >
+                      <Palette className="w-3.5 h-3.5 text-blue-500" />
+                      <span>Tampilan</span>
+                    </button>
+                    <span className="text-[10px] text-slate-400 dark:text-zinc-500 capitalize">
+                      {theme === "system" ? "Sistem" : theme === "light" ? "Terang" : "Gelap"}
+                    </span>
+                  </div>
+
+                  {/* 3-way Segmented Control */}
+                  <div className="grid grid-cols-3 gap-1 p-0.5 rounded-lg bg-slate-200/70 dark:bg-black/40 border border-slate-200 dark:border-white/[0.06]">
+                    <button
+                      type="button"
+                      onClick={() => setTheme("light")}
+                      className={`flex items-center justify-center gap-1 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                        theme === "light"
+                          ? "bg-white text-blue-600 shadow-sm"
+                          : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                      title="Mode Terang (Light Mode)"
+                    >
+                      <Sun className="w-3 h-3 text-amber-500" />
+                      <span>Terang</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTheme("dark")}
+                      className={`flex items-center justify-center gap-1 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                        theme === "dark"
+                          ? "bg-[#282a32] text-blue-400 shadow-sm"
+                          : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                      title="Mode Gelap (Dark Mode)"
+                    >
+                      <Moon className="w-3 h-3 text-blue-400" />
+                      <span>Gelap</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTheme("system")}
+                      className={`flex items-center justify-center gap-1 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                        theme === "system"
+                          ? "bg-white dark:bg-[#282a32] text-blue-600 dark:text-blue-400 shadow-sm"
+                          : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                      title="Sesuai Sistem Operasi (System Default)"
+                    >
+                      <Laptop className="w-3 h-3 text-purple-400" />
+                      <span>Sistem</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. Model Connector & Keys */}
+                <Link
+                  href="/connector"
+                  onClick={() => setProfileDropdownOpen(false)}
+                  className="flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white transition"
+                >
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                    <span className="font-medium text-xs">Model Connector &amp; Keys</span>
+                  </div>
+                  <ChevronRight className="w-3 h-3 text-slate-400 dark:text-zinc-600" />
+                </Link>
+
+                {/* 4. Keluar Akun */}
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 transition text-left mt-1 border-t border-slate-100 dark:border-white/[0.06] pt-1.5 cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="font-medium text-xs">Keluar Akun</span>
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -2443,11 +2559,11 @@ export default function ZAPApp() {
 
       {/* 2. MIDDLE COLUMN (Chat Area) */}
       <div
-        className={`flex flex-col h-full overflow-hidden relative transition-all duration-200 ${
+        className={`flex flex-col h-full overflow-hidden relative transition-all duration-200 bg-[#f8fafc] dark:bg-[#0e0f12] ${
           rightPaneFullscreen
             ? "hidden"
             : showRightPane
-            ? "w-full lg:w-1/2 flex-1 border-r border-white/[0.06]"
+            ? "w-full lg:w-1/2 flex-1 border-r border-slate-200 dark:border-white/[0.06]"
             : "w-full"
         }`}
       >
@@ -2508,50 +2624,50 @@ export default function ZAPApp() {
             <div className="my-auto flex flex-col items-center justify-center text-center py-8">
               {/* Logo + Title: Into the Unknown + Preview */}
               <div className="flex items-center gap-3 mb-5">
-                <ZapLogo className="w-7 h-7 text-white" />
-                <h1 className="text-2xl font-bold tracking-tight text-white">Into the Unknown</h1>
-                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#1b253b] text-[#5b95ff] border border-[#2d436a]">
+                <ZapLogo className="w-7 h-7 text-blue-600 dark:text-white" />
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Into the Unknown</h1>
+                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200 dark:bg-[#1b253b] dark:text-[#5b95ff] dark:border-[#2d436a]">
                   Preview
                 </span>
               </div>
 
               {/* Dropdown Pills above Composer */}
-              <div className="w-full max-w-xl flex items-center gap-2 mb-2 px-1 text-xs text-zinc-400 justify-start">
+              <div className="w-full max-w-xl flex items-center gap-2 mb-2 px-1 text-xs text-slate-500 dark:text-zinc-400 justify-start">
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-white/[0.04] text-zinc-400 hover:text-zinc-200 transition cursor-pointer"
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-slate-200/60 dark:hover:bg-white/[0.04] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 transition cursor-pointer"
                 >
-                  <Folder className="w-3.5 h-3.5 text-zinc-400" />
+                  <Folder className="w-3.5 h-3.5 text-amber-500 dark:text-zinc-400" />
                   <span>Default workspace</span>
-                  <ChevronDown className="w-3 h-3 text-zinc-500" />
+                  <ChevronDown className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
                 </button>
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-white/[0.04] text-zinc-400 hover:text-zinc-200 transition cursor-pointer"
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-slate-200/60 dark:hover:bg-white/[0.04] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 transition cursor-pointer"
                 >
-                  <Atom className="w-3.5 h-3.5 text-zinc-400" />
+                  <Atom className="w-3.5 h-3.5 text-blue-500 dark:text-zinc-400" />
                   <span>Standard mode</span>
-                  <ChevronDown className="w-3 h-3 text-zinc-500" />
+                  <ChevronDown className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
                 </button>
               </div>
 
               {/* Floating Prompt Box (Screenshot 0 & 1) */}
-              <div className="w-full max-w-xl bg-[#17181c] border border-white/[0.08] focus-within:border-zinc-500 rounded-2xl p-3 shadow-2xl transition-all text-left">
+              <div className="w-full max-w-xl bg-white dark:bg-[#17181c] border border-slate-200 dark:border-white/[0.08] focus-within:border-blue-500 dark:focus-within:border-zinc-500 rounded-2xl p-3 shadow-xl transition-all text-left">
                 {/* Attached File Chips */}
                 {attachedFiles.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 pb-2">
                     {attachedFiles.map((f) => (
                       <div
                         key={f.id}
-                        className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-[#22252c] border border-white/[0.1] text-xs text-zinc-200"
+                        className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-[#22252c] border border-slate-200 dark:border-white/[0.1] text-xs text-slate-800 dark:text-zinc-200"
                       >
-                        <FileText className="w-3.5 h-3.5 text-blue-400" />
+                        <FileText className="w-3.5 h-3.5 text-blue-500" />
                         <span className="font-medium max-w-[140px] truncate">{f.name}</span>
-                        <span className="text-[10px] text-zinc-500 font-mono">({Math.round(f.size / 1024) || 1}KB)</span>
+                        <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono">({Math.round(f.size / 1024) || 1}KB)</span>
                         <button
                           type="button"
                           onClick={() => setAttachedFiles((prev) => prev.filter((item) => item.id !== f.id))}
-                          className="text-zinc-500 hover:text-rose-400 cursor-pointer ml-0.5"
+                          className="text-slate-400 dark:text-zinc-500 hover:text-rose-500 cursor-pointer ml-0.5"
                           title="Hapus lampiran"
                         >
                           <X className="w-3 h-3" />
@@ -2568,7 +2684,7 @@ export default function ZAPApp() {
                   onKeyDown={handleKeyDown}
                   rows={2}
                   placeholder="Describe what you want to build, / commands, @ files or sessions"
-                  className="w-full bg-transparent text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none resize-none font-sans leading-relaxed"
+                  className="w-full bg-transparent text-sm text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none resize-none font-sans leading-relaxed"
                 />
 
                 <div className="flex items-center justify-between pt-2">
@@ -2621,7 +2737,7 @@ export default function ZAPApp() {
                       className={`w-7 h-7 rounded-full flex items-center justify-center transition ${
                         inputText.trim() && !loading
                           ? "bg-blue-600 text-white hover:bg-blue-500"
-                          : "bg-[#282a32] text-zinc-500 cursor-not-allowed"
+                          : "bg-slate-200 dark:bg-[#282a32] text-slate-400 dark:text-zinc-500 cursor-not-allowed"
                       }`}
                     >
                       <ArrowUp className="w-4 h-4" />
@@ -2638,8 +2754,8 @@ export default function ZAPApp() {
                   {/* User Message */}
                   {msg.sender === "user" && (
                     <div className="flex justify-end group">
-                      <div className="max-w-lg bg-[#1e2025] border border-white/[0.08] text-zinc-100 rounded-2xl px-4 py-2.5 text-xs space-y-1.5 shadow-sm relative">
-                        <div className="text-[10px] uppercase font-mono text-zinc-500 flex items-center justify-between gap-3">
+                      <div className="max-w-lg bg-blue-50 dark:bg-[#1e2025] border border-blue-200/80 dark:border-white/[0.08] text-slate-900 dark:text-zinc-100 rounded-2xl px-4 py-2.5 text-xs space-y-1.5 shadow-sm relative">
+                        <div className="text-[10px] uppercase font-mono text-slate-400 dark:text-zinc-500 flex items-center justify-between gap-3">
                           <span>Input</span>
                           <div className="flex items-center gap-2">
                             <span>{msg.timestamp}</span>
@@ -2648,11 +2764,11 @@ export default function ZAPApp() {
                               <button
                                 type="button"
                                 onClick={() => handleCopyUserMessage(msg.rawText || msg.steps?.join("\n") || "", msg.id)}
-                                className="p-1 rounded hover:bg-white/[0.08] text-zinc-400 hover:text-white transition cursor-pointer"
+                                className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/[0.08] text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
                                 title={copiedUserMsgId === msg.id ? "Tersalin!" : "Salin pesan"}
                               >
                                 {copiedUserMsgId === msg.id ? (
-                                  <Check className="w-3 h-3 text-emerald-400" />
+                                  <Check className="w-3 h-3 text-emerald-500" />
                                 ) : (
                                   <Copy className="w-3 h-3" />
                                 )}
@@ -2660,7 +2776,7 @@ export default function ZAPApp() {
                               <button
                                 type="button"
                                 onClick={() => startEditingMessage(msg.id, msg.rawText || msg.steps?.join("\n") || "")}
-                                className="p-1 rounded hover:bg-white/[0.08] text-zinc-400 hover:text-white transition cursor-pointer"
+                                className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/[0.08] text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
                                 title="Edit & kirim ulang"
                               >
                                 <Pencil className="w-3 h-3" />
@@ -2676,14 +2792,14 @@ export default function ZAPApp() {
                               value={editingContent}
                               onChange={(e) => setEditingContent(e.target.value)}
                               rows={2}
-                              className="w-full bg-[#131418] border border-blue-500/50 rounded-lg p-2 text-xs text-white focus:outline-none resize-none font-sans"
+                              className="w-full bg-white dark:bg-[#131418] border border-blue-500 rounded-lg p-2 text-xs text-slate-900 dark:text-white focus:outline-none resize-none font-sans"
                               autoFocus
                             />
                             <div className="flex items-center justify-end gap-1.5">
                               <button
                                 type="button"
                                 onClick={() => setEditingMsgId(null)}
-                                className="px-2 py-1 rounded text-[11px] text-zinc-400 hover:text-white hover:bg-white/[0.06] transition cursor-pointer"
+                                className="px-2 py-1 rounded text-[11px] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
                               >
                                 Batal
                               </button>
@@ -2704,28 +2820,28 @@ export default function ZAPApp() {
                                 {msg.steps.map((st, i) => (
                                   <div
                                     key={i}
-                                    className="flex items-center gap-2 bg-black/30 px-2.5 py-1 rounded-lg border border-white/[0.06]"
+                                    className="flex items-center gap-2 bg-white/70 dark:bg-black/30 px-2.5 py-1 rounded-lg border border-blue-200/50 dark:border-white/[0.06]"
                                   >
-                                    <span className="text-zinc-500 text-[10px] w-4">#{i + 1}</span>
-                                    <div className="text-zinc-100 overflow-x-auto py-0.5">
+                                    <span className="text-slate-400 dark:text-zinc-500 text-[10px] w-4">#{i + 1}</span>
+                                    <div className="text-slate-900 dark:text-zinc-100 overflow-x-auto py-0.5">
                                       <MathView math={st} />
                                     </div>
                                   </div>
                                 ))}
                               </div>
                             ) : msg.rawText ? (
-                              <p className="text-xs text-zinc-100 leading-relaxed font-sans whitespace-pre-wrap">{msg.rawText}</p>
+                              <p className="text-xs text-slate-800 dark:text-zinc-100 leading-relaxed font-sans whitespace-pre-wrap">{msg.rawText}</p>
                             ) : null}
 
                             {/* Attached files pills in user bubble if any */}
                             {msg.attachedFiles && msg.attachedFiles.length > 0 && (
-                              <div className="flex flex-wrap gap-1 pt-1.5 border-t border-white/[0.06]">
+                              <div className="flex flex-wrap gap-1 pt-1.5 border-t border-blue-200/50 dark:border-white/[0.06]">
                                 {msg.attachedFiles.map((file) => (
                                   <div
                                     key={file.id}
-                                    className="flex items-center gap-1 px-2 py-0.5 rounded bg-black/40 text-[10px] text-zinc-300 font-mono border border-white/[0.08]"
+                                    className="flex items-center gap-1 px-2 py-0.5 rounded bg-white/80 dark:bg-black/40 text-[10px] text-slate-700 dark:text-zinc-300 font-mono border border-blue-200/50 dark:border-white/[0.08]"
                                   >
-                                    <FileText className="w-3 h-3 text-blue-400" />
+                                    <FileText className="w-3 h-3 text-blue-500" />
                                     <span className="truncate max-w-[140px]">{file.name}</span>
                                   </div>
                                 ))}
@@ -2740,19 +2856,19 @@ export default function ZAPApp() {
                   {/* Assistant Message */}
                   {msg.sender === "assistant" && (
                     <div className="flex gap-2.5 items-start">
-                      <ZapLogo className="w-6 h-6 flex-shrink-0 mt-0.5 text-blue-400" />
+                      <ZapLogo className="w-6 h-6 flex-shrink-0 mt-0.5 text-blue-500" />
 
                       <div className="flex-1 space-y-2 max-w-lg min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-blue-300 font-medium px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 font-mono flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          <span className="text-[10px] text-blue-700 dark:text-blue-300 font-medium px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 font-mono flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                             <span>{msg.modelName || selectedModel.name}</span>
                           </span>
-                          <span className="text-[10px] text-zinc-600 font-mono">{msg.timestamp}</span>
+                          <span className="text-[10px] text-slate-400 dark:text-zinc-600 font-mono">{msg.timestamp}</span>
                         </div>
 
                         {msg.replyText && (
-                          <div className="bg-[#17181c] border border-white/[0.06] text-zinc-200 rounded-2xl px-4 py-3 text-xs leading-relaxed">
+                          <div className="bg-white dark:bg-[#17181c] border border-slate-200 dark:border-white/[0.06] text-slate-800 dark:text-zinc-200 rounded-2xl px-4 py-3 text-xs leading-relaxed shadow-sm">
                             <RichChatText content={msg.replyText} />
                           </div>
                         )}
@@ -2762,46 +2878,46 @@ export default function ZAPApp() {
                           <button
                             type="button"
                             onClick={() => handleOpenSmartboard(msg.smartboardItem)}
-                            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-blue-950/40 via-indigo-950/30 to-blue-950/40 hover:from-blue-900/50 hover:to-indigo-900/40 border border-blue-500/30 text-blue-300 hover:text-white transition group shadow-sm text-xs cursor-pointer"
+                            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 dark:from-blue-950/40 dark:via-indigo-950/30 dark:to-blue-950/40 hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-900/50 dark:hover:to-indigo-900/40 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-white transition group shadow-sm text-xs cursor-pointer"
                           >
                             <div className="flex items-center gap-2.5">
-                              <div className="w-7 h-7 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
+                              <div className="w-7 h-7 rounded-lg bg-blue-500/15 dark:bg-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
                                 <Box className="w-4 h-4" />
                               </div>
                               <div className="text-left">
-                                <div className="font-semibold text-white flex items-center gap-1.5">
+                                <div className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
                                   <span>Lihat di Papan Tulis Virtual 3D</span>
-                                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-blue-500/15 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30">
                                     {msg.smartboardItem.label}
                                   </span>
                                 </div>
-                                <div className="text-[10px] text-zinc-400">
+                                <div className="text-[10px] text-slate-500 dark:text-zinc-400">
                                   {msg.smartboardItem.desc || "Buka simulasi ruang & irisan penampang geometri"}
                                 </div>
                               </div>
                             </div>
-                            <ArrowUpRight className="w-4 h-4 text-blue-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                            <ArrowUpRight className="w-4 h-4 text-blue-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                           </button>
                         )}
 
                         {/* SymPy CAS Diagnosis Report */}
                         {msg.diagnosis && (
-                          <div className="bg-[#17181c] border border-white/[0.06] rounded-2xl p-3.5 space-y-2.5">
-                            <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
+                          <div className="bg-white dark:bg-[#17181c] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-3.5 space-y-2.5 shadow-sm">
+                            <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] pb-2">
                               <div className="flex items-center gap-1.5 font-semibold text-xs">
                                 {msg.diagnosis.diagnosis.has_fault ? (
                                   <>
-                                    <AlertCircle className="w-4 h-4 text-amber-400" />
-                                    <span className="text-amber-400">Patah Logika Terdeteksi</span>
+                                    <AlertCircle className="w-4 h-4 text-amber-500" />
+                                    <span className="text-amber-600 dark:text-amber-400">Patah Logika Terdeteksi</span>
                                   </>
                                 ) : (
                                   <>
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                                    <span className="text-emerald-400">Langkah Konsisten &amp; Valid</span>
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                    <span className="text-emerald-600 dark:text-emerald-400">Langkah Konsisten &amp; Valid</span>
                                   </>
                                 )}
                               </div>
-                              <span className="text-[10px] text-zinc-500 font-mono">SymPy CAS</span>
+                              <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono">SymPy CAS</span>
                             </div>
 
                             <div className="space-y-1">
@@ -2810,19 +2926,19 @@ export default function ZAPApp() {
                                   key={line.line_number}
                                   className={`flex items-center justify-between px-2.5 py-1 rounded-lg border text-xs font-mono transition ${
                                     line.is_valid
-                                      ? "bg-black/30 border-white/[0.06] text-zinc-300"
-                                      : "bg-amber-950/20 border-amber-500/40 text-amber-200"
+                                      ? "bg-slate-50 dark:bg-black/30 border-slate-200 dark:border-white/[0.06] text-slate-700 dark:text-zinc-300"
+                                      : "bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-500/40 text-amber-800 dark:text-amber-200"
                                   }`}
                                 >
                                   <div className="flex items-center gap-2 overflow-x-auto">
-                                    <span className="text-zinc-500 text-[10px]">#{line.line_number}</span>
+                                    <span className="text-slate-400 dark:text-zinc-500 text-[10px]">#{line.line_number}</span>
                                     <MathView math={line.raw_latex} />
                                   </div>
                                   <span
                                     className={`text-[9px] px-1.5 py-0.5 rounded font-sans uppercase font-bold ${
                                       line.is_valid
-                                        ? "text-emerald-400 bg-emerald-950/40"
-                                        : "text-amber-400 bg-amber-950/60"
+                                        ? "text-emerald-600 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-950/40"
+                                        : "text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-950/60"
                                     }`}
                                   >
                                     {line.is_valid ? "Valid" : "Galat"}
@@ -2833,15 +2949,15 @@ export default function ZAPApp() {
 
                             {msg.diagnosis.diagnosis.has_fault && (
                               <div className="space-y-2 pt-1">
-                                <p className="text-xs text-zinc-300 leading-relaxed">
+                                <p className="text-xs text-slate-700 dark:text-zinc-300 leading-relaxed">
                                   {msg.diagnosis.diagnosis.human_explanation}
                                 </p>
-                                <div className="p-2.5 rounded-xl bg-blue-950/30 border border-blue-900/40 text-blue-200 space-y-1">
-                                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-blue-300">
+                                <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 text-blue-900 dark:text-blue-200 space-y-1">
+                                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-blue-700 dark:text-blue-300">
                                     <MessageSquareQuote className="w-3.5 h-3.5" />
                                     <span>Bimbingan Sokratik:</span>
                                   </div>
-                                  <p className="text-xs italic leading-relaxed text-blue-100">
+                                  <p className="text-xs italic leading-relaxed text-blue-800 dark:text-blue-100">
                                     {msg.diagnosis.diagnosis.socratic_prompt}
                                   </p>
                                 </div>
@@ -2849,30 +2965,30 @@ export default function ZAPApp() {
                             )}
 
                             {msg.diagnosis.diagnosis.counter_example && (
-                              <div className="p-2.5 rounded-xl bg-black/30 border border-white/[0.06] space-y-1.5">
+                              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/[0.06] space-y-1.5">
                                 <div className="flex items-center justify-between text-[10px]">
-                                  <span className="flex items-center gap-1 font-medium text-zinc-300">
-                                    <FlaskConical className="w-3 h-3 text-zinc-500" />
+                                  <span className="flex items-center gap-1 font-medium text-slate-600 dark:text-zinc-300">
+                                    <FlaskConical className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
                                     <span>Kontra-Contoh Substitusi:</span>
                                   </span>
                                 </div>
                                 <div className="grid grid-cols-3 gap-1 text-center text-xs">
-                                  <div className="p-1.5 rounded bg-white/[0.03] border border-white/[0.06]">
-                                    <div className="text-[8px] text-zinc-500">Var</div>
-                                    <div className="font-bold text-white font-mono text-[11px]">
+                                  <div className="p-1.5 rounded bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]">
+                                    <div className="text-[8px] text-slate-400 dark:text-zinc-500">Var</div>
+                                    <div className="font-bold text-slate-800 dark:text-white font-mono text-[11px]">
                                       {msg.diagnosis.diagnosis.counter_example.test_variable} ={" "}
                                       {msg.diagnosis.diagnosis.counter_example.test_value}
                                     </div>
                                   </div>
-                                  <div className="p-1.5 rounded bg-white/[0.03] border border-white/[0.06]">
-                                    <div className="text-[8px] text-zinc-500">Asal</div>
-                                    <div className="font-bold text-emerald-400 font-mono text-[11px]">
+                                  <div className="p-1.5 rounded bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]">
+                                    <div className="text-[8px] text-slate-400 dark:text-zinc-500">Asal</div>
+                                    <div className="font-bold text-emerald-600 dark:text-emerald-400 font-mono text-[11px]">
                                       {msg.diagnosis.diagnosis.counter_example.lhs_expected}
                                     </div>
                                   </div>
-                                  <div className="p-1.5 rounded bg-white/[0.03] border border-white/[0.06]">
-                                    <div className="text-[8px] text-zinc-500">Hasilmu</div>
-                                    <div className="font-bold text-amber-400 font-mono text-[11px]">
+                                  <div className="p-1.5 rounded bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]">
+                                    <div className="text-[8px] text-slate-400 dark:text-zinc-500">Hasilmu</div>
+                                    <div className="font-bold text-amber-600 dark:text-amber-400 font-mono text-[11px]">
                                       {msg.diagnosis.diagnosis.counter_example.rhs_calculated}
                                     </div>
                                   </div>
@@ -2881,11 +2997,11 @@ export default function ZAPApp() {
                             )}
 
                             {/* Tombol Visualisasi di Papan Tulis */}
-                            <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between">
+                            <div className="pt-2 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between">
                               <button
                                 type="button"
                                 onClick={() => handleOpenSmartboard(msg.smartboardItem)}
-                                className="text-xs font-medium text-blue-400 hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 px-2.5 py-1 rounded-xl flex items-center gap-1.5 transition cursor-pointer"
+                                className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 border border-blue-200 dark:border-blue-500/30 px-2.5 py-1 rounded-xl flex items-center gap-1.5 transition cursor-pointer"
                               >
                                 <Sparkles className="w-3.5 h-3.5" />
                                 <span>Visualisasikan di Papan Tulis Pintar &rarr;</span>
@@ -2895,12 +3011,12 @@ export default function ZAPApp() {
                         )}
 
                         {/* Action Icons Bar (Desain Bersih & Elegan Sesuai Foto Pengguna) */}
-                        <div className="flex items-center gap-1.5 pt-1.5 text-zinc-400">
+                        <div className="flex items-center gap-1.5 pt-1.5 text-slate-400 dark:text-zinc-400">
                           {/* 1. Copy icon */}
                           <button
                             type="button"
                             onClick={() => handleCopyMessage(msg.replyText || "", msg.id)}
-                            className="p-1.5 rounded-lg hover:text-zinc-200 hover:bg-white/[0.06] transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg hover:text-slate-800 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
                             title={copiedMsgId === msg.id ? "Tersalin!" : "Salin jawaban"}
                           >
                             {copiedMsgId === msg.id ? (
@@ -2914,7 +3030,7 @@ export default function ZAPApp() {
                           <button
                             type="button"
                             onClick={() => handleRegenerate(msg.id)}
-                            className="p-1.5 rounded-lg hover:text-zinc-200 hover:bg-white/[0.06] transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg hover:text-slate-800 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
                             title="Buat ulang respon"
                           >
                             <RotateCw className="w-4 h-4 stroke-[1.6]" />
@@ -2924,8 +3040,8 @@ export default function ZAPApp() {
                           <button
                             type="button"
                             onClick={() => handleFeedback(msg.id, "up")}
-                            className={`p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors cursor-pointer ${
-                              msg.feedback === "up" ? "text-emerald-400 bg-emerald-500/10" : "hover:text-zinc-200"
+                            className={`p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer ${
+                              msg.feedback === "up" ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10" : "hover:text-slate-800 dark:hover:text-zinc-200"
                             }`}
                             title="Bermanfaat"
                           >
@@ -2936,8 +3052,8 @@ export default function ZAPApp() {
                           <button
                             type="button"
                             onClick={() => handleFeedback(msg.id, "down")}
-                            className={`p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors cursor-pointer ${
-                              msg.feedback === "down" ? "text-rose-400 bg-rose-500/10" : "hover:text-zinc-200"
+                            className={`p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer ${
+                              msg.feedback === "down" ? "text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10" : "hover:text-slate-800 dark:hover:text-zinc-200"
                             }`}
                             title="Kurang membantu"
                           >
@@ -2948,8 +3064,8 @@ export default function ZAPApp() {
                           <button
                             type="button"
                             onClick={() => handleSpeakMessage(msg.replyText || "", msg.id)}
-                            className={`p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors cursor-pointer ${
-                              speakingMsgId === msg.id ? "text-blue-400 bg-blue-500/10 animate-pulse" : "hover:text-zinc-200"
+                            className={`p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer ${
+                              speakingMsgId === msg.id ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 animate-pulse" : "hover:text-slate-800 dark:hover:text-zinc-200"
                             }`}
                             title={speakingMsgId === msg.id ? "Hentikan suara" : "Bacakan jawaban (Text-to-Speech)"}
                           >
@@ -2964,11 +3080,11 @@ export default function ZAPApp() {
                           <button
                             type="button"
                             onClick={() => handleShareMessage(msg.replyText || "", msg.id)}
-                            className="p-1.5 rounded-lg hover:text-zinc-200 hover:bg-white/[0.06] transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg hover:text-slate-800 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
                             title={sharedMsgId === msg.id ? "Tautan disalin!" : "Bagikan pesan"}
                           >
                             {sharedMsgId === msg.id ? (
-                              <Check className="w-4 h-4 text-blue-400" />
+                              <Check className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                             ) : (
                               <Share2 className="w-4 h-4 stroke-[1.6]" />
                             )}
@@ -2979,7 +3095,7 @@ export default function ZAPApp() {
                             <button
                               type="button"
                               onClick={() => handleOpenSmartboard(msg.smartboardItem)}
-                              className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-medium text-blue-400 hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 transition-all ml-1 cursor-pointer"
+                              className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 border border-blue-200 dark:border-blue-500/20 transition-all ml-1 cursor-pointer"
                               title={`Lihat ${msg.smartboardItem.label} di Papan Tulis Virtual 3D`}
                             >
                               <Box className="w-3.5 h-3.5 stroke-[1.8]" />
@@ -2995,9 +3111,9 @@ export default function ZAPApp() {
 
               {loading && (
                 <div className="flex gap-2.5 items-center">
-                  <ZapLogo className="w-5 h-5 animate-pulse text-blue-400" />
-                  <div className="bg-[#17181c] border border-white/[0.06] rounded-xl px-3 py-1.5 text-xs text-zinc-400 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <ZapLogo className="w-5 h-5 animate-pulse text-blue-500" />
+                  <div className="bg-white dark:bg-[#17181c] border border-slate-200 dark:border-white/[0.06] rounded-xl px-3 py-1.5 text-xs text-slate-600 dark:text-zinc-400 flex items-center gap-2 shadow-sm">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     <span>{loadingStatus}</span>
                   </div>
                 </div>
@@ -3010,22 +3126,22 @@ export default function ZAPApp() {
           {/* Bottom Composer when messages exist */}
           {messages.length > 0 && (
             <div className="p-3 w-full max-w-xl mx-auto flex-shrink-0">
-              <div className="w-full bg-[#17181c] border border-white/[0.08] focus-within:border-zinc-500 rounded-2xl p-3 shadow-2xl transition-all text-left">
+              <div className="w-full bg-white dark:bg-[#17181c] border border-slate-200 dark:border-white/[0.08] focus-within:border-blue-500 dark:focus-within:border-zinc-500 rounded-2xl p-3 shadow-xl transition-all text-left">
                 {/* Attached File Chips */}
                 {attachedFiles.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 pb-2">
                     {attachedFiles.map((f) => (
                       <div
                         key={f.id}
-                        className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-[#22252c] border border-white/[0.1] text-xs text-zinc-200"
+                        className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-[#22252c] border border-slate-200 dark:border-white/[0.1] text-xs text-slate-800 dark:text-zinc-200"
                       >
-                        <FileText className="w-3.5 h-3.5 text-blue-400" />
+                        <FileText className="w-3.5 h-3.5 text-blue-500" />
                         <span className="font-medium max-w-[140px] truncate">{f.name}</span>
-                        <span className="text-[10px] text-zinc-500 font-mono">({Math.round(f.size / 1024) || 1}KB)</span>
+                        <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono">({Math.round(f.size / 1024) || 1}KB)</span>
                         <button
                           type="button"
                           onClick={() => setAttachedFiles((prev) => prev.filter((item) => item.id !== f.id))}
-                          className="text-zinc-500 hover:text-rose-400 cursor-pointer ml-0.5"
+                          className="text-slate-400 dark:text-zinc-500 hover:text-rose-500 cursor-pointer ml-0.5"
                           title="Hapus lampiran"
                         >
                           <X className="w-3 h-3" />
@@ -3042,7 +3158,7 @@ export default function ZAPApp() {
                   onKeyDown={handleKeyDown}
                   rows={2}
                   placeholder="Describe what you want to build, / commands, @ files or sessions"
-                  className="w-full bg-transparent text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none resize-none font-sans leading-relaxed"
+                  className="w-full bg-transparent text-sm text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none resize-none font-sans leading-relaxed"
                 />
 
                 <div className="flex items-center justify-between pt-2">
@@ -3093,7 +3209,7 @@ export default function ZAPApp() {
                       className={`w-7 h-7 rounded-full flex items-center justify-center transition ${
                         inputText.trim() && !loading
                           ? "bg-blue-600 text-white hover:bg-blue-500"
-                          : "bg-[#282a32] text-zinc-500 cursor-not-allowed"
+                          : "bg-slate-200 dark:bg-[#282a32] text-slate-400 dark:text-zinc-500 cursor-not-allowed"
                       }`}
                     >
                       <ArrowUp className="w-4 h-4" />
@@ -3109,14 +3225,14 @@ export default function ZAPApp() {
       {/* 3. RIGHT COLUMN ("Start" Workspace / Tools Pane — Persis Screenshot 0 & 2) */}
       {showRightPane && (
         <div
-          className={`h-full bg-[#111216] flex flex-col relative overflow-hidden transition-all duration-200 ${
+          className={`h-full bg-slate-50 dark:bg-[#111216] flex flex-col relative overflow-hidden transition-all duration-200 ${
             rightPaneFullscreen ? "w-full" : "w-full lg:w-1/2 flex-1"
           }`}
         >
           {/* Header Bar: Compass Start + Window Controls (Columns, Maximize, Close) */}
-          <div className="h-10 px-3.5 flex items-center justify-between border-b border-white/[0.06] flex-shrink-0 text-xs text-zinc-400 z-10">
-            <div className="flex items-center gap-1.5 text-zinc-300 font-medium">
-              <Compass className="w-3.5 h-3.5 text-zinc-400" />
+          <div className="h-10 px-3.5 flex items-center justify-between border-b border-slate-200 dark:border-white/[0.06] flex-shrink-0 text-xs text-slate-500 dark:text-zinc-400 bg-white dark:bg-[#111216] z-10">
+            <div className="flex items-center gap-1.5 text-slate-800 dark:text-zinc-300 font-medium">
+              <Compass className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
               <span>
                 {rightPaneTab === "start"
                   ? "Start"
@@ -3130,7 +3246,7 @@ export default function ZAPApp() {
                 <button
                   type="button"
                   onClick={() => setRightPaneTab("start")}
-                  className="ml-2 text-[10px] text-blue-400 hover:text-blue-300 underline cursor-pointer"
+                  className="ml-2 text-[10px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
                 >
                   Kembali ke Start
                 </button>
@@ -3142,7 +3258,7 @@ export default function ZAPApp() {
                 type="button"
                 onClick={() => setRightPaneFullscreen((prev) => !prev)}
                 title={rightPaneFullscreen ? "Restore split view" : "Toggle split view"}
-                className="p-1 rounded hover:bg-white/[0.06] text-zinc-400 hover:text-white transition"
+                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition"
               >
                 <Columns className="w-3.5 h-3.5" />
               </button>
@@ -3151,7 +3267,7 @@ export default function ZAPApp() {
                 type="button"
                 onClick={() => setRightPaneFullscreen((prev) => !prev)}
                 title={rightPaneFullscreen ? "Keluar layar penuh" : "Layar penuh"}
-                className="p-1 rounded hover:bg-white/[0.06] text-zinc-400 hover:text-white transition"
+                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition"
               >
                 {rightPaneFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
               </button>
@@ -3163,7 +3279,7 @@ export default function ZAPApp() {
                   setRightPaneFullscreen(false);
                 }}
                 title="Tutup panel"
-                className="p-1 rounded hover:bg-white/[0.06] text-zinc-400 hover:text-white transition"
+                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -3176,8 +3292,8 @@ export default function ZAPApp() {
             {rightPaneTab === "start" && (
               <>
                 {/* Background Compass Watermark */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.07]">
-                  <Compass className="w-48 h-48 text-white" strokeWidth={0.8} />
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.12] dark:opacity-[0.07]">
+                  <Compass className="w-48 h-48 text-slate-400 dark:text-white" strokeWidth={0.8} />
                 </div>
 
                 {/* Centered Stack of Action Cards */}
@@ -3185,22 +3301,22 @@ export default function ZAPApp() {
                   {/* Card 1: Workspace files */}
                   <div
                     onClick={() => setRightPaneTab("files")}
-                    className="flex items-center justify-between p-3.5 rounded-xl bg-[#1b1c21] hover:bg-[#21232a] border border-white/[0.06] hover:border-white/[0.12] transition cursor-pointer group shadow-sm"
+                    className="flex items-center justify-between p-3.5 rounded-xl bg-white dark:bg-[#1b1c21] hover:bg-slate-50 dark:hover:bg-[#21232a] border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] transition cursor-pointer group shadow-sm"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400 flex-shrink-0">
-                        <Folder className="w-4 h-4 fill-amber-400/20 text-amber-400" />
+                      <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 flex-shrink-0">
+                        <Folder className="w-4 h-4 fill-amber-500/20 text-amber-500" />
                       </div>
                       <div>
-                        <div className="font-medium text-xs text-zinc-200 group-hover:text-white">
+                        <div className="font-medium text-xs text-slate-800 dark:text-zinc-200 group-hover:text-blue-600 dark:group-hover:text-white">
                           Workspace files
                         </div>
-                        <div className="text-[11px] text-zinc-500">
+                        <div className="text-[11px] text-slate-400 dark:text-zinc-500">
                           Browse files in this session&apos;s workspace
                         </div>
                       </div>
                     </div>
-                    <span className="text-[10px] font-mono text-zinc-500 bg-white/[0.03] px-2 py-0.5 rounded border border-white/[0.05]">
+                    <span className="text-[10px] font-mono text-slate-500 dark:text-zinc-500 bg-slate-100 dark:bg-white/[0.03] px-2 py-0.5 rounded border border-slate-200 dark:border-white/[0.05]">
                       Ctrl + Alt + P
                     </span>
                   </div>
@@ -3208,23 +3324,23 @@ export default function ZAPApp() {
                   {/* Card 2: New terminal ⌵ */}
                   <div
                     onClick={() => setRightPaneTab("terminal")}
-                    className="flex items-center justify-between p-3.5 rounded-xl bg-[#1b1c21] hover:bg-[#21232a] border border-white/[0.06] hover:border-white/[0.12] transition cursor-pointer group shadow-sm"
+                    className="flex items-center justify-between p-3.5 rounded-xl bg-white dark:bg-[#1b1c21] hover:bg-slate-50 dark:hover:bg-[#21232a] border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] transition cursor-pointer group shadow-sm"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 flex-shrink-0">
-                        <Terminal className="w-4 h-4 text-blue-400" />
+                      <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 flex-shrink-0">
+                        <Terminal className="w-4 h-4 text-blue-500" />
                       </div>
                       <div>
-                        <div className="font-medium text-xs text-zinc-200 group-hover:text-white flex items-center gap-1">
+                        <div className="font-medium text-xs text-slate-800 dark:text-zinc-200 group-hover:text-blue-600 dark:group-hover:text-white flex items-center gap-1">
                           <span>New terminal</span>
-                          <ChevronDown className="w-3 h-3 text-zinc-500" />
+                          <ChevronDown className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
                         </div>
-                        <div className="text-[11px] text-zinc-500">
+                        <div className="text-[11px] text-slate-400 dark:text-zinc-500">
                           Run commands in the Session workspace
                         </div>
                       </div>
                     </div>
-                    <span className="text-[10px] font-mono text-zinc-500 bg-white/[0.03] px-2 py-0.5 rounded border border-white/[0.05]">
+                    <span className="text-[10px] font-mono text-slate-500 dark:text-zinc-500 bg-slate-100 dark:bg-white/[0.03] px-2 py-0.5 rounded border border-slate-200 dark:border-white/[0.05]">
                       Ctrl + `
                     </span>
                   </div>
@@ -3232,18 +3348,18 @@ export default function ZAPApp() {
                   {/* Card 3: Papan Tulis Pintar */}
                   <div
                     onClick={() => setRightPaneTab("canvas")}
-                    className="flex items-center justify-between p-3.5 rounded-xl bg-[#1b1c21] hover:bg-[#21232a] border border-white/[0.06] hover:border-white/[0.12] transition cursor-pointer group shadow-sm"
+                    className="flex items-center justify-between p-3.5 rounded-xl bg-white dark:bg-[#1b1c21] hover:bg-slate-50 dark:hover:bg-[#21232a] border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] transition cursor-pointer group shadow-sm"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 flex-shrink-0">
-                        <Box className="w-4 h-4 text-blue-400" />
+                      <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 flex-shrink-0">
+                        <Box className="w-4 h-4 text-blue-500" />
                       </div>
                       <div>
-                        <div className="font-medium text-xs text-zinc-200 group-hover:text-white flex items-center gap-1.5">
+                        <div className="font-medium text-xs text-slate-800 dark:text-zinc-200 group-hover:text-blue-600 dark:group-hover:text-white flex items-center gap-1.5">
                           <span>Papan Tulis Pintar</span>
-                          <span className="text-[10px] text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20 font-mono">2D / 3D</span>
+                          <span className="text-[10px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-500/20 font-mono">2D / 3D</span>
                         </div>
-                        <div className="text-[11px] text-zinc-500">
+                        <div className="text-[11px] text-slate-400 dark:text-zinc-500">
                           Coret-coret kapur, grafik fungsi, &amp; geometri irisan
                         </div>
                       </div>
@@ -3253,17 +3369,17 @@ export default function ZAPApp() {
                   {/* Card 4: More tools */}
                   <div
                     onClick={() => setShowMoreModal(true)}
-                    className="flex items-center justify-between p-3.5 rounded-xl bg-[#1b1c21] hover:bg-[#21232a] border border-white/[0.06] hover:border-white/[0.12] transition cursor-pointer group shadow-sm"
+                    className="flex items-center justify-between p-3.5 rounded-xl bg-white dark:bg-[#1b1c21] hover:bg-slate-50 dark:hover:bg-[#21232a] border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] transition cursor-pointer group shadow-sm"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center text-zinc-400 flex-shrink-0">
-                        <LayoutGrid className="w-4 h-4 text-zinc-400" />
+                      <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/[0.04] flex items-center justify-center text-slate-500 dark:text-zinc-400 flex-shrink-0">
+                        <LayoutGrid className="w-4 h-4 text-slate-500 dark:text-zinc-400" />
                       </div>
                       <div>
-                        <div className="font-medium text-xs text-zinc-200 group-hover:text-white">
+                        <div className="font-medium text-xs text-slate-800 dark:text-zinc-200 group-hover:text-blue-600 dark:group-hover:text-white">
                           More tools
                         </div>
-                        <div className="text-[11px] text-zinc-500">
+                        <div className="text-[11px] text-slate-400 dark:text-zinc-500">
                           Modul kalkulus, terminal, dan konektor
                         </div>
                       </div>
@@ -3658,6 +3774,398 @@ export default function ZAPApp() {
               ) : (
                 <p className="text-zinc-500 italic">File biner tidak dapat ditampilkan langsung.</p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: PENGATURAN & TAMPILAN (SETTINGS & APPEARANCE MODAL) */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#14151a] border border-slate-200 dark:border-white/[0.1] rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="p-4 border-b border-slate-100 dark:border-white/[0.08] flex items-center justify-between bg-slate-50/80 dark:bg-[#181a20]/80">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-600/10 dark:bg-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                  <Settings className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm text-slate-900 dark:text-white">Pengaturan &amp; Preferensi ChatZAP</h3>
+                  <p className="text-[10px] text-slate-500 dark:text-zinc-400">Atur tampilan, bahasa percakapan, dan sinkronisasi akun</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSettingsModal(false)}
+                className="p-1.5 rounded-lg text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body with Horizontal Tabs */}
+            <div className="flex flex-col flex-1 overflow-hidden">
+              {/* Tab Navigation */}
+              <div className="flex items-center gap-1 px-4 pt-2 border-b border-slate-100 dark:border-white/[0.06] bg-slate-50/50 dark:bg-[#16171d]/50 overflow-x-auto">
+                <button
+                  type="button"
+                  onClick={() => setSettingsTab("appearance")}
+                  className={`flex items-center gap-2 px-3 py-2 text-xs font-medium border-b-2 transition cursor-pointer whitespace-nowrap ${
+                    settingsTab === "appearance"
+                      ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400"
+                      : "border-transparent text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  <Palette className="w-3.5 h-3.5" />
+                  <span>Tampilan &amp; Tema</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSettingsTab("general")}
+                  className={`flex items-center gap-2 px-3 py-2 text-xs font-medium border-b-2 transition cursor-pointer whitespace-nowrap ${
+                    settingsTab === "general"
+                      ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400"
+                      : "border-transparent text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                  <span>Umum &amp; Bahasa</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSettingsTab("sync")}
+                  className={`flex items-center gap-2 px-3 py-2 text-xs font-medium border-b-2 transition cursor-pointer whitespace-nowrap ${
+                    settingsTab === "sync"
+                      ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400"
+                      : "border-transparent text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  <Cloud className="w-3.5 h-3.5" />
+                  <span>Cadangan Akun</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSettingsTab("models")}
+                  className={`flex items-center gap-2 px-3 py-2 text-xs font-medium border-b-2 transition cursor-pointer whitespace-nowrap ${
+                    settingsTab === "models"
+                      ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400"
+                      : "border-transparent text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Invarian CAS &amp; AI</span>
+                </button>
+              </div>
+
+              {/* Tab Contents */}
+              <div className="p-5 overflow-y-auto flex-1 space-y-5 text-xs text-slate-700 dark:text-zinc-300">
+                {/* 1. APPEARANCE TAB */}
+                {settingsTab === "appearance" && (
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-semibold text-xs text-slate-900 dark:text-white mb-1">Pilihan Mode Tampilan (Theme)</h4>
+                      <p className="text-[11px] text-slate-500 dark:text-zinc-400">Pilih tema antarmuka sesuai dengan kenyamanan mata Anda.</p>
+                    </div>
+
+                    {/* 3 Theme Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {/* Light Card */}
+                      <div
+                        onClick={() => setTheme("light")}
+                        className={`p-3.5 rounded-xl border-2 transition cursor-pointer flex flex-col justify-between ${
+                          theme === "light"
+                            ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/20 shadow-md"
+                            : "border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-white/[0.16] bg-slate-50 dark:bg-[#181a20]"
+                        }`}
+                      >
+                        <div className="space-y-2">
+                          <div className="h-16 rounded-lg bg-white border border-slate-200 p-2 flex flex-col justify-between shadow-xs">
+                            <div className="flex items-center justify-between">
+                              <div className="w-3 h-3 rounded-full bg-blue-600" />
+                              <div className="w-12 h-1.5 rounded-full bg-slate-200" />
+                            </div>
+                            <div className="space-y-1">
+                              <div className="w-full h-2 rounded bg-slate-100" />
+                              <div className="w-3/4 h-2 rounded bg-slate-100" />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="font-semibold text-xs text-slate-900 dark:text-white flex items-center justify-between">
+                              <span className="flex items-center gap-1.5">
+                                <Sun className="w-3.5 h-3.5 text-amber-500" />
+                                <span>Mode Terang</span>
+                              </span>
+                              {theme === "light" && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                            </div>
+                            <p className="text-[10px] text-slate-500 dark:text-zinc-400 mt-1 leading-normal">
+                              Latar putih bersih dengan kontras tinggi, nyaman untuk membaca di siang hari.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Dark Card */}
+                      <div
+                        onClick={() => setTheme("dark")}
+                        className={`p-3.5 rounded-xl border-2 transition cursor-pointer flex flex-col justify-between ${
+                          theme === "dark"
+                            ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/20 shadow-md"
+                            : "border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-white/[0.16] bg-slate-50 dark:bg-[#181a20]"
+                        }`}
+                      >
+                        <div className="space-y-2">
+                          <div className="h-16 rounded-lg bg-[#0e0f12] border border-white/[0.1] p-2 flex flex-col justify-between shadow-xs">
+                            <div className="flex items-center justify-between">
+                              <div className="w-3 h-3 rounded-full bg-blue-500" />
+                              <div className="w-12 h-1.5 rounded-full bg-zinc-700" />
+                            </div>
+                            <div className="space-y-1">
+                              <div className="w-full h-2 rounded bg-zinc-800" />
+                              <div className="w-3/4 h-2 rounded bg-zinc-800" />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="font-semibold text-xs text-slate-900 dark:text-white flex items-center justify-between">
+                              <span className="flex items-center gap-1.5">
+                                <Moon className="w-3.5 h-3.5 text-blue-400" />
+                                <span>Mode Gelap</span>
+                              </span>
+                              {theme === "dark" && <Check className="w-3.5 h-3.5 text-blue-400" />}
+                            </div>
+                            <p className="text-[10px] text-slate-500 dark:text-zinc-400 mt-1 leading-normal">
+                              Latar pekat hemat daya dan ramah mata, optimal untuk fokus dan malam hari.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* System Card */}
+                      <div
+                        onClick={() => setTheme("system")}
+                        className={`p-3.5 rounded-xl border-2 transition cursor-pointer flex flex-col justify-between ${
+                          theme === "system"
+                            ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/20 shadow-md"
+                            : "border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-white/[0.16] bg-slate-50 dark:bg-[#181a20]"
+                        }`}
+                      >
+                        <div className="space-y-2">
+                          <div className="h-16 rounded-lg bg-gradient-to-r from-white via-slate-200 to-[#0e0f12] border border-slate-300 dark:border-white/[0.1] p-2 flex flex-col justify-between shadow-xs">
+                            <div className="flex items-center justify-between">
+                              <div className="w-3 h-3 rounded-full bg-purple-500" />
+                              <div className="w-12 h-1.5 rounded-full bg-slate-400" />
+                            </div>
+                            <div className="space-y-1">
+                              <div className="w-full h-2 rounded bg-slate-300 dark:bg-zinc-700" />
+                              <div className="w-3/4 h-2 rounded bg-slate-300 dark:bg-zinc-700" />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="font-semibold text-xs text-slate-900 dark:text-white flex items-center justify-between">
+                              <span className="flex items-center gap-1.5">
+                                <Laptop className="w-3.5 h-3.5 text-purple-400" />
+                                <span>Sistem Operasi</span>
+                              </span>
+                              {theme === "system" && <Check className="w-3.5 h-3.5 text-blue-500" />}
+                            </div>
+                            <p className="text-[10px] text-slate-500 dark:text-zinc-400 mt-1 leading-normal">
+                              Otomatis mengikuti preferensi tema dari perangkat atau browser Anda.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Proyektor Switch */}
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#181a20] border border-slate-200 dark:border-white/[0.06] flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <div className="font-semibold text-xs text-slate-900 dark:text-white">Mode Proyektor &amp; Papan Tulis Kelas</div>
+                        <p className="text-[10px] text-slate-500 dark:text-zinc-400">
+                          Tingkatkan ketebalan garis koordinat dan kontras warna canvas 3D agar jelas terlihat di proyektor kelas.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsProjectorMode(!isProjectorMode)}
+                        className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
+                          isProjectorMode ? "bg-blue-600" : "bg-slate-300 dark:bg-zinc-700"
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-md transition-transform ${
+                            isProjectorMode ? "translate-x-5" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. GENERAL TAB */}
+                {settingsTab === "general" && (
+                  <div className="space-y-4">
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#181a20] border border-slate-200 dark:border-white/[0.06] space-y-3">
+                      <h4 className="font-semibold text-xs text-slate-900 dark:text-white">Identitas Pengguna</h4>
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div>
+                          <label className="text-[10px] font-mono text-slate-400 dark:text-zinc-500 uppercase">Nama Lengkap</label>
+                          <div className="font-medium text-slate-900 dark:text-white mt-0.5">{currentUser?.name}</div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-mono text-slate-400 dark:text-zinc-500 uppercase">Email Google</label>
+                          <div className="font-medium text-slate-900 dark:text-white mt-0.5 truncate">{currentUser?.email}</div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-mono text-slate-400 dark:text-zinc-500 uppercase">Jenjang Pendidikan</label>
+                          <div className="font-medium text-slate-900 dark:text-white mt-0.5">{currentUser?.jenjang || "SMA"}</div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-mono text-slate-400 dark:text-zinc-500 uppercase">Peran</label>
+                          <div className="font-medium text-emerald-600 dark:text-emerald-400 mt-0.5">{currentUser?.role || "Siswa"}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#181a20] border border-slate-200 dark:border-white/[0.06] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="font-semibold text-xs text-slate-900 dark:text-white">Konsistensi Bahasa Percakapan</div>
+                        <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/30">
+                          Aktif Otomatis
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+                        AI akan secara konsisten merespons dengan bahasa yang Anda gunakan di 2–3 chat awal (misalnya Bahasa Indonesia), bahkan jika di tengah percakapan Anda menyisipkan instruksi dalam bahasa lain.
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#181a20] border border-slate-200 dark:border-white/[0.06] flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <div className="font-semibold text-xs text-slate-900 dark:text-white">Auto-scroll Percakapan</div>
+                        <p className="text-[10px] text-slate-500 dark:text-zinc-400">
+                          Otomatis menggulir layar ke bawah saat respons Sokratik baru tiba.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAutoScrollChat(!autoScrollChat)}
+                        className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
+                          autoScrollChat ? "bg-blue-600" : "bg-slate-300 dark:bg-zinc-700"
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-md transition-transform ${
+                            autoScrollChat ? "translate-x-5" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. SYNC TAB */}
+                {settingsTab === "sync" && (
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-blue-500/10 border border-blue-500/20 space-y-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md">
+                          <Cloud className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="font-semibold text-xs text-slate-900 dark:text-white">Cadangan Akun Google Cloud</div>
+                          <div className="text-[11px] text-slate-500 dark:text-zinc-400">
+                            Terhubung: <span className="font-mono text-blue-600 dark:text-blue-400">{currentUser?.email}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-slate-600 dark:text-zinc-300 leading-relaxed">
+                        Semua data sesi belajar, preferensi tema ({theme}), konfigurasi model AI, dan berkas workspace otomatis dicadangkan setiap kali Anda berinteraksi.
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#181a20] border border-slate-200 dark:border-white/[0.06] space-y-2">
+                      <h5 className="font-semibold text-xs text-slate-900 dark:text-white">Data yang Tersimpan:</h5>
+                      <ul className="space-y-1.5 text-[11px] text-slate-600 dark:text-zinc-400">
+                        <li className="flex items-center gap-2">
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>Riwayat semua percakapan matematika ({conversations.length} sesi)</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>Berkas Workspace ({workspaceFiles.length} berkas)</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>Tema Tampilan ({theme.toUpperCase()}) &amp; API Keys terenkripsi</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2">
+                      <div className="text-[11px] text-slate-500 dark:text-zinc-400">
+                        {syncSuccessToast ? (
+                          <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                            <Check className="w-3.5 h-3.5" />
+                            Data berhasil disinkronkan ke Google Cloud!
+                          </span>
+                        ) : (
+                          <span>Sinkronisasi otomatis aktif</span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          syncAccountBackup(currentUser);
+                          setSyncSuccessToast(true);
+                          setTimeout(() => setSyncSuccessToast(false), 3000);
+                        }}
+                        className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition flex items-center gap-2 shadow-sm cursor-pointer"
+                      >
+                        <RotateCw className="w-3.5 h-3.5" />
+                        <span>Sinkronkan Sekarang</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. CAS & AI MODELS TAB */}
+                {settingsTab === "models" && (
+                  <div className="space-y-4">
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#181a20] border border-slate-200 dark:border-white/[0.06] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-xs text-slate-900 dark:text-white">22 Invarian Deterministic SymPy CAS</span>
+                        <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/30">
+                          22/22 Terverifikasi
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+                        SymPy CAS bertindak sebagai satu-satunya penentu kebenaran matematis. Tidak ada LLM yang diizinkan menentukan apakah langkah penurunan rumus Anda valid.
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#181a20] border border-slate-200 dark:border-white/[0.06] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-xs text-slate-900 dark:text-white">Zero Answer Policy (ZAP) Guardrail</span>
+                        <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-500/30">
+                          Aktif &amp; Terproteksi
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+                        Sistem tidak pernah memberikan jawaban numerik instan kepada siswa, melainkan mengarahkan lewat kontra-contoh substitusi dan pertanyaan pemantik Sokratik.
+                      </p>
+                    </div>
+
+                    <div className="pt-2 flex justify-end">
+                      <Link
+                        href="/connector"
+                        onClick={() => setShowSettingsModal(false)}
+                        className="px-4 py-2 rounded-xl bg-blue-600/10 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-500/30 text-xs font-medium transition flex items-center gap-2"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Buka Hub Model &amp; API Keys (/connector) &rarr;</span>
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

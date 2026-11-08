@@ -20,6 +20,7 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
+import { useTheme } from "@/utils/theme";
 
 export type MathModelType =
   | "empty"
@@ -113,16 +114,24 @@ export default function InteractiveCanvas3D({
   // Main mode: "empty" | "2d_graph" | "3d_model"
   const [activeModel, setActiveModel] = useState<MathModelType>(initialModel);
 
+  const { isDark } = useTheme();
+
   // Drawing Canvas (Coret-coret kapur/stylus & Penghapus)
   const drawCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawingToolActive, setIsDrawingToolActive] = useState(false);
   const [drawingMode, setDrawingMode] = useState<"pen" | "eraser">("pen");
-  const [drawColor, setDrawColor] = useState<string>("#f8fafc");
+  const [drawColor, setDrawColor] = useState<string>(isDark ? "#f8fafc" : "#0f172a");
   const [brushSize, setBrushSize] = useState<number>(3);
   const [eraserSize, setEraserSize] = useState<number>(24);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasDrawings, setHasDrawings] = useState(false);
   const [pointerPos, setPointerPos] = useState<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    if (!hasDrawings) {
+      setDrawColor(isDark ? "#f8fafc" : "#0f172a");
+    }
+  }, [isDark, hasDrawings]);
 
   // 2D Graph Canvas
   const graph2DCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -137,6 +146,7 @@ export default function InteractiveCanvas3D({
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const meshGroupRef = useRef<THREE.Group | null>(null);
+  const gridHelperRef = useRef<THREE.GridHelper | null>(null);
   const animFrameIdRef = useRef<number | null>(null);
 
   // Interactive corner handles for direct mouse drag resizing
@@ -512,11 +522,11 @@ export default function InteractiveCanvas3D({
     const originY = height / 2;
     const scale = Math.min(width, height) / 18;
 
-    ctx.fillStyle = isProjectorMode ? "#0c101d" : "#080a0f";
+    ctx.fillStyle = isProjectorMode ? "#0c101d" : isDark ? "#080a0f" : "#ffffff";
     ctx.fillRect(0, 0, width, height);
 
     ctx.lineWidth = 1;
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+    ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.06)";
     const minX = -Math.ceil(originX / scale);
     const maxX = Math.ceil((width - originX) / scale);
     const minY = -Math.ceil((height - originY) / scale);
@@ -538,7 +548,7 @@ export default function InteractiveCanvas3D({
     }
 
     ctx.lineWidth = 1.5;
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
+    ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.25)" : "rgba(0, 0, 0, 0.35)";
     ctx.beginPath();
     ctx.moveTo(0, originY);
     ctx.lineTo(width, originY);
@@ -549,7 +559,7 @@ export default function InteractiveCanvas3D({
     ctx.lineTo(originX, height);
     ctx.stroke();
 
-    ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
+    ctx.fillStyle = isDark ? "rgba(255, 255, 255, 0.45)" : "rgba(0, 0, 0, 0.55)";
     ctx.font = "10px monospace";
     for (let x = minX; x <= maxX; x += 2) {
       if (x !== 0) ctx.fillText(x.toString(), originX + x * scale - 4, originY + 14);
@@ -615,7 +625,7 @@ export default function InteractiveCanvas3D({
       }
       ctx.stroke();
     }
-  }, [activeModel, paramA, paramB, paramC, isProjectorMode, is2DGraphModel]);
+  }, [activeModel, paramA, paramB, paramC, isProjectorMode, is2DGraphModel, isDark]);
 
   // =========================================================================
   // 4. THREE.JS 3D MESH GENERATOR (KUBUS SOLID, BALOK, SILINDER, KERUCUT)
@@ -1143,7 +1153,9 @@ export default function InteractiveCanvas3D({
     if (!container) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(isProjectorMode ? 0x0a101f : 0x080a0f);
+    const isDarkInitial = typeof document !== "undefined" ? document.documentElement.classList.contains("dark") : true;
+    const bgColor = isProjectorMode ? 0x0a101f : isDarkInitial ? 0x080a0f : 0xf8fafc;
+    scene.background = new THREE.Color(bgColor);
     sceneRef.current = scene;
 
     const initialWidth = container.clientWidth > 0 ? container.clientWidth : 600;
@@ -1177,9 +1189,12 @@ export default function InteractiveCanvas3D({
     rimLight.position.set(-10, 8, -10);
     scene.add(rimLight);
 
-    const gridHelper = new THREE.GridHelper(10, 20, 0x1e293b, 0x0f172a);
+    const gridColor1 = isDarkInitial ? 0x1e293b : 0xcbd5e1;
+    const gridColor2 = isDarkInitial ? 0x0f172a : 0xe2e8f0;
+    const gridHelper = new THREE.GridHelper(10, 20, gridColor1, gridColor2);
     gridHelper.position.y = GRID_Y;
     scene.add(gridHelper);
+    gridHelperRef.current = gridHelper;
 
     const meshGroup = new THREE.Group();
     scene.add(meshGroup);
@@ -1328,12 +1343,28 @@ export default function InteractiveCanvas3D({
     }
   }, [autoRotate]);
 
-  // Update background when projector mode changes
+  // Update background and grid when projector mode or theme changes
   useEffect(() => {
     if (sceneRef.current) {
-      sceneRef.current.background = new THREE.Color(isProjectorMode ? 0x0a101f : 0x080a0f);
+      const bgColor = isProjectorMode ? 0x0a101f : isDark ? 0x080a0f : 0xf8fafc;
+      sceneRef.current.background = new THREE.Color(bgColor);
+
+      if (gridHelperRef.current) {
+        sceneRef.current.remove(gridHelperRef.current);
+        gridHelperRef.current.geometry.dispose();
+        const mat = gridHelperRef.current.material as THREE.Material | THREE.Material[];
+        if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
+        else if (mat) mat.dispose();
+
+        const gridColor1 = isDark ? 0x1e293b : 0xcbd5e1;
+        const gridColor2 = isDark ? 0x0f172a : 0xe2e8f0;
+        const nextGrid = new THREE.GridHelper(10, 20, gridColor1, gridColor2);
+        nextGrid.position.y = GRID_Y;
+        sceneRef.current.add(nextGrid);
+        gridHelperRef.current = nextGrid;
+      }
     }
-  }, [isProjectorMode]);
+  }, [isProjectorMode, isDark]);
 
   // When model switches to 3D, ensure dimensions are fresh
   useEffect(() => {
@@ -1355,17 +1386,19 @@ export default function InteractiveCanvas3D({
   // RENDER PANDANGAN UTAMA PAPAN TULIS VIRTUAL
   // =========================================================================
   return (
-    <div className={`relative w-full h-full flex flex-col bg-[#080a0f] text-zinc-100 select-none overflow-hidden font-sans ${className}`}>
+    <div className={`relative w-full h-full flex flex-col dark:bg-[#080a0f] bg-slate-50 dark:text-zinc-100 text-slate-800 select-none overflow-hidden font-sans ${className}`}>
       {/* 1. TOP HEADER & SMART COMMAND BAR (Zero Button Collision) */}
-      <div className="h-12 px-2.5 sm:px-4 border-b border-white/[0.08] bg-[#0d0f17] flex items-center justify-between gap-1.5 sm:gap-2 shrink-0 z-20">
+      <div className="h-12 px-2.5 sm:px-4 border-b dark:border-white/[0.08] border-slate-200 dark:bg-[#0d0f17] bg-white flex items-center justify-between gap-1.5 sm:gap-2 shrink-0 z-20">
         {/* Left: Mode Picker Segmented Buttons + Reset */}
         <div className="flex items-center gap-1.5 shrink-0">
-          <div className="flex items-center bg-white/[0.04] p-0.5 rounded-xl border border-white/[0.08]">
+          <div className="flex items-center dark:bg-white/[0.04] bg-slate-100 p-0.5 rounded-xl border dark:border-white/[0.08] border-slate-200">
             <button
               type="button"
               onClick={() => selectModel("solids")}
               className={`px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition cursor-pointer ${
-                is3DModel ? "bg-blue-600 text-white shadow-sm" : "text-zinc-400 hover:text-white"
+                is3DModel
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "dark:text-zinc-400 text-slate-600 dark:hover:text-white hover:text-slate-900"
               }`}
               title="Geometri 3D Ruang"
             >
@@ -1376,7 +1409,9 @@ export default function InteractiveCanvas3D({
               type="button"
               onClick={() => selectModel("2d_quadratic")}
               className={`px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition cursor-pointer ${
-                is2DGraphModel ? "bg-blue-600 text-white shadow-sm" : "text-zinc-400 hover:text-white"
+                is2DGraphModel
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "dark:text-zinc-400 text-slate-600 dark:hover:text-white hover:text-slate-900"
               }`}
               title="Grafik 2D Kartesius"
             >
@@ -1386,7 +1421,9 @@ export default function InteractiveCanvas3D({
               type="button"
               onClick={() => selectModel("empty")}
               className={`px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition cursor-pointer ${
-                activeModel === "empty" ? "bg-blue-600 text-white shadow-sm" : "text-zinc-400 hover:text-white"
+                activeModel === "empty"
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "dark:text-zinc-400 text-slate-600 dark:hover:text-white hover:text-slate-900"
               }`}
               title="Papan Tulis Kosong"
             >
@@ -1398,7 +1435,7 @@ export default function InteractiveCanvas3D({
             <button
               type="button"
               onClick={() => selectModel("empty")}
-              className="p-1.5 rounded-xl bg-white/[0.04] hover:bg-rose-500/20 text-zinc-400 hover:text-rose-300 border border-white/[0.08] transition cursor-pointer"
+              className="p-1.5 rounded-xl dark:bg-white/[0.04] bg-slate-100 hover:bg-rose-500/20 text-slate-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-300 border dark:border-white/[0.08] border-slate-200 transition cursor-pointer"
               title="Reset / Bersihkan Kanvas"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -1414,13 +1451,13 @@ export default function InteractiveCanvas3D({
           }}
           className="flex-1 min-w-0 max-w-xs relative flex items-center"
         >
-          <Sparkles className="w-3.5 h-3.5 absolute left-2.5 text-blue-400 pointer-events-none" />
+          <Sparkles className="w-3.5 h-3.5 absolute left-2.5 text-blue-500 pointer-events-none" />
           <input
             type="text"
             value={formulaInput}
             onChange={(e) => setFormulaInput(e.target.value)}
             placeholder="Ketik: cube 10cm, y=x²-3..."
-            className="w-full bg-[#141724] border border-white/[0.08] rounded-xl pl-8 pr-14 py-1 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500/60 transition truncate"
+            className="w-full dark:bg-[#141724] bg-slate-100 border dark:border-white/[0.08] border-slate-200 rounded-xl pl-8 pr-14 py-1 text-xs dark:text-white text-slate-900 dark:placeholder-zinc-500 placeholder-slate-400 focus:outline-none focus:border-blue-500/60 transition truncate"
           />
           <button
             type="submit"
@@ -1445,7 +1482,7 @@ export default function InteractiveCanvas3D({
             className={`p-1.5 rounded-xl text-xs transition cursor-pointer ${
               isDrawingToolActive && drawingMode === "pen"
                 ? "bg-blue-600 text-white shadow-sm"
-                : "bg-white/[0.04] text-zinc-400 hover:text-white border border-white/[0.06]"
+                : "dark:bg-white/[0.04] bg-slate-100 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border dark:border-white/[0.06] border-slate-200"
             }`}
             title="Pena Kapur Tulis"
           >
@@ -1464,7 +1501,7 @@ export default function InteractiveCanvas3D({
             className={`p-1.5 rounded-xl text-xs transition cursor-pointer ${
               isDrawingToolActive && drawingMode === "eraser"
                 ? "bg-rose-600 text-white shadow-sm"
-                : "bg-white/[0.04] text-zinc-400 hover:text-white border border-white/[0.06]"
+                : "dark:bg-white/[0.04] bg-slate-100 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border dark:border-white/[0.06] border-slate-200"
             }`}
             title="Penghapus Kapur"
           >
@@ -1475,7 +1512,7 @@ export default function InteractiveCanvas3D({
             <button
               type="button"
               onClick={clearDrawCanvas}
-              className="p-1.5 rounded-xl bg-white/[0.04] hover:bg-rose-500/20 text-zinc-400 hover:text-rose-300 border border-white/[0.06] transition cursor-pointer"
+              className="p-1.5 rounded-xl dark:bg-white/[0.04] bg-slate-100 hover:bg-rose-500/20 text-slate-600 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-300 border dark:border-white/[0.06] border-slate-200 transition cursor-pointer"
               title="Hapus Semua Coretan"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -1489,8 +1526,8 @@ export default function InteractiveCanvas3D({
                 onClick={() => setWireframe(!wireframe)}
                 className={`p-1.5 rounded-xl text-xs transition border cursor-pointer ${
                   wireframe
-                    ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
-                    : "bg-white/[0.04] text-zinc-400 hover:text-white border-white/[0.06]"
+                    ? "bg-blue-500/20 text-blue-600 dark:text-blue-300 border-blue-500/40"
+                    : "dark:bg-white/[0.04] bg-slate-100 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white dark:border-white/[0.06] border-slate-200"
                 }`}
                 title="Toggle Wireframe Rangka Kawat"
               >
@@ -1502,8 +1539,8 @@ export default function InteractiveCanvas3D({
                 onClick={() => setAutoRotate(!autoRotate)}
                 className={`p-1.5 rounded-xl text-xs transition border cursor-pointer ${
                   autoRotate
-                    ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
-                    : "bg-white/[0.04] text-zinc-400 hover:text-white border-white/[0.06]"
+                    ? "bg-blue-500/20 text-blue-600 dark:text-blue-300 border-blue-500/40"
+                    : "dark:bg-white/[0.04] bg-slate-100 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white dark:border-white/[0.06] border-slate-200"
                 }`}
                 title="Toggle Rotasi Otomatis 360°"
               >
@@ -1515,8 +1552,8 @@ export default function InteractiveCanvas3D({
                 onClick={() => setIsHudVisible(!isHudVisible)}
                 className={`p-1.5 rounded-xl text-xs transition border cursor-pointer ${
                   isHudVisible
-                    ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
-                    : "bg-white/[0.04] text-zinc-400 hover:text-white border-white/[0.06]"
+                    ? "bg-blue-500/20 text-blue-600 dark:text-blue-300 border-blue-500/40"
+                    : "dark:bg-white/[0.04] bg-slate-100 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white dark:border-white/[0.06] border-slate-200"
                 }`}
                 title={isHudVisible ? "Sembunyikan Panel Kontrol Metrik" : "Tampilkan Panel Kontrol Metrik"}
               >
@@ -1672,27 +1709,27 @@ export default function InteractiveCanvas3D({
               <button
                 type="button"
                 onClick={() => setIsHudMinimized(false)}
-                className="px-3 py-1.5 rounded-xl bg-[#0f121d]/90 hover:bg-[#151928] border border-white/[0.1] hover:border-blue-500/40 backdrop-blur-md shadow-xl text-xs text-zinc-200 flex items-center gap-2 transition cursor-pointer"
+                className="px-3 py-1.5 rounded-xl dark:bg-[#0f121d]/90 bg-white/95 dark:hover:bg-[#151928] hover:bg-slate-50 border dark:border-white/[0.1] border-slate-200 hover:border-blue-500/40 backdrop-blur-md shadow-xl text-xs dark:text-zinc-200 text-slate-800 flex items-center gap-2 transition cursor-pointer"
                 title="Tampilkan Panel Metrik & Kontrol"
               >
-                <Box className="w-3.5 h-3.5 text-blue-400" />
+                <Box className="w-3.5 h-3.5 text-blue-500" />
                 <span className="font-medium">Metrik ({paramA} {unit})</span>
-                <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-400" />
               </button>
               <button
                 type="button"
                 onClick={() => setIsHudVisible(false)}
-                className="p-1.5 rounded-xl bg-[#0f121d]/90 hover:bg-[#151928] border border-white/[0.1] text-zinc-400 hover:text-rose-400 transition cursor-pointer"
+                className="p-1.5 rounded-xl dark:bg-[#0f121d]/90 bg-white/95 dark:hover:bg-[#151928] hover:bg-slate-50 border dark:border-white/[0.1] border-slate-200 text-slate-400 dark:text-zinc-400 hover:text-rose-500 transition cursor-pointer"
                 title="Sembunyikan Panel"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
           ) : (
-            <div className="absolute top-3 right-3 p-3.5 rounded-2xl bg-[#0f121d]/90 border border-white/[0.08] backdrop-blur-md shadow-2xl z-20 text-xs w-64 space-y-2.5">
-              <div className="flex items-center justify-between border-b border-white/[0.08] pb-2">
-                <span className="font-semibold text-white flex items-center gap-1.5">
-                  <Box className="w-3.5 h-3.5 text-blue-400" />
+            <div className="absolute top-3 right-3 p-3.5 rounded-2xl dark:bg-[#0f121d]/90 bg-white/95 border dark:border-white/[0.08] border-slate-200 backdrop-blur-md shadow-2xl z-20 text-xs w-64 space-y-2.5 dark:text-zinc-200 text-slate-800">
+              <div className="flex items-center justify-between border-b dark:border-white/[0.08] border-slate-200 pb-2">
+                <span className="font-semibold dark:text-white text-slate-900 flex items-center gap-1.5">
+                  <Box className="w-3.5 h-3.5 text-blue-500" />
                   {solidKind === "kubus"
                     ? showSlicePlane
                       ? "Kubus 3D (Irisan)"
@@ -1707,7 +1744,7 @@ export default function InteractiveCanvas3D({
                       setSliceProgress(0.5);
                       onParamsChange?.(10, paramB, paramC, unit);
                     }}
-                    className="text-[10px] text-zinc-400 hover:text-white px-1.5 py-0.5 rounded bg-white/[0.04] cursor-pointer"
+                    className="text-[10px] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/[0.04] cursor-pointer"
                     title="Reset Parameter"
                   >
                     Reset
@@ -1715,7 +1752,7 @@ export default function InteractiveCanvas3D({
                   <button
                     type="button"
                     onClick={() => setIsHudMinimized(true)}
-                    className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.06] transition cursor-pointer"
+                    className="p-1 rounded-lg text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
                     title="Kecilkan Panel"
                   >
                     <ChevronUp className="w-3.5 h-3.5" />
@@ -1723,7 +1760,7 @@ export default function InteractiveCanvas3D({
                   <button
                     type="button"
                     onClick={() => setIsHudVisible(false)}
-                    className="p-1 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-white/[0.06] transition cursor-pointer"
+                    className="p-1 rounded-lg text-slate-400 dark:text-zinc-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
                     title="Sembunyikan Panel (Bisa dibuka lagi dari toolbar)"
                   >
                     <X className="w-3.5 h-3.5" />

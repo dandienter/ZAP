@@ -18,6 +18,7 @@ export interface AccountConfigs {
   customApiKey?: string;
   selectedModelId?: string;
   reasoningEffort?: string;
+  theme?: string;
 }
 
 export interface UserAccountBackupPayload {
@@ -73,6 +74,7 @@ export function collectLocalUserData(user: ZAPUser): UserAccountBackupPayload {
     customApiKey: localStorage.getItem("zap_custom_api_key") || undefined,
     selectedModelId: localStorage.getItem("zap_selected_model_id") || undefined,
     reasoningEffort: localStorage.getItem("zap_reasoning_effort") || undefined,
+    theme: localStorage.getItem("zap_theme") || undefined,
   };
 
   // 3. Workspaces & files
@@ -235,6 +237,14 @@ export async function restoreAccountData<M = unknown, C = unknown, W = unknown, 
     if (mergedConfigs.customModelName) localStorage.setItem("zap_custom_model_name", mergedConfigs.customModelName);
     if (mergedConfigs.customApiKey) localStorage.setItem("zap_custom_api_key", mergedConfigs.customApiKey);
     if (mergedConfigs.selectedModelId) localStorage.setItem("zap_selected_model_id", mergedConfigs.selectedModelId);
+    if (mergedConfigs.theme) {
+      localStorage.setItem("zap_theme", mergedConfigs.theme);
+      if (typeof window !== "undefined") {
+        const isDark = mergedConfigs.theme === "dark" || (mergedConfigs.theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.classList.toggle("dark", isDark);
+        document.documentElement.classList.toggle("light", !isDark);
+      }
+    }
 
     // Tulis percakapan ke kedua storage key
     const convJson = JSON.stringify(mergedConversations);
