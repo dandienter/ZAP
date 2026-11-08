@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { GoogleLogo } from "@/components/CompanyLogos";
-import { syncAccountBackup, restoreAccountData } from "@/utils/account-sync";
+import { syncAccountBackup, restoreAccountData, clearLocalWorkingSession } from "@/utils/account-sync";
 import {
   LogOut,
   ChevronDown,
@@ -106,6 +106,10 @@ export default function GoogleAuthButton({
 
         setUser(realGoogleUser);
         if (typeof window !== "undefined") {
+          const lastEmail = localStorage.getItem("zap_last_active_user_email")?.toLowerCase().trim();
+          if (lastEmail && lastEmail !== realGoogleUser.email.toLowerCase().trim()) {
+            clearLocalWorkingSession();
+          }
           localStorage.setItem("zap_authenticated_user", JSON.stringify(realGoogleUser));
           // Pulihkan data sesi & konfigurasi akun dari cloud
           restoreAccountData(realGoogleUser).finally(() => {
@@ -210,6 +214,10 @@ export default function GoogleAuthButton({
     };
 
     if (typeof window !== "undefined") {
+      const lastEmail = localStorage.getItem("zap_last_active_user_email")?.toLowerCase().trim();
+      if (lastEmail && lastEmail !== defaultUser.email.toLowerCase().trim()) {
+        clearLocalWorkingSession();
+      }
       localStorage.setItem("zap_authenticated_user", JSON.stringify(defaultUser));
       // Pulihkan data sesi & konfigurasi akun dari cloud
       restoreAccountData(defaultUser).finally(() => {
@@ -232,7 +240,7 @@ export default function GoogleAuthButton({
           console.warn("Gagal auto-backup sebelum logout:", e);
         }
       }
-      localStorage.removeItem("zap_authenticated_user");
+      clearLocalWorkingSession();
       window.location.href = "/login";
     }
     setUser(null);

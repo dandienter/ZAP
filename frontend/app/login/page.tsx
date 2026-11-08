@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import GoogleAuthButton, { type ZAPUser } from "@/components/GoogleAuthButton";
 import ZapLogo from "@/components/ZapLogo";
+import { clearLocalWorkingSession } from "@/utils/account-sync";
 import {
   ArrowRight,
   ChevronLeft,
@@ -53,15 +54,14 @@ export default function LoginPage() {
   };
 
   const handleSwitchAccount = () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("zap_authenticated_user");
-    }
+    clearLocalWorkingSession();
     setExistingUser(null);
   };
 
   const handleDirectStudentLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    clearLocalWorkingSession();
 
     const finalName = studentName.trim() || "Siswa Tamu";
     const newUser: ZAPUser = {

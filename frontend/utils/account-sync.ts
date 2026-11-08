@@ -4,7 +4,7 @@
  */
 
 import { type ZAPUser } from "@/components/GoogleAuthButton";
-import { type StoredConversation } from "@/utils/chat-memory";
+import { type StoredConversation, getUserStorageKey } from "@/utils/chat-memory";
 
 export interface AccountConfigs {
   nvidiaApiKey?: string;
@@ -34,10 +34,24 @@ const STORAGE_KEY_PRIMARY = "zap_conversations";
 const STORAGE_KEY_LEGACY = "zap_conversations_v1";
 
 /**
- * Mengumpulkan semua data lokal saat ini dari browser pengguna
+ * Membersihkan working state sesi lokal saat pengguna keluar atau berganti akun
+ */
+export function clearLocalWorkingSession(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem("zap_authenticated_user");
+    localStorage.removeItem(STORAGE_KEY_PRIMARY);
+    localStorage.removeItem(STORAGE_KEY_LEGACY);
+    localStorage.removeItem("zap_active_conversation_id");
+    localStorage.removeItem("zap_last_active_user_email");
+  } catch {}
+}
+
+/**
+ * Mengumpulkan data lokal saat ini khusus untuk akun pengguna yang bersangkutan
  */
 export function collectLocalUserData(user: ZAPUser): UserAccountBackupPayload {
-  if (typeof window === "undefined") {
+  if (typeof window === "undefined" || !user) {
     return {
       user,
       configs: {},
@@ -45,16 +59,19 @@ export function collectLocalUserData(user: ZAPUser): UserAccountBackupPayload {
     };
   }
 
-  // 1. Baca percakapan dari kedua key agar tidak ada yang terlewat
+  const userEmail = (user.email || user.id || "").toLowerCase().trim();
+  const userKey = getUserStorageKey(userEmail);
   let convs: StoredConversation<unknown, unknown>[] = [];
+
   try {
-    const raw =
-      localStorage.getItem(STORAGE_KEY_PRIMARY) ||
-      localStorage.getItem(STORAGE_KEY_LEGACY);
+    const raw = localStorage.getItem(userKey);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        convs = parsed;
+        // Filter ketat: HANYA ambil percakapan yang eksplisit milik user ini
+        convs = parsed.filter(
+          (c: any) => c && c.userEmail && c.userEmail.toLowerCase().trim() === userEmail
+        );
       }
     }
   } catch (e) {
@@ -108,7 +125,16 @@ export async function syncAccountBackup(
 ): Promise<boolean> {
   if (typeof window === "undefined" || !user) return false;
 
+  const userEmail = (user.email || user.id || "").toLowerCase().trim();
   const current = collectLocalUserData(user);
+  const rawConvs = overrides?.conversations !== undefined ? overrides.conversations : current.conversations;
+
+  // Berikan tag kepemilikan akun secara eksplisit pada setiap sesi percakapan
+  const taggedConvs = rawConvs.map((c: any) => ({
+    ...c,
+    userEmail,
+  }));
+
   const payload: UserAccountBackupPayload = {
     user,
     updatedAt: Date.now(),
@@ -116,22 +142,22 @@ export async function syncAccountBackup(
       ...current.configs,
       ...(overrides?.configs || {}),
     },
-    conversations: overrides?.conversations !== undefined ? overrides.conversations : current.conversations,
+    conversations: taggedConvs,
     workspaces: overrides?.workspaces !== undefined ? overrides.workspaces : current.workspaces,
     workspaceFiles: overrides?.workspaceFiles !== undefined ? overrides.workspaceFiles : current.workspaceFiles,
   };
 
   // 1. Simpan salinan lokal terisolasi per akun pengguna
   try {
-    const userStorageKey = `zap_user_backup_${user.email || user.id}`;
+    const userStorageKey = `zap_user_backup_${userEmail}`;
     localStorage.setItem(userStorageKey, JSON.stringify(payload));
 
-    // Sinkronkan key percakapan utama & legacy agar konsisten
-    if (payload.conversations && payload.conversations.length > 0) {
-      const convsStr = JSON.stringify(payload.conversations);
-      localStorage.setItem(STORAGE_KEY_PRIMARY, convsStr);
-      localStorage.setItem(STORAGE_KEY_LEGACY, convsStr);
-    }
+    const userConvKey = getUserStorageKey(userEmail);
+    const convsStr = JSON.stringify(taggedConvs);
+    localStorage.setItem(userConvKey, convsStr);
+
+    // Sinkronkan key aktif saat ini (tanpa mengotori key global)
+    localStorage.setItem("zap_last_active_user_email", userEmail);
   } catch (e) {
     console.warn("Gagal menyimpan backup akun lokal:", e);
   }
@@ -163,6 +189,7 @@ export async function restoreAccountData<M = unknown, C = unknown, W = unknown, 
     return { conversations: [], configs: {}, workspaces: [], workspaceFiles: [] };
   }
 
+  const userEmail = (user.email || user.id || "").toLowerCase().trim();
   let serverBackup: UserAccountBackupPayload | null = null;
 
   // 1. Coba ambil dari cloud endpoint
@@ -179,10 +206,10 @@ export async function restoreAccountData<M = unknown, C = unknown, W = unknown, 
     console.warn("Tidak dapat menghubungi endpoint backup server, beralih ke cache lokal:", netErr);
   }
 
-  // 2. Jika server belum ada data atau offline, ambil dari cache akun lokal
+  // 2. Jika server belum ada data atau offline, ambil HANYA dari cache akun ini
   if (!serverBackup) {
     try {
-      const userStorageKey = `zap_user_backup_${user.email || user.id}`;
+      const userStorageKey = `zap_user_backup_${userEmail}`;
       const cached = localStorage.getItem(userStorageKey);
       if (cached) {
         serverBackup = JSON.parse(cached);
@@ -192,24 +219,32 @@ export async function restoreAccountData<M = unknown, C = unknown, W = unknown, 
     }
   }
 
-  // 3. Gabungkan percakapan yang mungkin sudah ada di browser dengan percakapan dari backup
-  const localCurrent = collectLocalUserData(user);
-  const convMap = new Map<string, StoredConversation<unknown, unknown>>();
+  // 3. Ambil percakapan lokal dari key terisolasi user ini
+  const userConvKey = getUserStorageKey(userEmail);
+  let localUserConvs: StoredConversation<unknown, unknown>[] = [];
+  try {
+    const raw = localStorage.getItem(userConvKey);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        localUserConvs = parsed;
+      }
+    }
+  } catch {}
 
-  // Masukkan dari server/cache terlebih dahulu
+  // Kumpulkan HANYA percakapan milik akun ini
+  const convMap = new Map<string, StoredConversation<unknown, unknown>>();
   if (serverBackup?.conversations && Array.isArray(serverBackup.conversations)) {
     for (const c of serverBackup.conversations) {
-      if (c && c.id) convMap.set(c.id, c);
+      if (c && c.id) convMap.set(c.id, { ...c, userEmail });
     }
   }
-
-  // Masukkan dari browser lokal (jika ada yang lebih baru)
-  if (localCurrent.conversations && Array.isArray(localCurrent.conversations)) {
-    for (const c of localCurrent.conversations) {
-      if (c && c.id) {
+  if (localUserConvs && Array.isArray(localUserConvs)) {
+    for (const c of localUserConvs) {
+      if (c && c.id && c.userEmail && c.userEmail.toLowerCase().trim() === userEmail) {
         const existing = convMap.get(c.id);
         if (!existing || (c.updatedAt || 0) >= (existing.updatedAt || 0)) {
-          convMap.set(c.id, c);
+          convMap.set(c.id, { ...c, userEmail });
         }
       }
     }
@@ -219,14 +254,16 @@ export async function restoreAccountData<M = unknown, C = unknown, W = unknown, 
     (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)
   );
 
-  // 4. Pulihkan konfigurasi & API keys
-  const mergedConfigs: AccountConfigs = {
-    ...(serverBackup?.configs || {}),
-    ...localCurrent.configs,
-  };
-
-  // Terapkan ke localStorage agar seluruh halaman langsung mendapatkan nilainya
+  // 4. Update localStorage secara bersih dan terisolasi untuk user ini
   try {
+    localStorage.setItem("zap_last_active_user_email", userEmail);
+    const convJson = JSON.stringify(mergedConversations);
+    localStorage.setItem(userConvKey, convJson);
+
+    // Pulihkan konfigurasi akun jika ada
+    const mergedConfigs: AccountConfigs = {
+      ...(serverBackup?.configs || {}),
+    };
     if (mergedConfigs.nvidiaApiKey) localStorage.setItem("zap_nvidia_api_key", mergedConfigs.nvidiaApiKey);
     if (mergedConfigs.geminiApiKey) localStorage.setItem("zap_gemini_api_key", mergedConfigs.geminiApiKey);
     if (mergedConfigs.openaiApiKey) localStorage.setItem("zap_openai_api_key", mergedConfigs.openaiApiKey);
@@ -246,16 +283,11 @@ export async function restoreAccountData<M = unknown, C = unknown, W = unknown, 
       }
     }
 
-    // Tulis percakapan ke kedua storage key
-    const convJson = JSON.stringify(mergedConversations);
-    localStorage.setItem(STORAGE_KEY_PRIMARY, convJson);
-    localStorage.setItem(STORAGE_KEY_LEGACY, convJson);
-
-    // Pulihkan workspaces jika tersedia
-    if (serverBackup?.workspaces && Array.isArray(serverBackup.workspaces) && serverBackup.workspaces.length > 0) {
+    // Pulihkan workspaces & workspace files jika tersedia
+    if (serverBackup?.workspaces && Array.isArray(serverBackup.workspaces)) {
       localStorage.setItem("zap_workspaces", JSON.stringify(serverBackup.workspaces));
     }
-    if (serverBackup?.workspaceFiles && Array.isArray(serverBackup.workspaceFiles) && serverBackup.workspaceFiles.length > 0) {
+    if (serverBackup?.workspaceFiles && Array.isArray(serverBackup.workspaceFiles)) {
       localStorage.setItem("zap_workspace_files", JSON.stringify(serverBackup.workspaceFiles));
     }
   } catch (storageErr) {
@@ -264,8 +296,8 @@ export async function restoreAccountData<M = unknown, C = unknown, W = unknown, 
 
   return {
     conversations: mergedConversations as unknown as StoredConversation<M, C>[],
-    configs: mergedConfigs,
-    workspaces: (serverBackup?.workspaces || localCurrent.workspaces || []) as unknown as W[],
-    workspaceFiles: (serverBackup?.workspaceFiles || localCurrent.workspaceFiles || []) as unknown as F[],
+    configs: serverBackup?.configs || {},
+    workspaces: (serverBackup?.workspaces || []) as unknown as W[],
+    workspaceFiles: (serverBackup?.workspaceFiles || []) as unknown as F[],
   };
 }

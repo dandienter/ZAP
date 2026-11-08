@@ -19,11 +19,19 @@ export interface StoredConversation<M, C> {
   activeProblemFirstStep: string | null;
   activeProblemContext: C | null;
   targetVar: string;
+  userEmail?: string;
+  userId?: string;
 }
 
 const STORAGE_KEY = "zap_conversations_v1";
 const MAX_CONVERSATIONS = 30;
 const MAX_MESSAGES_PER_CONVERSATION = 200;
+
+export function getUserStorageKey(userEmailOrId?: string | null): string {
+  if (!userEmailOrId) return "zap_conversations_guest";
+  const clean = userEmailOrId.trim().toLowerCase().replace(/[^a-z0-9._-]/g, "_");
+  return `zap_conversations_${clean}`;
+}
 
 interface MessageLike {
   sender: "user" | "assistant";
@@ -43,35 +51,73 @@ export function deriveTitle<M extends MessageLike>(messages: M[]): string {
   return clean.length > 42 ? clean.slice(0, 42) + "…" : clean;
 }
 
-export function loadConversations<M, C>(): StoredConversation<M, C>[] {
+export function loadConversations<M, C>(userEmailOrId?: string | null): StoredConversation<M, C>[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const key = getUserStorageKey(userEmailOrId);
+    const raw = window.localStorage.getItem(key);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (c) => c && typeof c.id === "string" && Array.isArray(c.messages)
-    ) as StoredConversation<M, C>[];
+
+    const targetEmail = userEmailOrId?.toLowerCase().trim();
+    if (!targetEmail) {
+      // Guest: hanya item yang tidak memiliki userEmail spesifik
+      return parsed.filter(
+        (c) => c && typeof c.id === "string" && Array.isArray(c.messages) && !c.userEmail
+      ) as StoredConversation<M, C>[];
+    }
+
+    // Filter ketat: HANYA percakapan yang eksplisit memiliki userEmail sama persis
+    return parsed.filter((c) => {
+      if (!c || typeof c.id !== "string" || !Array.isArray(c.messages)) return false;
+      return c.userEmail && c.userEmail.toLowerCase().trim() === targetEmail;
+    }) as StoredConversation<M, C>[];
   } catch {
     return [];
   }
 }
 
-export function saveConversations<M, C>(list: StoredConversation<M, C>[]): void {
+export function saveConversations<M, C>(
+  list: StoredConversation<M, C>[],
+  userEmailOrId?: string | null
+): void {
   if (typeof window === "undefined") return;
   try {
+    const targetEmail = userEmailOrId ? userEmailOrId.toLowerCase().trim() : undefined;
     const trimmed = [...list]
+      .filter((c) => {
+        if (!targetEmail) return !c.userEmail;
+        return !c.userEmail || c.userEmail.toLowerCase().trim() === targetEmail;
+      })
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, MAX_CONVERSATIONS)
       .map((c) => ({
         ...c,
         messages: c.messages.slice(-MAX_MESSAGES_PER_CONVERSATION),
+        userEmail: targetEmail || c.userEmail,
       }));
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
+
+    const key = getUserStorageKey(userEmailOrId);
+    const jsonStr = JSON.stringify(trimmed);
+    window.localStorage.setItem(key, jsonStr);
+
+    if (targetEmail) {
+      window.localStorage.setItem("zap_last_active_user_email", targetEmail);
+    }
   } catch {
     // Kuota penuh atau mode privat: memory sesi tetap berjalan di state.
   }
+}
+
+export function clearUserConversations(userEmailOrId?: string | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    const key = getUserStorageKey(userEmailOrId);
+    window.localStorage.removeItem(key);
+    window.localStorage.removeItem("zap_conversations");
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {}
 }
 
 export function upsertConversation<M, C>(

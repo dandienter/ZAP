@@ -19,10 +19,11 @@ import ModelPickerWithEffort, {
 import {
   formatRelativeTime,
   loadConversations,
+  saveConversations,
   windowHistory,
   type StoredConversation,
 } from "@/utils/chat-memory";
-import { syncAccountBackup, restoreAccountData } from "@/utils/account-sync";
+import { syncAccountBackup, restoreAccountData, clearLocalWorkingSession } from "@/utils/account-sync";
 import { useTheme } from "@/utils/theme";
 import {
   Plus,
@@ -1151,10 +1152,38 @@ export default function ZAPApp() {
             setCurrentUser(parsed);
             setAuthChecked(true);
 
+            const userKey = (parsed.email || parsed.id || "").toLowerCase().trim();
+            const lastActiveUser = localStorage.getItem("zap_last_active_user_email")?.toLowerCase().trim();
+            const isAccountSwitched = !lastActiveUser || lastActiveUser !== userKey;
+
+            // Jika akun berganti dari sesi sebelumnya:
+            // Segera reset state percakapan agar sesi akun lama tidak bocor ke akun baru
+            if (isAccountSwitched) {
+              setConversations([]);
+              setMessages([]);
+              startNewChat();
+              try {
+                localStorage.removeItem("zap_conversations");
+                localStorage.removeItem("zap_conversations_v1");
+                localStorage.removeItem("zap_active_conversation_id");
+              } catch {}
+            } else {
+              // Muat riwayat lokal terisolasi khusus milik akun ini
+              const userStored = loadConversations<Message, ActiveProblemContext>(userKey);
+              if (userStored && userStored.length > 0) {
+                setConversations(userStored);
+              } else {
+                setConversations([]);
+              }
+            }
+
             // Auto-restore backup data akun Google (riwayat chat, API keys, workspaces, model)
             restoreAccountData<Message, ActiveProblemContext, WorkspaceItem, UploadedFile>(parsed).then((restored) => {
-              if (restored.conversations && restored.conversations.length > 0) {
-                setConversations(restored.conversations);
+              // Selalu set percakapan sesuai hasil akun ini (jika akun baru/kosong, set [] dan tidak menampilkan akun lain)
+              const userConvs = restored.conversations || [];
+              setConversations(userConvs);
+              if (userConvs.length === 0) {
+                startNewChat();
               }
               if (restored.workspaces && restored.workspaces.length > 0) {
                 setWorkspaces(restored.workspaces);
@@ -1162,7 +1191,7 @@ export default function ZAPApp() {
               if (restored.workspaceFiles && restored.workspaceFiles.length > 0) {
                 setWorkspaceFiles(restored.workspaceFiles);
               }
-              if (restored.configs.selectedModelId) {
+              if (restored.configs?.selectedModelId) {
                 const found = AVAILABLE_MODELS.find((m) => m.id === restored.configs.selectedModelId);
                 if (found) setSelectedModel(found);
               }
@@ -1190,10 +1219,6 @@ export default function ZAPApp() {
         if (found) {
           setSelectedModel(found);
         }
-      }
-      const stored = loadConversations<Message, ActiveProblemContext>();
-      if (stored.length > 0) {
-        setConversations(stored);
       }
 
       try {
@@ -1287,17 +1312,10 @@ export default function ZAPApp() {
     setConversations((prev) => {
       const withoutCurrent = prev.filter((c) => c.id !== activeConversationId);
       const next = [updatedConv, ...withoutCurrent].slice(0, 50);
-      try {
-        const jsonStr = JSON.stringify(next);
-        localStorage.setItem("zap_conversations", jsonStr);
-        localStorage.setItem("zap_conversations_v1", jsonStr);
-      } catch (err) {
-        console.warn("Gagal menyimpan percakapan:", err);
-      }
+      const userKey = (currentUser.email || currentUser.id || "").toLowerCase().trim();
+      saveConversations(next, userKey);
       // Auto-backup percakapan akun Google ke cloud
-      if (currentUser) {
-        syncAccountBackup(currentUser, { conversations: next });
-      }
+      syncAccountBackup(currentUser, { conversations: next });
       return next;
     });
   }, [messages, activeProblemFirstStep, activeProblemContext, targetVar, activeConversationId, memoryReady, currentUser]);
@@ -1328,10 +1346,10 @@ export default function ZAPApp() {
         console.warn("Gagal backup sebelum logout:", e);
       }
     }
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("zap_authenticated_user");
-    }
+    clearLocalWorkingSession();
     setCurrentUser(null);
+    setConversations([]);
+    setMessages([]);
     setProfileDropdownOpen(false);
     router.replace("/login");
   };
@@ -1386,13 +1404,8 @@ export default function ZAPApp() {
     e.stopPropagation();
     const next = conversations.filter((c) => c.id !== convId);
     setConversations(next);
-    try {
-      const jsonStr = JSON.stringify(next);
-      localStorage.setItem("zap_conversations", jsonStr);
-      localStorage.setItem("zap_conversations_v1", jsonStr);
-    } catch (err) {
-      console.warn("Gagal menghapus percakapan:", err);
-    }
+    const userKey = (currentUser?.email || currentUser?.id || "").toLowerCase().trim();
+    saveConversations(next, userKey);
     if (currentUser) {
       syncAccountBackup(currentUser, { conversations: next });
     }
