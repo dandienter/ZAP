@@ -1241,8 +1241,18 @@ export default function ZAPApp() {
                 const found = userConvs.find((c) => c.id === targetId);
                 if (found) {
                   openConversation(found.id);
-                } else if (userConvs.length === 0) {
+                } else {
+                  // Proteksi IDOR: Sesi percakapan privat akun lain tidak boleh dimuat!
+                  if (typeof window !== "undefined") {
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete("id");
+                    url.searchParams.delete("c");
+                    window.history.replaceState(null, "", url.pathname);
+                  }
                   startNewChat();
+                  alert(
+                    "Akses Ditolak: Anda tidak memiliki izin untuk melihat sesi percakapan privat akun lain. Percakapan hanya dapat diakses jika pemilik telah mengaktifkan Tautan Publik (Public Share)."
+                  );
                 }
               } else if (userConvs.length === 0) {
                 startNewChat();

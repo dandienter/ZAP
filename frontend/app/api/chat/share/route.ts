@@ -23,6 +23,7 @@ interface SharedConversationPayload {
   title: string;
   authorName?: string;
   authorEmail?: string;
+  isPublic: boolean;
   sharedAt: number;
   updatedAt: number;
   messages: ShareMessage[];
@@ -62,42 +63,26 @@ export async function GET(req: Request) {
     if (fs.existsSync(filePath)) {
       const raw = fs.readFileSync(filePath, "utf-8");
       const data: SharedConversationPayload = JSON.parse(raw);
+
+      // Verifikasi status publik: jika pemilik mematikan public share, blokir akses!
+      if (!data.isPublic) {
+        return NextResponse.json(
+          {
+            exists: false,
+            isRevoked: true,
+            error: "Tautan publik percakapan ini telah dinonaktifkan oleh pemiliknya.",
+          },
+          { status: 403 }
+        );
+      }
+
       return NextResponse.json({ exists: true, data });
     }
 
-    // Fallback: Cek jika ID adalah conversationId dari vault pengguna
-    const usersDir = path.join(process.cwd(), ".zap_vault", "users");
-    if (fs.existsSync(usersDir)) {
-      const userFiles = fs.readdirSync(usersDir);
-      for (const file of userFiles) {
-        if (!file.endsWith(".json")) continue;
-        try {
-          const userRaw = fs.readFileSync(path.join(usersDir, file), "utf-8");
-          const userData = JSON.parse(userRaw);
-          if (Array.isArray(userData.conversations)) {
-            const found = userData.conversations.find((c: any) => c.id === id);
-            if (found && Array.isArray(found.messages) && found.messages.length > 0) {
-              const syntheticShare: SharedConversationPayload = {
-                shareId: cleanId,
-                conversationId: found.id,
-                title: found.title || "Percakapan ZAP",
-                authorName: userData.user?.name || "Pengguna ZAP",
-                sharedAt: found.createdAt || Date.now(),
-                updatedAt: found.updatedAt || Date.now(),
-                messages: found.messages,
-                targetVar: found.targetVar || "x",
-              };
-              // Simpan langsung agar berikutnya instan
-              fs.writeFileSync(filePath, JSON.stringify(syntheticShare, null, 2), "utf-8");
-              return NextResponse.json({ exists: true, data: syntheticShare });
-            }
-          }
-        } catch {}
-      }
-    }
-
+    // STRICT: Jangan pernah fallback mencari di vault percakapan privat!
+    // Percakapan privat hanya boleh dilihat oleh akun pemiliknya di /chat.
     return NextResponse.json(
-      { exists: false, error: "Percakapan yang dibagikan tidak ditemukan" },
+      { exists: false, error: "Tautan percakapan tidak ditemukan atau belum dipublikasikan oleh pemilik." },
       { status: 404 }
     );
   } catch (err) {
@@ -120,10 +105,40 @@ export async function POST(req: Request) {
       authorName,
       authorEmail,
       includeAuthor = true,
+      isPublic = true,
       targetVar,
       active3DModel,
       shareId: requestedShareId,
     } = body;
+
+    const normalizedAuthorEmail = authorEmail ? authorEmail.toString().toLowerCase().trim() : undefined;
+
+    // Jika ini adalah permintaan untuk menonaktifkan share yang sudah ada:
+    if (requestedShareId && isPublic === false) {
+      const cleanId = requestedShareId.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
+      const filePath = getShareFilePath(cleanId);
+      if (fs.existsSync(filePath)) {
+        const raw = fs.readFileSync(filePath, "utf-8");
+        const existing: SharedConversationPayload = JSON.parse(raw);
+        // Validasi kepemilikan sebelum revoke
+        if (
+          normalizedAuthorEmail &&
+          existing.authorEmail &&
+          existing.authorEmail.toLowerCase().trim() !== normalizedAuthorEmail
+        ) {
+          return NextResponse.json({ error: "Anda bukan pemilik percakapan ini" }, { status: 403 });
+        }
+        existing.isPublic = false;
+        existing.updatedAt = Date.now();
+        fs.writeFileSync(filePath, JSON.stringify(existing, null, 2), "utf-8");
+        return NextResponse.json({
+          success: true,
+          shareId: cleanId,
+          isPublic: false,
+          message: "Tautan publik percakapan berhasil dinonaktifkan",
+        });
+      }
+    }
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
@@ -132,12 +147,31 @@ export async function POST(req: Request) {
       );
     }
 
-    // Gunakan shareId yang diminta jika ada dan valid UUID, atau buat baru
+    // Generate token shareId acak (UUID v4) independen, tidak boleh sama dengan private conversationId
     let shareId = requestedShareId;
     if (!shareId || typeof shareId !== "string" || !/^[a-z0-9-]{8,}$/i.test(shareId)) {
       shareId = crypto.randomUUID();
     }
     shareId = shareId.toLowerCase();
+
+    // Jika file share sudah ada, pastikan hanya pemilik yang bisa memperbarui
+    const filePath = getShareFilePath(shareId);
+    if (fs.existsSync(filePath)) {
+      try {
+        const existingRaw = fs.readFileSync(filePath, "utf-8");
+        const existingData: SharedConversationPayload = JSON.parse(existingRaw);
+        if (
+          normalizedAuthorEmail &&
+          existingData.authorEmail &&
+          existingData.authorEmail.toLowerCase().trim() !== normalizedAuthorEmail
+        ) {
+          return NextResponse.json(
+            { error: "Akses ditolak: Anda bukan pemilik percakapan ini." },
+            { status: 403 }
+          );
+        }
+      } catch {}
+    }
 
     const cleanTitle = (title || "Percakapan ZAP").toString().trim();
     const finalAuthor = includeAuthor ? (authorName || "Pengguna ZAP").toString().trim() : "Anonim";
@@ -162,7 +196,8 @@ export async function POST(req: Request) {
       conversationId: conversationId || undefined,
       title: cleanTitle,
       authorName: finalAuthor,
-      authorEmail: includeAuthor ? authorEmail : undefined,
+      authorEmail: normalizedAuthorEmail,
+      isPublic: Boolean(isPublic),
       sharedAt: Date.now(),
       updatedAt: Date.now(),
       messages: sanitizedMessages,
@@ -170,12 +205,12 @@ export async function POST(req: Request) {
       active3DModel: active3DModel || undefined,
     };
 
-    const filePath = getShareFilePath(shareId);
     fs.writeFileSync(filePath, JSON.stringify(payload, null, 2), "utf-8");
 
     return NextResponse.json({
       success: true,
       shareId,
+      isPublic: payload.isPublic,
       sharePath: `/a/chat/s/${shareId}`,
       altSharePath: `/chat/s/${shareId}`,
       title: cleanTitle,
@@ -183,7 +218,7 @@ export async function POST(req: Request) {
   } catch (err) {
     console.warn("Gagal membuat tautan percakapan:", err);
     return NextResponse.json(
-      { error: "Gagal membagikan percakapan ke server" },
+      { error: "Gagal memproses status publik percakapan ke server" },
       { status: 500 }
     );
   }

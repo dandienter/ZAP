@@ -20,6 +20,7 @@ import {
   Moon,
   ExternalLink,
   MessageSquare,
+  Lock,
 } from "lucide-react";
 
 interface ShareMessage {
@@ -61,13 +62,16 @@ export default function SharedChatView({ shareId }: { shareId: string }) {
       try {
         setLoading(true);
         const res = await fetch(`/api/chat/share?id=${encodeURIComponent(shareId)}`);
-        if (!res.ok) {
-          if (res.status === 404) {
-            throw new Error("Percakapan yang dibagikan tidak ditemukan atau telah dihapus.");
-          }
-          throw new Error("Gagal memuat percakapan dari server.");
-        }
         const json = await res.json();
+        if (!res.ok) {
+          if (res.status === 403 || json.isRevoked) {
+            throw new Error("Tautan publik percakapan ini telah dinonaktifkan oleh pemiliknya.");
+          }
+          if (res.status === 404) {
+            throw new Error("Percakapan yang dibagikan tidak ditemukan atau belum dipublikasikan oleh pemilik.");
+          }
+          throw new Error(json.error || "Gagal memuat percakapan dari server.");
+        }
         if (json.exists && json.data) {
           if (isMounted) setData(json.data);
         } else {
@@ -119,16 +123,27 @@ export default function SharedChatView({ shareId }: { shareId: string }) {
   }
 
   if (error || !data) {
+    const isRevoked = error?.includes("dinonaktifkan");
+
     return (
       <div className="min-h-screen bg-[#0d0f12] text-zinc-100 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 rounded-3xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mb-5 text-rose-400">
-          <Share2 className="w-8 h-8" />
+        <div
+          className={`w-16 h-16 rounded-3xl flex items-center justify-center mb-5 ${
+            isRevoked
+              ? "bg-amber-500/10 border border-amber-500/20 text-amber-400"
+              : "bg-rose-500/10 border border-rose-500/20 text-rose-400"
+          }`}
+        >
+          {isRevoked ? <Lock className="w-8 h-8" /> : <Share2 className="w-8 h-8" />}
         </div>
         <h1 className="text-xl font-bold text-zinc-100 mb-2">
-          Percakapan Tidak Ditemukan
+          {isRevoked ? "Akses Dibatasi: Tautan Dinonaktifkan" : "Percakapan Tidak Ditemukan"}
         </h1>
         <p className="text-sm text-zinc-400 max-w-md mb-6 leading-relaxed">
-          {error || "Tautan yang Anda tuju mungkin salah, telah dihapus, atau masa berlakunya telah usai."}
+          {isRevoked
+            ? "Pemilik percakapan ini telah mengunci atau menonaktifkan tautan publik. Percakapan ini tidak lagi dapat diakses oleh publik demi menjaga privasi dan keamanan data."
+            : error ||
+              "Tautan yang Anda tuju mungkin salah, telah dihapus, atau belum dipublikasikan oleh pemiliknya."}
         </p>
         <div className="flex gap-3">
           <Link
