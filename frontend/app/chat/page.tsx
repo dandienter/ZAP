@@ -1389,7 +1389,7 @@ export default function ZAPApp() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Simpan percakapan aktif setiap ada perubahan
+  // Simpan percakapan aktif setiap ada perubahan pesan baru
   useEffect(() => {
     if (!memoryReady || messages.length === 0 || !currentUser) return;
     const firstUserMsg = messages.find((m) => m.sender === "user");
@@ -1397,20 +1397,43 @@ export default function ZAPApp() {
       ? firstUserMsg.steps?.[0] || firstUserMsg.rawText?.slice(0, 24) || "New Session"
       : "New Session";
 
+    const existing = conversations.find((c) => c.id === activeConversationId);
+
+    // Tentukan apakah ada pesan baru yang dikirim atau diterima
+    // Jika hanya membuka/mengklik percakapan lama, messages.length sama persis
+    const isNewMessage =
+      !existing ||
+      existing.messages.length !== messages.length ||
+      (messages.length > 0 &&
+        existing.messages[existing.messages.length - 1]?.replyText !==
+          messages[messages.length - 1]?.replyText);
+
+    // Kritis: Acuan waktu (updatedAt) HANYA diperbarui saat ada chat baru dikirim!
+    // Saat percakapan lama hanya diklik/dibuka untuk dibaca, pertahankan updatedAt aslinya
+    // sehingga tidak naik ke atas dan tidak berubah jadi 'baru saja'.
+    const conversationUpdatedAt = isNewMessage
+      ? Date.now()
+      : (existing?.updatedAt || createdAtRef.current);
+
     const updatedConv: StoredConv = {
       id: activeConversationId,
       title: title.length > 24 ? title.slice(0, 24) + "..." : title,
       createdAt: createdAtRef.current,
-      updatedAt: Date.now(),
+      updatedAt: conversationUpdatedAt,
       messages,
       activeProblemFirstStep,
       activeProblemContext,
       targetVar,
+      userEmail: (currentUser.email || currentUser.id || "").toLowerCase().trim(),
     };
 
     setConversations((prev) => {
       const withoutCurrent = prev.filter((c) => c.id !== activeConversationId);
-      const next = [updatedConv, ...withoutCurrent].slice(0, 50);
+      // Urutkan berdasarkan updatedAt secara descending (terakhir kali chat dikirim di atas)
+      const next = [updatedConv, ...withoutCurrent]
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .slice(0, 50);
+
       const userKey = (currentUser.email || currentUser.id || "").toLowerCase().trim();
       saveConversations(next, userKey);
       // Auto-backup percakapan akun Google ke cloud
@@ -2464,20 +2487,23 @@ export default function ZAPApp() {
 
             {/* Tree Children */}
             <div className="pl-4 space-y-0.5">
-              {/* Active Session */}
-              <div
-                onClick={() => {}}
-                className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-[#1e2025] text-blue-700 dark:text-white text-xs font-medium cursor-pointer border border-blue-200/60 dark:border-transparent"
-              >
-                <span className="truncate">
-                  {messages.length === 0 ? "New Session" : conversations.find((c) => c.id === activeConversationId)?.title || "Current Session"}
-                </span>
-              </div>
+              {/* Tampilkan item 'New Session' jika sedang berada di sesi baru yang belum disimpan */}
+              {(!conversations.some((c) => c.id === activeConversationId) || messages.length === 0) && (
+                <div
+                  onClick={startNewChat}
+                  className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition ${
+                    messages.length === 0 && !conversations.some((c) => c.id === activeConversationId)
+                      ? "bg-blue-50 dark:bg-[#1e2025] text-blue-700 dark:text-white border border-blue-200/60 dark:border-transparent"
+                      : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
+                  }`}
+                >
+                  <span className="truncate">New Session</span>
+                </div>
+              )}
 
-              {/* Saved Sessions from memory with search and status filtering */}
+              {/* Daftar semua sesi percakapan dari memory, terurut berdasarkan kapan terakhir kali chat dikirim */}
               {(() => {
                 const filtered = conversations
-                  .filter((c) => c.id !== activeConversationId)
                   .filter((c) => {
                     if (sessionSearchQuery.trim()) {
                       const q = sessionSearchQuery.toLowerCase();
@@ -2507,13 +2533,13 @@ export default function ZAPApp() {
                   );
                 }
 
-                return filtered.slice(0, 15).map((conv) => (
+                return filtered.slice(0, 30).map((conv) => (
                   <div
                     key={conv.id}
                     onClick={() => openConversation(conv.id)}
                     className={`group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer ${
                       conv.id === activeConversationId
-                        ? "bg-slate-200/70 dark:bg-white/[0.08] text-slate-900 dark:text-zinc-100 font-medium"
+                        ? "bg-blue-50/80 dark:bg-white/[0.08] text-blue-700 dark:text-white font-medium border border-blue-200/50 dark:border-white/[0.08]"
                         : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
                     }`}
                   >
