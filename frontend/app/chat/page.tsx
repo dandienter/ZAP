@@ -1269,7 +1269,7 @@ export default function ZAPApp() {
       if (lastSmartboardItem.paramC !== undefined) setCanvasParamC(lastSmartboardItem.paramC);
       if (lastSmartboardItem.unit) setCanvasUnit(lastSmartboardItem.unit);
       setCanvasShowSlice(Boolean(lastSmartboardItem.hasSlice));
-      setShowRightPane(false);
+      setShowRightPane(true);
       setRightPaneTab("canvas");
     } else {
       setActive3DModel("empty");
@@ -1334,10 +1334,23 @@ export default function ZAPApp() {
 
             // Auto-restore backup data akun Google (riwayat chat, API keys, workspaces, model)
             restoreAccountData<Message, ActiveProblemContext, WorkspaceItem, UploadedFile>(parsed).then((restored) => {
-              // Selalu set percakapan sesuai hasil akun ini (jika akun baru/kosong, set [] dan tidak menampilkan akun lain)
+              // Selalu sinkronkan percakapan dengan menggabungkan backup cloud dan sesi lokal yang aktif
               const userConvs = restored.conversations || [];
-              setConversations(userConvs);
-              conversationsRef.current = userConvs;
+              setConversations((prev) => {
+                const merged = [...userConvs];
+                prev.forEach((localConv) => {
+                  const idx = merged.findIndex((c) => c.id === localConv.id);
+                  if (idx === -1) {
+                    merged.unshift(localConv);
+                  } else {
+                    if ((localConv.messages?.length || 0) >= (merged[idx].messages?.length || 0)) {
+                      merged[idx] = localConv;
+                    }
+                  }
+                });
+                conversationsRef.current = merged;
+                return merged;
+              });
 
               const searchParams = new URLSearchParams(window.location.search);
               const importId = searchParams.get("import");
@@ -1380,11 +1393,14 @@ export default function ZAPApp() {
                   });
               } else if (currentTargetId) {
                 const found =
-                  userConvs.find((c) => c.id === currentTargetId) ||
-                  conversationsRef.current.find((c) => c.id === currentTargetId);
+                  conversationsRef.current.find((c) => c.id === currentTargetId) ||
+                  userConvs.find((c) => c.id === currentTargetId);
 
                 if (found) {
-                  activateConversation(found);
+                  // Jangan reset jika percakapan ini sudah aktif dan sedang memiliki pesan di memori
+                  if (activeConversationId !== currentTargetId || messages.length === 0) {
+                    activateConversation(found);
+                  }
                 } else {
                   // Proteksi IDOR: Sesi percakapan privat akun lain tidak boleh dimuat!
                   updateUrlForConversation(null);
@@ -1722,6 +1738,7 @@ export default function ZAPApp() {
         rawText: userQuestion,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         attachedFiles: currentAttached.length > 0 ? currentAttached : undefined,
+        smartboardItem: detectedGeometry,
       };
 
       if (!isRegenerate) {
@@ -1912,7 +1929,7 @@ export default function ZAPApp() {
           replyText: replyText,
           modelName: chatData.model || selectedModel.name,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          smartboardItem: responseGeometry,
+          smartboardItem: responseGeometry || detectedGeometry,
         };
         setMessages((prev) => [...prev, assistantMsg]);
       } catch (err) {

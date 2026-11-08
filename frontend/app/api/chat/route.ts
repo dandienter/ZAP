@@ -262,6 +262,17 @@ export async function POST(req: Request) {
     // Deteksi Bahasa Acuan Sesi Percakapan (Anchor Language) dari 2 sampai 3 pesan awal
     const sessionLanguage = detectSessionLanguage(conversationHistory, message);
 
+    // Prioritas Khusus: Jika pengguna meminta visualisasi/pemodelan geometri 3D
+    // Layani secara instan via ChatZAP Spatial 3D Engine (0ms, konsisten, KaTeX rapi, konfirmasi smartboard)
+    const geomResp = generateGeometry3DResponse(rawMessage);
+    if (geomResp) {
+      return NextResponse.json({
+        reply: sanitizeZeroAnswer(geomResp.reply),
+        model: geomResp.model,
+        source: "spatial-3d-engine",
+      });
+    }
+
     // 0. Panggil NVIDIA NIM API jika Auto-Agent atau model NVIDIA dipilih
     if (
       !modelId ||
@@ -1359,6 +1370,131 @@ async function callCustomOpenAIAPI(
   } catch (err) {
     return { error: String(err), status: 500, modelUsed: targetModel };
   }
+}
+
+/**
+ * Built-in Spatial 3D Engine Response Generator
+ * Memberikan respons matematis instan (<5ms), formula KaTeX presisi,
+ * dan konfirmasi aktifnya model 3D di Papan Tulis Pintar (Smartboard).
+ */
+function generateGeometry3DResponse(message: string): { reply: string; model: string } | null {
+  const lower = message.toLowerCase().trim();
+  if (!lower) return null;
+
+  const has3D = /\b(3d|3-d|tiga dimensi|bangun ruang)\b/i.test(lower);
+  const hasCommand = /\b(buatkan|buat|bikin|tampilkan|gambarkan|gambar|visualisasikan|render|modelkan|lihat|buka|simulasikan|create|generate|show)\b/i.test(lower);
+  const hasShape = /\b(tabung|cylinder|silinder|kubus|cube|balok|bola|sphere|kerucut|cone|prisma|limas|parabola|pelana)\b/i.test(lower);
+
+  // Jika bukan permintaan geometri atau 3D, lewati
+  if (!hasShape && !has3D) return null;
+  if (!hasCommand && !has3D) return null;
+  // Jika hanya pertanyaan konseptual murni ("apa itu aljabar?"), lewati
+  if (/^(apa|apakah|mengapa|kenapa|bagaimana)\b/i.test(lower) && !hasCommand && !has3D) return null;
+
+  const cleanText = lower
+    .replace(/\b3\s*-?\s*d\b/g, " ")
+    .replace(/\b(dimensi\s*3|3\s*dimensi)\b/g, " ");
+
+  // 1. TABUNG / CYLINDER
+  if (lower.includes("tabung") || lower.includes("cylinder") || lower.includes("silinder")) {
+    const rMatch = cleanText.match(/(?:r|jari-jari|jari)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const tMatch = cleanText.match(/(?:t|tinggi)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const numMatch = cleanText.match(/(?:tabung|cylinder|silinder)\s+(\d+(?:[.,]\d+)?)/i) || cleanText.match(/(\d+(?:[.,]\d+)?)\s*(?:cm|m|mm)?/);
+    const r = rMatch ? parseFloat(rMatch[1].replace(",", ".")) : numMatch ? parseFloat(numMatch[1].replace(",", ".")) : 7;
+    const t = tMatch ? parseFloat(tMatch[1].replace(",", ".")) : 12;
+    const vol = (Math.PI * r * r * t).toFixed(2);
+    const ls = (2 * Math.PI * r * t).toFixed(2);
+    const lp = (2 * Math.PI * r * (r + t)).toFixed(2);
+
+    return {
+      reply: `Objek geometri 3D **Tabung Silinder** telah **AKTIF** dan ditampilkan di Papan Tulis Pintar (Smartboard) di panel sebelah kanan layar! 🎉\n\n### Parameter & Sifat Matematis Tabung ($r = ${r}\\text{ cm},\\ t = ${t}\\text{ cm}$):\n\n- **Jari-jari alas ($r$):** $${r}\\text{ cm}$\n- **Tinggi silinder ($t$):** $${t}\\text{ cm}$\n- **Luas Selimut ($L_s$):** $$L_s = 2\\pi r t = 2\\pi (${r})(${t}) \\approx ${ls}\\text{ cm}^2$$\n- **Luas Permukaan Total ($L$):** $$L = 2\\pi r(r + t) \\approx ${lp}\\text{ cm}^2$$\n- **Volume Ruang ($V$):** $$V = \\pi r^2 t = \\pi (${r})^2 (${t}) \\approx ${vol}\\text{ cm}^3$$\n\n💡 **Eksplorasi Interaktif di Kanvas 3D:**\nKamu bisa memutar model 3D di sebelah kanan (drag mouse 360°), menyesuaikan slider jari-jari & tinggi di panel metrik, atau mengaktifkan mode rangka kawat (*wireframe*). Bagaimana perubahan jari-jari mempengaruhi volume dibanding perubahan tinggi?`,
+      model: "ChatZAP Spatial 3D Engine",
+    };
+  }
+
+  // 2. KUBUS / CUBE
+  if (lower.includes("kubus") || lower.includes("cube")) {
+    const sMatch = cleanText.match(/(?:s|rusuk|sisi|panjang|ukuran)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const numMatch = cleanText.match(/(?:kubus|cube)\s+(\d+(?:[.,]\d+)?)/i) || cleanText.match(/(\d+(?:[.,]\d+)?)\s*(?:cm|m|mm)?/);
+    const s = sMatch ? parseFloat(sMatch[1].replace(",", ".")) : numMatch ? parseFloat(numMatch[1].replace(",", ".")) : 10;
+    const vol = Math.pow(s, 3);
+    const lp = 6 * Math.pow(s, 2);
+    const dr = (s * Math.sqrt(3)).toFixed(2);
+    const db = (s * Math.sqrt(2)).toFixed(2);
+
+    return {
+      reply: `Objek geometri 3D **Kubus** telah **AKTIF** dan ditampilkan di Papan Tulis Pintar (Smartboard) di panel sebelah kanan layar! 🎉\n\n### Parameter & Sifat Matematis Kubus ($s = ${s}\\text{ cm}$):\n\n- **Panjang Rusuk/Sisi ($s$):** $${s}\\text{ cm}$\n- **Luas Permukaan Total ($L$):** $$L = 6s^2 = 6(${s})^2 = ${lp}\\text{ cm}^2$$\n- **Volume Ruang ($V$):** $$V = s^3 = (${s})^3 = ${vol}\\text{ cm}^3$$\n- **Panjang Diagonal Bidang ($d_b$):** $$d_b = s\\sqrt{2} \\approx ${db}\\text{ cm}$$\n- **Panjang Diagonal Ruang ($d_r$):** $$d_r = s\\sqrt{3} \\approx ${dr}\\text{ cm}$$\n\n💡 **Eksplorasi Interaktif:**\nKamu bisa langsung menarik titik sudut kubus di kanvas 3D untuk mengubah ukurannya, atau klik tombol **+ Tambah Irisan Bidang** untuk melihat penampang irisan kubus!`,
+      model: "ChatZAP Spatial 3D Engine",
+    };
+  }
+
+  // 3. BALOK (CUBOID)
+  if (lower.includes("balok")) {
+    const pMatch = cleanText.match(/(?:p|panjang)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const lMatch = cleanText.match(/(?:l|lebar)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const tMatch = cleanText.match(/(?:t|tinggi)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const p = pMatch ? parseFloat(pMatch[1].replace(",", ".")) : 10;
+    const l = lMatch ? parseFloat(lMatch[1].replace(",", ".")) : 6;
+    const t = tMatch ? parseFloat(tMatch[1].replace(",", ".")) : 4;
+    const vol = p * l * t;
+    const lp = 2 * (p * l + p * t + l * t);
+    const dr = Math.sqrt(p * p + l * l + t * t).toFixed(2);
+
+    return {
+      reply: `Objek geometri 3D **Balok** telah **AKTIF** dan ditampilkan di Papan Tulis Pintar (Smartboard) di panel sebelah kanan layar! 🎉\n\n### Parameter & Sifat Matematis Balok ($p=${p},\\ l=${l},\\ t=${t}\\text{ cm}$):\n\n- **Ukuran Dimensi:** $p = ${p}\\text{ cm},\\ l = ${l}\\text{ cm},\\ t = ${t}\\text{ cm}$\n- **Luas Permukaan ($L$):** $$L = 2(pl + pt + lt) = ${lp}\\text{ cm}^2$$\n- **Volume ($V$):** $$V = p \\times l \\times t = ${vol}\\text{ cm}^3$$\n- **Diagonal Ruang ($d$):** $$d = \\sqrt{p^2 + l^2 + t^2} \\approx ${dr}\\text{ cm}$$\n\n💡 **Eksplorasi Interaktif:**\nSilakan putar sudut pandang 3D di sebelah kanan atau gunakan slider metrik untuk mengeksplorasi perbandingan volumenya!`,
+      model: "ChatZAP Spatial 3D Engine",
+    };
+  }
+
+  // 4. BOLA (SPHERE)
+  if (lower.includes("bola") || lower.includes("sphere")) {
+    const rMatch = cleanText.match(/(?:r|jari-jari|jari)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const numMatch = cleanText.match(/(?:bola|sphere)\s+(\d+(?:[.,]\d+)?)/i) || cleanText.match(/(\d+(?:[.,]\d+)?)\s*(?:cm|m|mm)?/);
+    const r = rMatch ? parseFloat(rMatch[1].replace(",", ".")) : numMatch ? parseFloat(numMatch[1].replace(",", ".")) : 7;
+    const vol = ((4 / 3) * Math.PI * Math.pow(r, 3)).toFixed(2);
+    const lp = (4 * Math.PI * Math.pow(r, 2)).toFixed(2);
+
+    return {
+      reply: `Objek geometri 3D **Bola** telah **AKTIF** dan ditampilkan di Papan Tulis Pintar (Smartboard) di panel sebelah kanan layar! 🎉\n\n### Parameter & Sifat Matematis Bola ($r = ${r}\\text{ cm}$):\n\n- **Jari-jari ($r$):** $${r}\\text{ cm}$\n- **Diameter ($d$):** $${2 * r}\\text{ cm}$\n- **Luas Permukaan ($L$):** $$L = 4\\pi r^2 = 4\\pi (${r})^2 \\approx ${lp}\\text{ cm}^2$$\n- **Volume ($V$):** $$V = \\frac{4}{3}\\pi r^3 = \\frac{4}{3}\\pi (${r})^3 \\approx ${vol}\\text{ cm}^3$$\n\n💡 **Eksplorasi Interaktif:**\nKamu bisa memutar bola 3D di sebelah kanan, mengaktifkan wireframe untuk melihat jaring-jaring meridian, atau mengubah jari-jarinya di slider metrik!`,
+      model: "ChatZAP Spatial 3D Engine",
+    };
+  }
+
+  // 5. KERUCUT (CONE)
+  if (lower.includes("kerucut") || lower.includes("cone")) {
+    const r = 5;
+    const t = 10;
+    const s = Math.sqrt(r * r + t * t).toFixed(2);
+    const vol = ((1 / 3) * Math.PI * r * r * t).toFixed(2);
+    const ls = (Math.PI * r * parseFloat(s)).toFixed(2);
+
+    return {
+      reply: `Objek geometri 3D **Irisan Kerucut** telah **AKTIF** di Papan Tulis Pintar (Smartboard) di panel kanan! 🎉\n\n### Parameter Kerucut ($r = ${r}\\text{ cm},\\ t = ${t}\\text{ cm}$):\n- **Garis Pelukis ($s$):** $$s = \\sqrt{r^2 + t^2} \\approx ${s}\\text{ cm}$$\n- **Luas Selimut ($L_s$):** $$L_s = \\pi r s \\approx ${ls}\\text{ cm}^2$$\n- **Volume ($V$):** $$V = \\frac{1}{3}\\pi r^2 t \\approx ${vol}\\text{ cm}^3$$\n\n💡 Geser sudut bidang pemotong untuk mengamati terbentuknya irisan elips, parabola, dan hiperbola!`,
+      model: "ChatZAP Spatial 3D Engine",
+    };
+  }
+
+  // 6. PRISMA
+  if (lower.includes("prisma")) {
+    return {
+      reply: `Objek geometri 3D **Prisma Segitiga** telah **AKTIF** di Papan Tulis Pintar (Smartboard) di sebelah kanan! 🎉\n\n### Rumus Prisma Segitiga:\n- **Volume ($V$):** $$V = L_{\\text{alas}} \\times t$$\n- **Luas Permukaan ($L$):** $$L = 2 \\times L_{\\text{alas}} + K_{\\text{alas}} \\times t$$\n\nSilakan putar kanvas 3D di sebelah kanan untuk melihat semua bidang sisinya!`,
+      model: "ChatZAP Spatial 3D Engine",
+    };
+  }
+
+  // 7. LIMAS
+  if (lower.includes("limas")) {
+    return {
+      reply: `Objek geometri 3D **Limas Segi Empat** telah **AKTIF** di Papan Tulis Pintar (Smartboard) di sebelah kanan! 🎉\n\n### Rumus Limas:\n- **Volume ($V$):** $$V = \\frac{1}{3} \\times L_{\\text{alas}} \\times t$$\n- **Luas Permukaan ($L$):** $$L = L_{\\text{alas}} + \\sum L_{\\text{segitiga tegak}}$$\n\nSilakan amati titik puncak dan bidang tegaknya di kanvas 3D!`,
+      model: "ChatZAP Spatial 3D Engine",
+    };
+  }
+
+  // Default: Jika minta 3D umum
+  return {
+    reply: `Objek geometri 3D telah **AKTIF** dan ditampilkan di Papan Tulis Pintar (Smartboard) di panel sebelah kanan layar! 🎉\n\nSilakan gunakan kanvas 3D untuk memutar, menyesuaikan ukuran, dan mengeksplorasi rumus bangun ruang.`,
+    model: "ChatZAP Spatial 3D Engine",
+  };
 }
 
 /**

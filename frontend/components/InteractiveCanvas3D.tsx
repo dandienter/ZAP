@@ -645,6 +645,25 @@ export default function InteractiveCanvas3D({
     const C = paramC || 4;
     const u = unit || "cm";
 
+    if (activeModel === "cylinder") {
+      const r = paramA !== undefined ? paramA : 7;
+      const h = paramB !== undefined ? paramB : 12;
+      const v = Math.PI * r * r * h;
+      const ls = 2 * Math.PI * r * h;
+      const lp = 2 * Math.PI * r * (r + h);
+      return {
+        volume: v,
+        surface: lp,
+        rows: [
+          { label: "Jari-jari Alas (r)", formula: "r", value: `${fmt(r)} ${u}` },
+          { label: "Tinggi Silinder (t)", formula: "t", value: `${fmt(h)} ${u}` },
+          { label: "Luas Selimut", formula: "2πrt", value: `${fmt(ls)} ${u}²` },
+          { label: "Luas Permukaan", formula: "2πr(r+t)", value: `${fmt(lp)} ${u}²` },
+          { label: "Volume Tabung", formula: "V = πr²t", value: `${fmt(v)} ${u}³` },
+        ],
+      };
+    }
+
     switch (solidKind) {
       case "kubus": {
         const v = A ** 3;
@@ -740,7 +759,7 @@ export default function InteractiveCanvas3D({
           ],
         };
     }
-  }, [solidKind, paramA, paramB, paramC, unit, showSlicePlane, sliceProgress]);
+  }, [activeModel, solidKind, paramA, paramB, paramC, unit, showSlicePlane, sliceProgress]);
 
   const rebuildMeshes = useCallback(() => {
     if (!meshGroupRef.current) return;
@@ -1730,7 +1749,9 @@ export default function InteractiveCanvas3D({
               <div className="flex items-center justify-between border-b dark:border-white/[0.08] border-slate-200 pb-2">
                 <span className="font-semibold dark:text-white text-slate-900 flex items-center gap-1.5">
                   <Box className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-300" />
-                  {solidKind === "kubus"
+                  {activeModel === "cylinder"
+                    ? "Tabung Silinder 3D"
+                    : solidKind === "kubus"
                     ? showSlicePlane
                       ? "Kubus 3D (Irisan)"
                       : "Kubus 3D"
@@ -1768,11 +1789,11 @@ export default function InteractiveCanvas3D({
                 </div>
               </div>
 
-              {/* Sisi Slider & Input */}
+              {/* Sisi / Radius Slider & Input */}
               <div className="space-y-1">
                 <div className="flex justify-between text-zinc-300">
                   <span>
-                    {solidKind === "bola"
+                    {activeModel === "cylinder" || solidKind === "bola"
                       ? "Jari-jari (r):"
                       : solidKind === "balok"
                       ? "Panjang (p):"
@@ -1801,6 +1822,33 @@ export default function InteractiveCanvas3D({
                   💡 Tip: Arahkan kursor &amp; tarik sudut objek untuk resize langsung.
                 </p>
               </div>
+
+              {/* Tinggi / Lebar Slider (Untuk Tabung, Balok, Prisma, Limas) */}
+              {(activeModel === "cylinder" || solidKind === "balok" || solidKind === "prisma" || solidKind === "limas") && (
+                <div className="space-y-1 pt-1 border-t border-white/[0.06]">
+                  <div className="flex justify-between text-zinc-300">
+                    <span>
+                      {activeModel === "cylinder" || solidKind === "prisma" || solidKind === "limas"
+                        ? "Tinggi (t):"
+                        : "Lebar (l):"}
+                    </span>
+                    <span className="font-mono text-white font-semibold">{paramB} {unit}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="50"
+                    step="1"
+                    value={paramB}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      setParamB(val);
+                      onParamsChange?.(paramA, val, paramC, unit);
+                    }}
+                    className="w-full accent-zinc-400 cursor-pointer"
+                  />
+                </div>
+              )}
 
               {/* Toggle & Slider Irisan Bidang (Hanya jika pengguna minta atau klik) */}
               {(solidKind === "kubus" || solidKind === "balok" || solidKind === "prisma" || solidKind === "limas") && (
