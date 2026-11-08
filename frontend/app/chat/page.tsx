@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams, usePathname } from "next/navigation";
 import MathView from "@/components/MathView";
 import RichChatText from "@/components/RichChatText";
 import ZapLogo from "@/components/ZapLogo";
@@ -1022,6 +1022,36 @@ function PromptActionBarLeft({
 
 export default function ZAPApp() {
   const router = useRouter();
+  const routeParams = useParams();
+  const currentPath = usePathname();
+
+  // Helper untuk mendapatkan ID sesi percakapan dari URL path (/c/<id> atau /chat/<id>)
+  const getPathConversationId = useCallback(() => {
+    if (routeParams?.id && typeof routeParams.id === "string") {
+      return routeParams.id;
+    }
+    if (typeof window !== "undefined") {
+      const pathname = window.location.pathname;
+      const cMatch = pathname.match(/^\/c\/([a-zA-Z0-9_-]+)/);
+      if (cMatch) return cMatch[1];
+      const chatMatch = pathname.match(/^\/chat\/([a-zA-Z0-9_-]+)/);
+      if (chatMatch && chatMatch[1] !== "s") return chatMatch[1];
+      const sp = new URLSearchParams(window.location.search);
+      const queryId = sp.get("id") || sp.get("c");
+      if (queryId) return queryId;
+    }
+    return null;
+  }, [routeParams]);
+
+  // Sinkronkan URL browser ke path bersih tanpa query parameter (?id=)
+  const updateUrlForConversation = useCallback((convId: string | null) => {
+    if (typeof window === "undefined") return;
+    if (convId) {
+      window.history.replaceState(null, "", `/c/${encodeURIComponent(convId)}`);
+    } else {
+      window.history.replaceState(null, "", "/chat");
+    }
+  }, []);
   // Authentication Guard State
   const [authChecked, setAuthChecked] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<ZAPUser | null>(null);
@@ -1135,9 +1165,13 @@ export default function ZAPApp() {
   const [conversations, setConversations] = useState<StoredConv[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string>(() => {
     if (typeof window !== "undefined") {
-      const sp = new URLSearchParams(window.location.search);
-      const queryId = sp.get("id") || sp.get("c");
-      if (queryId) return queryId;
+      const fromPath =
+        window.location.pathname.match(/^\/c\/([a-zA-Z0-9_-]+)/)?.[1] ||
+        (window.location.pathname.match(/^\/chat\/([a-zA-Z0-9_-]+)/)?.[1] !== "s"
+          ? window.location.pathname.match(/^\/chat\/([a-zA-Z0-9_-]+)/)?.[1]
+          : null) ||
+        new URLSearchParams(window.location.search).get("id");
+      if (fromPath) return fromPath;
     }
     return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
       ? crypto.randomUUID()
@@ -1196,7 +1230,7 @@ export default function ZAPApp() {
 
               const searchParams = new URLSearchParams(window.location.search);
               const importId = searchParams.get("import");
-              const targetId = searchParams.get("id") || searchParams.get("c");
+              const targetId = getPathConversationId();
 
               if (importId) {
                 fetch(`/api/chat/share?id=${encodeURIComponent(importId)}`)
@@ -1226,10 +1260,7 @@ export default function ZAPApp() {
                       });
                       setActiveConversationId(newId);
                       setMessages(importedConv.messages);
-                      const url = new URL(window.location.href);
-                      url.searchParams.delete("import");
-                      url.searchParams.set("id", newId);
-                      window.history.replaceState(null, "", url.pathname + url.search);
+                      updateUrlForConversation(newId);
                     } else if (userConvs.length === 0) {
                       startNewChat();
                     }
@@ -1243,12 +1274,7 @@ export default function ZAPApp() {
                   openConversation(found.id);
                 } else {
                   // Proteksi IDOR: Sesi percakapan privat akun lain tidak boleh dimuat!
-                  if (typeof window !== "undefined") {
-                    const url = new URL(window.location.href);
-                    url.searchParams.delete("id");
-                    url.searchParams.delete("c");
-                    window.history.replaceState(null, "", url.pathname);
-                  }
+                  updateUrlForConversation(null);
                   startNewChat();
                   alert(
                     "Akses Ditolak: Anda tidak memiliki izin untuk melihat sesi percakapan privat akun lain. Percakapan hanya dapat diakses jika pemilik telah mengaktifkan Tautan Publik (Public Share)."
@@ -1390,14 +1416,11 @@ export default function ZAPApp() {
       // Auto-backup percakapan akun Google ke cloud
       syncAccountBackup(currentUser, { conversations: next });
 
-      // Sinkronkan URL browser agar sesi memiliki URL-nya sendiri (/chat?id=<uuid>)
+      // Sinkronkan URL browser ke path bersih /c/<uuid> (seperti ChatGPT)
       if (typeof window !== "undefined") {
-        const url = new URL(window.location.href);
-        if (url.searchParams.get("id") !== activeConversationId) {
-          url.searchParams.set("id", activeConversationId);
-          url.searchParams.delete("import");
-          url.searchParams.delete("c");
-          window.history.replaceState(null, "", url.pathname + url.search);
+        const expectedPath = `/c/${activeConversationId}`;
+        if (window.location.pathname !== expectedPath) {
+          window.history.replaceState(null, "", expectedPath);
         }
       }
 
@@ -1456,13 +1479,7 @@ export default function ZAPApp() {
     setShowRightPane(false);
     setRightPaneTab("start");
 
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      url.searchParams.delete("id");
-      url.searchParams.delete("c");
-      url.searchParams.delete("import");
-      window.history.replaceState(null, "", url.pathname + (url.search ? url.search : ""));
-    }
+    updateUrlForConversation(null);
   };
 
   const openConversation = (convId: string) => {
@@ -1475,13 +1492,7 @@ export default function ZAPApp() {
     setActiveProblemContext(target.activeProblemContext);
     setTargetVar(target.targetVar || "x");
 
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      url.searchParams.set("id", target.id);
-      url.searchParams.delete("c");
-      url.searchParams.delete("import");
-      window.history.replaceState(null, "", url.pathname + url.search);
-    }
+    updateUrlForConversation(target.id);
 
     // Kembalikan status Papan Tulis sesuai konteks percakapan yang dibuka
     const lastSmartboardItem = [...target.messages]
