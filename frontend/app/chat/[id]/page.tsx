@@ -2,6 +2,6 @@
 
 import ZAPApp from "@/app/chat/page";
 
-export default function ConversationChatPage() {
+export default function ChatConversationSlugPage() {
   return <ZAPApp />;
 }

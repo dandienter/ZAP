@@ -1190,6 +1190,74 @@ export default function ZAPApp() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const createdAtRef = useRef<number>(Date.now());
+  const conversationsRef = useRef<StoredConv[]>([]);
+  const activeConversationUpdatedAtRef = useRef<number>(0);
+
+  // Sinkronkan ref percakapan setiap kali state conversations berubah
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
+
+  const startNewChat = useCallback(() => {
+    const newId =
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : "conv_" + Date.now();
+    setActiveConversationId(newId);
+    createdAtRef.current = Date.now();
+    activeConversationUpdatedAtRef.current = Date.now();
+    setMessages([]);
+    setInputText("");
+    setActiveProblemFirstStep(null);
+    setActiveProblemContext(null);
+    setActive3DModel("empty");
+    setCanvasParamA(10);
+    setCanvasShowSlice(false);
+    setShowRightPane(false);
+    setRightPaneTab("start");
+
+    updateUrlForConversation(null);
+  }, [updateUrlForConversation]);
+
+  const activateConversation = useCallback((target: StoredConv) => {
+    if (!target) return;
+    setActiveConversationId(target.id);
+    createdAtRef.current = target.createdAt || Date.now();
+    activeConversationUpdatedAtRef.current = target.updatedAt || target.createdAt || Date.now();
+    setMessages(target.messages || []);
+    setActiveProblemFirstStep(target.activeProblemFirstStep || null);
+    setActiveProblemContext(target.activeProblemContext || null);
+    setTargetVar(target.targetVar || "x");
+
+    updateUrlForConversation(target.id);
+
+    // Kembalikan status Papan Tulis sesuai konteks percakapan yang dibuka
+    const lastSmartboardItem = [...(target.messages || [])]
+      .reverse()
+      .find((m) => m.smartboardItem)?.smartboardItem;
+    if (lastSmartboardItem) {
+      setActive3DModel(lastSmartboardItem.model);
+      if (lastSmartboardItem.solidKind) setActiveSolidKind(lastSmartboardItem.solidKind);
+      if (lastSmartboardItem.paramA !== undefined) setCanvasParamA(lastSmartboardItem.paramA);
+      if (lastSmartboardItem.paramB !== undefined) setCanvasParamB(lastSmartboardItem.paramB);
+      if (lastSmartboardItem.paramC !== undefined) setCanvasParamC(lastSmartboardItem.paramC);
+      if (lastSmartboardItem.unit) setCanvasUnit(lastSmartboardItem.unit);
+      setCanvasShowSlice(Boolean(lastSmartboardItem.hasSlice));
+      setShowRightPane(false);
+      setRightPaneTab("canvas");
+    } else {
+      setActive3DModel("empty");
+      setShowRightPane(false);
+      setRightPaneTab("start");
+    }
+  }, [updateUrlForConversation]);
+
+  const openConversation = useCallback((convId: string, customList?: StoredConv[]) => {
+    const list = customList || (conversationsRef.current.length > 0 ? conversationsRef.current : conversations);
+    const target = list.find((c) => c.id === convId);
+    if (!target) return;
+    activateConversation(target);
+  }, [activateConversation, conversations]);
 
   // 1. Cek autentikasi dari localStorage saat mount
   useEffect(() => {
@@ -1205,11 +1273,13 @@ export default function ZAPApp() {
             const userKey = (parsed.email || parsed.id || "").toLowerCase().trim();
             const lastActiveUser = localStorage.getItem("zap_last_active_user_email")?.toLowerCase().trim();
             const isAccountSwitched = !lastActiveUser || lastActiveUser !== userKey;
+            const targetId = getPathConversationId();
 
             // Jika akun berganti dari sesi sebelumnya:
             // Segera reset state percakapan agar sesi akun lama tidak bocor ke akun baru
             if (isAccountSwitched) {
               setConversations([]);
+              conversationsRef.current = [];
               setMessages([]);
               startNewChat();
               try {
@@ -1222,8 +1292,17 @@ export default function ZAPApp() {
               const userStored = loadConversations<Message, ActiveProblemContext>(userKey);
               if (userStored && userStored.length > 0) {
                 setConversations(userStored);
+                conversationsRef.current = userStored;
+                // Kritis: Jika halaman direfresh pada URL percakapan spesifik (/c/<id>), segera pulihkan obrolan dari cache lokal
+                if (targetId) {
+                  const initialMatch = userStored.find((c) => c.id === targetId);
+                  if (initialMatch) {
+                    activateConversation(initialMatch);
+                  }
+                }
               } else {
                 setConversations([]);
+                conversationsRef.current = [];
               }
             }
 
@@ -1232,10 +1311,11 @@ export default function ZAPApp() {
               // Selalu set percakapan sesuai hasil akun ini (jika akun baru/kosong, set [] dan tidak menampilkan akun lain)
               const userConvs = restored.conversations || [];
               setConversations(userConvs);
+              conversationsRef.current = userConvs;
 
               const searchParams = new URLSearchParams(window.location.search);
               const importId = searchParams.get("import");
-              const targetId = getPathConversationId();
+              const currentTargetId = getPathConversationId();
 
               if (importId) {
                 fetch(`/api/chat/share?id=${encodeURIComponent(importId)}`)
@@ -1260,12 +1340,11 @@ export default function ZAPApp() {
                       };
                       setConversations((prev) => {
                         const updated = [importedConv, ...prev.filter((c) => c.id !== newId)];
+                        conversationsRef.current = updated;
                         saveConversations(updated, userKey);
                         return updated;
                       });
-                      setActiveConversationId(newId);
-                      setMessages(importedConv.messages);
-                      updateUrlForConversation(newId);
+                      activateConversation(importedConv);
                     } else if (userConvs.length === 0) {
                       startNewChat();
                     }
@@ -1273,10 +1352,13 @@ export default function ZAPApp() {
                   .catch(() => {
                     if (userConvs.length === 0) startNewChat();
                   });
-              } else if (targetId) {
-                const found = userConvs.find((c) => c.id === targetId);
+              } else if (currentTargetId) {
+                const found =
+                  userConvs.find((c) => c.id === currentTargetId) ||
+                  conversationsRef.current.find((c) => c.id === currentTargetId);
+
                 if (found) {
-                  openConversation(found.id);
+                  activateConversation(found);
                 } else {
                   // Proteksi IDOR: Sesi percakapan privat akun lain tidak boleh dimuat!
                   updateUrlForConversation(null);
@@ -1402,7 +1484,8 @@ export default function ZAPApp() {
       ? firstUserMsg.steps?.[0] || firstUserMsg.rawText?.slice(0, 24) || "New Session"
       : "New Session";
 
-    const existing = conversations.find((c) => c.id === activeConversationId);
+    const list = conversationsRef.current.length > 0 ? conversationsRef.current : conversations;
+    const existing = list.find((c) => c.id === activeConversationId);
 
     // Tentukan apakah ada pesan baru yang dikirim atau diterima
     // Jika hanya membuka/mengklik percakapan lama, messages.length sama persis
@@ -1418,7 +1501,7 @@ export default function ZAPApp() {
     // sehingga tidak naik ke atas dan tidak berubah jadi 'baru saja'.
     const conversationUpdatedAt = isNewMessage
       ? Date.now()
-      : (existing?.updatedAt || createdAtRef.current);
+      : (existing?.updatedAt || activeConversationUpdatedAtRef.current || createdAtRef.current);
 
     const updatedConv: StoredConv = {
       id: activeConversationId,
@@ -1439,6 +1522,7 @@ export default function ZAPApp() {
         .sort((a, b) => b.updatedAt - a.updatedAt)
         .slice(0, 50);
 
+      conversationsRef.current = next;
       const userKey = (currentUser.email || currentUser.id || "").toLowerCase().trim();
       saveConversations(next, userKey);
       // Auto-backup percakapan akun Google ke cloud
@@ -1485,62 +1569,10 @@ export default function ZAPApp() {
     clearLocalWorkingSession();
     setCurrentUser(null);
     setConversations([]);
+    conversationsRef.current = [];
     setMessages([]);
     setProfileDropdownOpen(false);
     router.replace("/login");
-  };
-
-  const startNewChat = () => {
-    const newId =
-      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-        ? crypto.randomUUID()
-        : "conv_" + Date.now();
-    setActiveConversationId(newId);
-    createdAtRef.current = Date.now();
-    setMessages([]);
-    setInputText("");
-    setActiveProblemFirstStep(null);
-    setActiveProblemContext(null);
-    setActive3DModel("empty");
-    setCanvasParamA(10);
-    setCanvasShowSlice(false);
-    setShowRightPane(false);
-    setRightPaneTab("start");
-
-    updateUrlForConversation(null);
-  };
-
-  const openConversation = (convId: string) => {
-    const target = conversations.find((c) => c.id === convId);
-    if (!target) return;
-    setActiveConversationId(target.id);
-    createdAtRef.current = target.createdAt;
-    setMessages(target.messages);
-    setActiveProblemFirstStep(target.activeProblemFirstStep);
-    setActiveProblemContext(target.activeProblemContext);
-    setTargetVar(target.targetVar || "x");
-
-    updateUrlForConversation(target.id);
-
-    // Kembalikan status Papan Tulis sesuai konteks percakapan yang dibuka
-    const lastSmartboardItem = [...target.messages]
-      .reverse()
-      .find((m) => m.smartboardItem)?.smartboardItem;
-    if (lastSmartboardItem) {
-      setActive3DModel(lastSmartboardItem.model);
-      if (lastSmartboardItem.solidKind) setActiveSolidKind(lastSmartboardItem.solidKind);
-      if (lastSmartboardItem.paramA !== undefined) setCanvasParamA(lastSmartboardItem.paramA);
-      if (lastSmartboardItem.paramB !== undefined) setCanvasParamB(lastSmartboardItem.paramB);
-      if (lastSmartboardItem.paramC !== undefined) setCanvasParamC(lastSmartboardItem.paramC);
-      if (lastSmartboardItem.unit) setCanvasUnit(lastSmartboardItem.unit);
-      setCanvasShowSlice(Boolean(lastSmartboardItem.hasSlice));
-      setShowRightPane(false);
-      setRightPaneTab("canvas");
-    } else {
-      setActive3DModel("empty");
-      setShowRightPane(false);
-      setRightPaneTab("start");
-    }
   };
 
   const handleOpenShareModal = (conv?: StoredConv) => {
@@ -1577,6 +1609,7 @@ export default function ZAPApp() {
     // 2. Perbarui state lokal & simpan ke localStorage
     const next = conversations.filter((c) => c.id !== convId);
     setConversations(next);
+    conversationsRef.current = next;
     saveConversations(next, userKey);
 
     // 3. Hapus permanen di server cloud vault
