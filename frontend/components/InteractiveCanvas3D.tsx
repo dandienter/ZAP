@@ -24,6 +24,7 @@ import { useTheme } from "@/utils/theme";
 
 export type MathModelType =
   | "empty"
+  | "2d_shape"
   | "2d_quadratic"
   | "2d_trig"
   | "2d_linear"
@@ -38,9 +39,20 @@ export type MathModelType =
 
 export type SolidKind = "kubus" | "balok" | "bola" | "kerucut" | "prisma" | "limas";
 
+export type PlaneShapeKind =
+  | "jajar_genjang"
+  | "trapesium"
+  | "segitiga"
+  | "belah_ketupat"
+  | "layang_layang"
+  | "persegi"
+  | "persegi_panjang"
+  | "lingkaran";
+
 interface InteractiveCanvas3DProps {
   initialModel?: MathModelType;
   initialSolidKind?: SolidKind;
+  initialPlaneShapeKind?: PlaneShapeKind;
   initialParamA?: number;
   initialParamB?: number;
   initialParamC?: number;
@@ -50,6 +62,7 @@ interface InteractiveCanvas3DProps {
   className?: string;
   onModelChange?: (model: MathModelType) => void;
   onSolidKindChange?: (solid: SolidKind) => void;
+  onPlaneShapeChange?: (shape: PlaneShapeKind) => void;
   onParamsChange?: (a: number, b: number, c: number, unit?: string) => void;
   isProjectorMode?: boolean;
   onToggleProjector?: () => void;
@@ -82,6 +95,9 @@ const SOLID_LABELS: Record<SolidKind, string> = {
 
 // Quick formula suggestions
 const SMART_PRESETS = [
+  { label: "Jajar Genjang", model: "2d_shape" as MathModelType, planeShape: "jajar_genjang" as PlaneShapeKind, paramA: 12, paramB: 8, paramC: 10, unit: "cm", desc: "Jajar genjang alas, tinggi & sisi miring" },
+  { label: "Trapesium", model: "2d_shape" as MathModelType, planeShape: "trapesium" as PlaneShapeKind, paramA: 8, paramB: 14, paramC: 6, unit: "cm", desc: "Trapesium sisi sejajar & tinggi" },
+  { label: "Segitiga", model: "2d_shape" as MathModelType, planeShape: "segitiga" as PlaneShapeKind, paramA: 10, paramB: 8, unit: "cm", desc: "Segitiga alas & tinggi" },
   { label: "y = x² - 3", model: "2d_quadratic" as MathModelType, desc: "Grafik parabola & akar real" },
   { label: "y = 2 sin(x)", model: "2d_trig" as MathModelType, desc: "Gelombang trigonometri & amplitudo" },
   { label: "Kubus 10cm", model: "solids" as MathModelType, solid: "kubus" as SolidKind, paramA: 10, unit: "cm", hasSlice: false, desc: "Kubus sisi 10 cm geometri ruang" },
@@ -98,6 +114,7 @@ const SMART_PRESETS = [
 export default function InteractiveCanvas3D({
   initialModel = "empty",
   initialSolidKind,
+  initialPlaneShapeKind,
   initialParamA,
   initialParamB,
   initialParamC,
@@ -106,6 +123,7 @@ export default function InteractiveCanvas3D({
   className = "",
   onModelChange,
   onSolidKindChange,
+  onPlaneShapeChange,
   onParamsChange,
   isProjectorMode = false,
   onToggleProjector,
@@ -113,6 +131,7 @@ export default function InteractiveCanvas3D({
 }: InteractiveCanvas3DProps) {
   // Main mode: "empty" | "2d_graph" | "3d_model"
   const [activeModel, setActiveModel] = useState<MathModelType>(initialModel);
+  const [planeShapeKind, setPlaneShapeKind] = useState<PlaneShapeKind>(initialPlaneShapeKind || "jajar_genjang");
 
   const { isDark } = useTheme();
 
@@ -207,6 +226,10 @@ export default function InteractiveCanvas3D({
 
   useEffect(() => {
     setActiveModel(initialModel);
+    if (initialPlaneShapeKind) {
+      setPlaneShapeKind(initialPlaneShapeKind);
+      onPlaneShapeChange?.(initialPlaneShapeKind);
+    }
     if (initialSolidKind) {
       setSolidKind(initialSolidKind);
       onSolidKindChange?.(initialSolidKind);
@@ -363,6 +386,45 @@ export default function InteractiveCanvas3D({
     const parsedA = numMatch ? parseFloat(numMatch[1].replace(",", ".")) : undefined;
     const parsedUnit = numMatch ? (numMatch[2] || "cm") : "cm";
 
+    // Detect 2D Plane Geometry Shapes (Jajar Genjang, Trapesium, Segitiga, etc.)
+    if (raw.includes("jajar genjang") || raw.includes("jajargenjang") || raw.includes("parallelogram")) {
+      const a = parsedA || 12;
+      setParamA(a);
+      setParamB(8); // tinggi t
+      setParamC(10); // sisi miring s
+      setUnit(parsedUnit);
+      setPlaneShapeKind("jajar_genjang");
+      selectModel("2d_shape");
+      onPlaneShapeChange?.("jajar_genjang");
+      onParamsChange?.(a, 8, 10, parsedUnit);
+      return;
+    }
+
+    if (raw.includes("trapesium") || raw.includes("trapezoid")) {
+      const a = parsedA || 8;
+      setParamA(a);
+      setParamB(14); // b
+      setParamC(6); // t
+      setUnit(parsedUnit);
+      setPlaneShapeKind("trapesium");
+      selectModel("2d_shape");
+      onPlaneShapeChange?.("trapesium");
+      onParamsChange?.(a, 14, 6, parsedUnit);
+      return;
+    }
+
+    if (raw.includes("segitiga") || raw.includes("triangle")) {
+      const a = parsedA || 10;
+      setParamA(a);
+      setParamB(8); // t
+      setUnit(parsedUnit);
+      setPlaneShapeKind("segitiga");
+      selectModel("2d_shape");
+      onPlaneShapeChange?.("segitiga");
+      onParamsChange?.(a, 8, paramC, parsedUnit);
+      return;
+    }
+
     // Detect 2D quadratic / parabola
     if (raw.includes("x^2") || raw.includes("x²") || raw.includes("kuadrat") || raw.includes("parabola")) {
       if (raw.includes("- 3") || raw.includes("-3")) {
@@ -496,9 +558,10 @@ export default function InteractiveCanvas3D({
   };
 
   // =========================================================================
-  // 3. 2D CARTESIAN GRAPH VIEW
+  // 3. 2D CARTESIAN & PLANE GEOMETRY VIEW (JAJAR GENJANG, TRAPESIUM, SEGITIGA)
   // =========================================================================
   const is2DGraphModel =
+    activeModel === "2d_shape" ||
     activeModel === "2d_quadratic" ||
     activeModel === "2d_trig" ||
     activeModel === "2d_linear" ||
@@ -613,19 +676,214 @@ export default function InteractiveCanvas3D({
         else ctx.lineTo(px, py);
       }
       ctx.stroke();
-    } else if (activeModel === "2d_linear") {
-      ctx.strokeStyle = "#facc15";
-      ctx.beginPath();
-      for (let px = 0; px <= width; px += 4) {
-        const x = (px - originX) / scale;
-        const y = paramA * x + paramB;
-        const py = originY - y * scale;
-        if (px === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
+    } else if (activeModel === "2d_shape") {
+      // =====================================================================
+      // BANGUN DATAR 2D (JAJAR GENJANG, TRAPESIUM, SEGITIGA, DLL.)
+      // =====================================================================
+      const u = unit || "cm";
+
+      if (planeShapeKind === "jajar_genjang") {
+        const a = paramA || 12;
+        const t = paramB || 8;
+        const s = paramC || 10;
+        const angleDeg = 60;
+        const angleRad = (angleDeg * Math.PI) / 180;
+        const dx = t / Math.tan(angleRad);
+
+        const totalW = a + dx;
+        const totalH = t;
+        const sc = Math.min((width * 0.65) / totalW, (height * 0.6) / totalH);
+
+        const leftX = originX - (totalW * sc) / 2;
+        const botY = originY + (totalH * sc) / 2;
+
+        const Ax = leftX;
+        const Ay = botY;
+        const Bx = leftX + a * sc;
+        const By = botY;
+        const Cx = Bx + dx * sc;
+        const Cy = botY - t * sc;
+        const Dx = leftX + dx * sc;
+        const Dy = botY - t * sc;
+
+        // 1. Fill polygon with soft translucent cyan
+        ctx.fillStyle = isDark ? "rgba(56, 189, 248, 0.14)" : "rgba(14, 165, 233, 0.16)";
+        ctx.beginPath();
+        ctx.moveTo(Ax, Ay);
+        ctx.lineTo(Bx, By);
+        ctx.lineTo(Cx, Cy);
+        ctx.lineTo(Dx, Dy);
+        ctx.closePath();
+        ctx.fill();
+
+        // 2. Outline stroke
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = "#38bdf8";
+        ctx.stroke();
+
+        // 3. Dashed height line from D down to base line
+        ctx.save();
+        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = "#f43f5e";
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(Dx, Dy);
+        ctx.lineTo(Dx, Ay);
+        ctx.stroke();
+
+        // Right angle indicator at the foot of height
+        const sqSize = 10;
+        ctx.setLineDash([]);
+        ctx.strokeStyle = "#f43f5e";
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(Dx, Ay - sqSize, sqSize, sqSize);
+        ctx.restore();
+
+        // 4. Labels
+        ctx.font = "bold 12px sans-serif";
+        ctx.fillStyle = isDark ? "#ffffff" : "#0f172a";
+
+        // Vertices A, B, C, D
+        ctx.fillText("A", Ax - 16, Ay + 16);
+        ctx.fillText("B", Bx + 6, By + 16);
+        ctx.fillText("C", Cx + 8, Cy - 6);
+        ctx.fillText("D", Dx - 16, Dy - 6);
+
+        // Base label: a = ...
+        ctx.fillStyle = "#38bdf8";
+        ctx.textAlign = "center";
+        ctx.fillText(`alas (a) = ${a} ${u}`, (Ax + Bx) / 2, Ay + 22);
+
+        // Height label: t = ...
+        ctx.fillStyle = "#f43f5e";
+        ctx.textAlign = "right";
+        ctx.fillText(`tinggi (t) = ${t} ${u}`, Dx - 8, (Dy + Ay) / 2);
+
+        // Slant side label: s = ...
+        ctx.fillStyle = "#34d399";
+        ctx.textAlign = "right";
+        ctx.fillText(`sisi miring (s) = ${s} ${u}`, (Ax + Dx) / 2 - 10, (Ay + Dy) / 2);
+
+        // Angle indicator at vertex A
+        ctx.strokeStyle = "#f59e0b";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(Ax, Ay, 24, -angleRad, 0);
+        ctx.stroke();
+
+        ctx.fillStyle = "#f59e0b";
+        ctx.textAlign = "left";
+        ctx.font = "10px sans-serif";
+        ctx.fillText("θ = 60°", Ax + 28, Ay - 8);
+
+        // Vertex Dots
+        [[Ax, Ay], [Bx, By], [Cx, Cy], [Dx, Dy]].forEach(([vx, vy]) => {
+          ctx.fillStyle = "#38bdf8";
+          ctx.beginPath();
+          ctx.arc(vx, vy, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(vx, vy, 2, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      } else if (planeShapeKind === "trapesium") {
+        const topW = paramA || 8;
+        const botW = paramB || 14;
+        const h = paramC || 6;
+        const sc = Math.min((width * 0.65) / botW, (height * 0.6) / h);
+
+        const diff = (botW - topW) / 2;
+        const leftX = originX - (botW * sc) / 2;
+        const botY = originY + (h * sc) / 2;
+
+        const Ax = leftX;
+        const Ay = botY;
+        const Bx = leftX + botW * sc;
+        const By = botY;
+        const Cx = leftX + (botW - diff) * sc;
+        const Cy = botY - h * sc;
+        const Dx = leftX + diff * sc;
+        const Dy = botY - h * sc;
+
+        ctx.fillStyle = isDark ? "rgba(168, 85, 247, 0.14)" : "rgba(168, 85, 247, 0.16)";
+        ctx.beginPath();
+        ctx.moveTo(Ax, Ay);
+        ctx.lineTo(Bx, By);
+        ctx.lineTo(Cx, Cy);
+        ctx.lineTo(Dx, Dy);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = "#a855f7";
+        ctx.stroke();
+
+        ctx.save();
+        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = "#f43f5e";
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(Dx, Dy);
+        ctx.lineTo(Dx, Ay);
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.font = "bold 12px sans-serif";
+        ctx.fillStyle = "#a855f7";
+        ctx.textAlign = "center";
+        ctx.fillText(`sisi atas (a) = ${topW} ${u}`, (Dx + Cx) / 2, Dy - 10);
+        ctx.fillText(`sisi bawah (b) = ${botW} ${u}`, (Ax + Bx) / 2, Ay + 22);
+        ctx.fillStyle = "#f43f5e";
+        ctx.textAlign = "right";
+        ctx.fillText(`t = ${h} ${u}`, Dx - 6, (Dy + Ay) / 2);
+      } else if (planeShapeKind === "segitiga") {
+        const a = paramA || 10;
+        const h = paramB || 8;
+        const sc = Math.min((width * 0.65) / a, (height * 0.6) / h);
+
+        const leftX = originX - (a * sc) / 2;
+        const botY = originY + (h * sc) / 2;
+
+        const Ax = leftX;
+        const Ay = botY;
+        const Bx = leftX + a * sc;
+        const By = botY;
+        const Cx = leftX + (a * sc) / 2;
+        const Cy = botY - h * sc;
+
+        ctx.fillStyle = isDark ? "rgba(52, 211, 153, 0.14)" : "rgba(16, 185, 129, 0.16)";
+        ctx.beginPath();
+        ctx.moveTo(Ax, Ay);
+        ctx.lineTo(Bx, By);
+        ctx.lineTo(Cx, Cy);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = "#34d399";
+        ctx.stroke();
+
+        ctx.save();
+        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = "#f43f5e";
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(Cx, Cy);
+        ctx.lineTo(Cx, Ay);
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.font = "bold 12px sans-serif";
+        ctx.fillStyle = "#34d399";
+        ctx.textAlign = "center";
+        ctx.fillText(`alas (a) = ${a} ${u}`, (Ax + Bx) / 2, Ay + 22);
+        ctx.fillStyle = "#f43f5e";
+        ctx.textAlign = "right";
+        ctx.fillText(`t = ${h} ${u}`, Cx - 6, (Cy + Ay) / 2);
       }
-      ctx.stroke();
     }
-  }, [activeModel, paramA, paramB, paramC, isProjectorMode, is2DGraphModel, isDark]);
+  }, [activeModel, planeShapeKind, paramA, paramB, paramC, unit, isProjectorMode, is2DGraphModel, isDark]);
 
   // =========================================================================
   // 4. THREE.JS 3D MESH GENERATOR (KUBUS SOLID, BALOK, SILINDER, KERUCUT)
@@ -644,6 +902,55 @@ export default function InteractiveCanvas3D({
     const B = paramB || 6;
     const C = paramC || 4;
     const u = unit || "cm";
+
+    if (activeModel === "2d_shape") {
+      if (planeShapeKind === "jajar_genjang") {
+        const a = paramA !== undefined ? paramA : 12;
+        const t = paramB !== undefined ? paramB : 8;
+        const s = paramC !== undefined ? paramC : 10;
+        const luas = a * t;
+        const keliling = 2 * (a + s);
+        return {
+          volume: 0,
+          surface: luas,
+          rows: [
+            { label: "Panjang Alas (a)", formula: "a", value: `${fmt(a)} ${u}` },
+            { label: "Tinggi Tegak (t)", formula: "t", value: `${fmt(t)} ${u}` },
+            { label: "Sisi Miring (s)", formula: "s", value: `${fmt(s)} ${u}` },
+            { label: "Luas Jajar Genjang", formula: "L = a · t", value: `${fmt(luas)} ${u}²` },
+            { label: "Keliling Jajar Genjang", formula: "K = 2(a + s)", value: `${fmt(keliling)} ${u}` },
+          ],
+        };
+      } else if (planeShapeKind === "trapesium") {
+        const a = paramA !== undefined ? paramA : 8;
+        const b = paramB !== undefined ? paramB : 14;
+        const t = paramC !== undefined ? paramC : 6;
+        const luas = ((a + b) * t) / 2;
+        return {
+          volume: 0,
+          surface: luas,
+          rows: [
+            { label: "Sisi Atas (a)", formula: "a", value: `${fmt(a)} ${u}` },
+            { label: "Sisi Bawah (b)", formula: "b", value: `${fmt(b)} ${u}` },
+            { label: "Tinggi (t)", formula: "t", value: `${fmt(t)} ${u}` },
+            { label: "Luas Trapesium", formula: "L = ½(a + b)t", value: `${fmt(luas)} ${u}²` },
+          ],
+        };
+      } else if (planeShapeKind === "segitiga") {
+        const a = paramA !== undefined ? paramA : 10;
+        const t = paramB !== undefined ? paramB : 8;
+        const luas = (a * t) / 2;
+        return {
+          volume: 0,
+          surface: luas,
+          rows: [
+            { label: "Alas Segitiga (a)", formula: "a", value: `${fmt(a)} ${u}` },
+            { label: "Tinggi Segitiga (t)", formula: "t", value: `${fmt(t)} ${u}` },
+            { label: "Luas Segitiga", formula: "L = ½ a · t", value: `${fmt(luas)} ${u}²` },
+          ],
+        };
+      }
+    }
 
     if (activeModel === "cylinder") {
       const r = paramA !== undefined ? paramA : 7;
@@ -759,7 +1066,7 @@ export default function InteractiveCanvas3D({
           ],
         };
     }
-  }, [activeModel, solidKind, paramA, paramB, paramC, unit, showSlicePlane, sliceProgress]);
+  }, [activeModel, planeShapeKind, solidKind, paramA, paramB, paramC, unit, showSlicePlane, sliceProgress]);
 
   const rebuildMeshes = useCallback(() => {
     if (!meshGroupRef.current) return;
@@ -1722,7 +2029,7 @@ export default function InteractiveCanvas3D({
         />
 
         {/* 3D Geometry HUD Overlay Card (With Minimize/Hide Toggle) */}
-        {is3DModel && isHudVisible && (
+        {(is3DModel || activeModel === "2d_shape") && isHudVisible && (
           isHudMinimized ? (
             <div className="absolute top-3 right-3 flex items-center gap-1 z-20">
               <button
@@ -1732,7 +2039,15 @@ export default function InteractiveCanvas3D({
                 title="Tampilkan Panel Metrik & Kontrol"
               >
                 <Box className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-300" />
-                <span className="font-medium">Metrik ({paramA} {unit})</span>
+                <span className="font-medium">
+                  {activeModel === "2d_shape"
+                    ? planeShapeKind === "jajar_genjang"
+                      ? `Jajar Genjang (${paramA} ${unit})`
+                      : planeShapeKind === "trapesium"
+                      ? `Trapesium (${paramA} ${unit})`
+                      : `Segitiga (${paramA} ${unit})`
+                    : `Metrik (${paramA} ${unit})`}
+                </span>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-400" />
               </button>
               <button
@@ -1749,7 +2064,15 @@ export default function InteractiveCanvas3D({
               <div className="flex items-center justify-between border-b dark:border-white/[0.08] border-slate-200 pb-2">
                 <span className="font-semibold dark:text-white text-slate-900 flex items-center gap-1.5">
                   <Box className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-300" />
-                  {activeModel === "cylinder"
+                  {activeModel === "2d_shape"
+                    ? planeShapeKind === "jajar_genjang"
+                      ? "Jajar Genjang 2D"
+                      : planeShapeKind === "trapesium"
+                      ? "Trapesium 2D"
+                      : planeShapeKind === "segitiga"
+                      ? "Segitiga 2D"
+                      : "Bangun Datar 2D"
+                    : activeModel === "cylinder"
                     ? "Tabung Silinder 3D"
                     : solidKind === "kubus"
                     ? showSlicePlane
@@ -1761,9 +2084,27 @@ export default function InteractiveCanvas3D({
                   <button
                     type="button"
                     onClick={() => {
-                      setParamA(10);
-                      setSliceProgress(0.5);
-                      onParamsChange?.(10, paramB, paramC, unit);
+                      if (activeModel === "2d_shape") {
+                        if (planeShapeKind === "jajar_genjang") {
+                          setParamA(12);
+                          setParamB(8);
+                          setParamC(10);
+                          onParamsChange?.(12, 8, 10, unit);
+                        } else if (planeShapeKind === "trapesium") {
+                          setParamA(8);
+                          setParamB(14);
+                          setParamC(6);
+                          onParamsChange?.(8, 14, 6, unit);
+                        } else {
+                          setParamA(10);
+                          setParamB(8);
+                          onParamsChange?.(10, 8, paramC, unit);
+                        }
+                      } else {
+                        setParamA(10);
+                        setSliceProgress(0.5);
+                        onParamsChange?.(10, paramB, paramC, unit);
+                      }
                     }}
                     className="text-[10px] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/[0.04] cursor-pointer"
                     title="Reset Parameter"
@@ -1793,7 +2134,13 @@ export default function InteractiveCanvas3D({
               <div className="space-y-1">
                 <div className="flex justify-between text-zinc-300">
                   <span>
-                    {activeModel === "cylinder" || solidKind === "bola"
+                    {activeModel === "2d_shape"
+                      ? planeShapeKind === "jajar_genjang" || planeShapeKind === "segitiga"
+                        ? "Panjang Alas (a):"
+                        : planeShapeKind === "trapesium"
+                        ? "Sisi Atas (a):"
+                        : "Alas (a):"
+                      : activeModel === "cylinder" || solidKind === "bola"
                       ? "Jari-jari (r):"
                       : solidKind === "balok"
                       ? "Panjang (p):"
@@ -1819,16 +2166,22 @@ export default function InteractiveCanvas3D({
                   className="w-full accent-zinc-400 cursor-pointer"
                 />
                 <p className="text-[10px] text-zinc-500 italic">
-                  💡 Tip: Arahkan kursor &amp; tarik sudut objek untuk resize langsung.
+                  {activeModel === "2d_shape"
+                    ? "💡 Tip: Geser slider untuk mengubah dimensi; rumus luas & keliling terhitung otomatis."
+                    : "💡 Tip: Arahkan kursor & tarik sudut objek untuk resize langsung."}
                 </p>
               </div>
 
-              {/* Tinggi / Lebar Slider (Untuk Tabung, Balok, Prisma, Limas) */}
-              {(activeModel === "cylinder" || solidKind === "balok" || solidKind === "prisma" || solidKind === "limas") && (
+              {/* Tinggi / Lebar Slider (Untuk Tabung, Balok, Prisma, Limas, 2D) */}
+              {(activeModel === "2d_shape" || activeModel === "cylinder" || solidKind === "balok" || solidKind === "prisma" || solidKind === "limas") && (
                 <div className="space-y-1 pt-1 border-t border-white/[0.06]">
                   <div className="flex justify-between text-zinc-300">
                     <span>
-                      {activeModel === "cylinder" || solidKind === "prisma" || solidKind === "limas"
+                      {activeModel === "2d_shape"
+                        ? planeShapeKind === "trapesium"
+                          ? "Sisi Bawah (b):"
+                          : "Tinggi Tegak (t):"
+                        : activeModel === "cylinder" || solidKind === "prisma" || solidKind === "limas"
                         ? "Tinggi (t):"
                         : "Lebar (l):"}
                     </span>
@@ -1844,6 +2197,31 @@ export default function InteractiveCanvas3D({
                       const val = parseFloat(e.target.value);
                       setParamB(val);
                       onParamsChange?.(paramA, val, paramC, unit);
+                    }}
+                    className="w-full accent-zinc-400 cursor-pointer"
+                  />
+                </div>
+              )}
+
+              {/* Slider 3 untuk Jajar Genjang (Sisi Miring) atau Trapesium (Tinggi) */}
+              {activeModel === "2d_shape" && (planeShapeKind === "jajar_genjang" || planeShapeKind === "trapesium") && (
+                <div className="space-y-1 pt-1 border-t border-white/[0.06]">
+                  <div className="flex justify-between text-zinc-300">
+                    <span>
+                      {planeShapeKind === "jajar_genjang" ? "Sisi Miring (s):" : "Tinggi Tegak (t):"}
+                    </span>
+                    <span className="font-mono text-white font-semibold">{paramC} {unit}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="50"
+                    step="1"
+                    value={paramC}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      setParamC(val);
+                      onParamsChange?.(paramA, paramB, val, unit);
                     }}
                     className="w-full accent-zinc-400 cursor-pointer"
                   />

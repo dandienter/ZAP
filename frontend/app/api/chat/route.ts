@@ -1382,8 +1382,8 @@ function generateGeometry3DResponse(message: string): { reply: string; model: st
   if (!lower) return null;
 
   const has3D = /\b(3d|3-d|tiga dimensi|bangun ruang)\b/i.test(lower);
-  const hasCommand = /\b(buatkan|buat|bikin|tampilkan|gambarkan|gambar|visualisasikan|render|modelkan|lihat|buka|simulasikan|create|generate|show)\b/i.test(lower);
-  const hasShape = /\b(tabung|cylinder|silinder|kubus|cube|balok|bola|sphere|kerucut|cone|prisma|limas|parabola|pelana)\b/i.test(lower);
+  const hasCommand = /\b(buatkan|buatin|buat|bikinin|bikin|tampilkan|gambarkan|gambar|visualisasikan|render|modelkan|lihat|buka|simulasikan|create|generate|show)\b/i.test(lower);
+  const hasShape = /\b(tabung|cylinder|silinder|kubus|cube|balok|bola|sphere|kerucut|cone|prisma|limas|parabola|pelana|jajar genjang|jajargenjang|parallelogram|trapesium|trapezoid|segitiga|triangle)\b/i.test(lower);
 
   // Jika bukan permintaan geometri atau 3D, lewati
   if (!hasShape && !has3D) return null;
@@ -1487,6 +1487,51 @@ function generateGeometry3DResponse(message: string): { reply: string; model: st
     return {
       reply: `Objek geometri 3D **Limas Segi Empat** telah **AKTIF** di Papan Tulis Pintar (Smartboard) di sebelah kanan! 🎉\n\n### Rumus Limas:\n- **Volume ($V$):** $$V = \\frac{1}{3} \\times L_{\\text{alas}} \\times t$$\n- **Luas Permukaan ($L$):** $$L = L_{\\text{alas}} + \\sum L_{\\text{segitiga tegak}}$$\n\nSilakan amati titik puncak dan bidang tegaknya di kanvas 3D!`,
       model: "ChatZAP Spatial 3D Engine",
+    };
+  }
+
+  // 8. JAJAR GENJANG (PARALLELOGRAM)
+  if (lower.includes("jajar genjang") || lower.includes("jajargenjang") || lower.includes("parallelogram")) {
+    const aMatch = cleanText.match(/(?:a|alas|panjang)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const tMatch = cleanText.match(/(?:t|tinggi)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const sMatch = cleanText.match(/(?:s|miring|sisi miring)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const numMatch = cleanText.match(/(?:jajar genjang|jajargenjang)\s+(\d+(?:[.,]\d+)?)/i) || cleanText.match(/(\d+(?:[.,]\d+)?)\s*(?:cm|m|mm)?/);
+    const a = aMatch ? parseFloat(aMatch[1].replace(",", ".")) : numMatch ? parseFloat(numMatch[1].replace(",", ".")) : 12;
+    const t = tMatch ? parseFloat(tMatch[1].replace(",", ".")) : 8;
+    const s = sMatch ? parseFloat(sMatch[1].replace(",", ".")) : 10;
+    const luas = a * t;
+    const keliling = 2 * (a + s);
+
+    return {
+      reply: `Bangun datar **Jajar Genjang** telah **AKTIF** dan ditampilkan di Papan Tulis Pintar (Smartboard) di panel sebelah kanan layarmu! 🎉\n\n### Parameter & Sifat Matematis Jajar Genjang ($a = ${a}\\text{ cm},\\ t = ${t}\\text{ cm},\\ s = ${s}\\text{ cm}$):\n\n- **Panjang Alas ($a$):** $${a}\\text{ cm}$\n- **Tinggi Tegak ($t$):** $${t}\\text{ cm}$ (tegak lurus terhadap alas, bukan sisi miring!)\n- **Panjang Sisi Miring ($s$):** $${s}\\text{ cm}$\n- **Luas ($L$):** $$L = a \\times t = (${a})(${t}) = ${luas}\\text{ cm}^2$$\n- **Keliling ($K$):** $$K = 2(a + s) = 2(${a} + ${s}) = ${keliling}\\text{ cm}$$\n\n💡 **Eksplorasi Interaktif di Kanvas:**\nDi panel kanan, kamu bisa mengamati visualisasi 2D jajar genjang lengkap dengan garis tinggi putus-putus berwarna merah dan sudut kemiringan $\\theta = 60^\\circ$. Geser slider $a$, $t$, atau $s$ di panel metrik untuk melihat perubahan luas dan keliling secara *real-time*!`,
+      model: "ChatZAP Geometry Engine",
+    };
+  }
+
+  // 9. TRAPESIUM (TRAPEZOID)
+  if (lower.includes("trapesium") || lower.includes("trapezoid")) {
+    const a = 8;
+    const b = 14;
+    const t = 6;
+    const luas = ((a + b) * t) / 2;
+
+    return {
+      reply: `Bangun datar **Trapesium** telah **AKTIF** di Papan Tulis Pintar (Smartboard) di panel kanan! 🎉\n\n### Parameter Trapesium ($a = ${a}\\text{ cm},\\ b = ${b}\\text{ cm},\\ t = ${t}\\text{ cm}$):\n- **Sisi Sejajar Atas ($a$):** $${a}\\text{ cm}$\n- **Sisi Sejajar Bawah ($b$):** $${b}\\text{ cm}$\n- **Tinggi Tegak ($t$):** $${t}\\text{ cm}$\n- **Luas ($L$):** $$L = \\frac{(a + b) \\times t}{2} = \\frac{(${a} + ${b}) \\times ${t}}{2} = ${luas}\\text{ cm}^2$$\n\n💡 Geser slider di panel kanan untuk mempelajari bagaimana perbandingan panjang sisi atas dan bawah mempengaruhi luas bidang!`,
+      model: "ChatZAP Geometry Engine",
+    };
+  }
+
+  // 10. SEGITIGA (TRIANGLE)
+  if (lower.includes("segitiga") || lower.includes("triangle")) {
+    const aMatch = cleanText.match(/(?:a|alas)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const tMatch = cleanText.match(/(?:t|tinggi)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const a = aMatch ? parseFloat(aMatch[1].replace(",", ".")) : 10;
+    const t = tMatch ? parseFloat(tMatch[1].replace(",", ".")) : 8;
+    const luas = (a * t) / 2;
+
+    return {
+      reply: `Bangun datar **Segitiga** telah **AKTIF** di Papan Tulis Pintar (Smartboard) di sebelah kanan! 🎉\n\n### Parameter Segitiga ($a = ${a}\\text{ cm},\\ t = ${t}\\text{ cm}$):\n- **Panjang Alas ($a$):** $${a}\\text{ cm}$\n- **Tinggi Tegak ($t$):** $${t}\\text{ cm}$\n- **Luas ($L$):** $$L = \\frac{1}{2} \\times a \\times t = \\frac{1}{2} \\times (${a}) \\times (${t}) = ${luas}\\text{ cm}^2$$\n\n💡 Garis tinggi tegak putus-putus digambarkan langsung di kanvas. Coba ubah panjang alas atau tinggi melalui slider metrik!`,
+      model: "ChatZAP Geometry Engine",
     };
   }
 

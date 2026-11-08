@@ -10,6 +10,7 @@ import { type ZAPUser } from "@/components/GoogleAuthButton";
 import InteractiveCanvas3D, {
   type MathModelType,
   type SolidKind,
+  type PlaneShapeKind,
 } from "@/components/InteractiveCanvas3D";
 import ModelPickerWithEffort, {
   AVAILABLE_MODELS,
@@ -94,6 +95,7 @@ import {
 interface DetectedSmartboardItem {
   model: MathModelType;
   solidKind?: SolidKind;
+  planeShapeKind?: PlaneShapeKind;
   label: string;
   desc?: string;
   paramA?: number;
@@ -165,15 +167,57 @@ interface DetectedShapeInfo {
     | "trig"
     | "linear"
     | "circle"
-    | "counting_blocks";
+    | "counting_blocks"
+    | "jajar_genjang"
+    | "trapesium"
+    | "segitiga";
   paramA?: number;
   paramB?: number;
   paramC?: number;
   unit?: string;
+  planeShapeKind?: PlaneShapeKind;
 }
 
 function detectShapeKind(str: string): DetectedShapeInfo | null {
   const s = str.toLowerCase();
+
+  // 0. Bangun Datar 2D (Jajar Genjang, Trapesium, Segitiga)
+  if (s.includes("jajar genjang") || s.includes("jajargenjang") || s.includes("parallelogram")) {
+    const aMatch = s.match(/(?:a|alas|panjang)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const tMatch = s.match(/(?:t|tinggi)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const sMatch = s.match(/(?:s|miring|sisi miring)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    return {
+      kind: "jajar_genjang",
+      paramA: aMatch ? parseFloat(aMatch[1].replace(",", ".")) : 12,
+      paramB: tMatch ? parseFloat(tMatch[1].replace(",", ".")) : 8,
+      paramC: sMatch ? parseFloat(sMatch[1].replace(",", ".")) : 10,
+      unit: "cm",
+      planeShapeKind: "jajar_genjang",
+    };
+  }
+
+  if (s.includes("trapesium") || s.includes("trapezoid")) {
+    return {
+      kind: "trapesium",
+      paramA: 8,
+      paramB: 14,
+      paramC: 6,
+      unit: "cm",
+      planeShapeKind: "trapesium",
+    };
+  }
+
+  if (s.includes("segitiga") || s.includes("triangle")) {
+    const aMatch = s.match(/(?:a|alas)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const tMatch = s.match(/(?:t|tinggi)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    return {
+      kind: "segitiga",
+      paramA: aMatch ? parseFloat(aMatch[1].replace(",", ".")) : 10,
+      paramB: tMatch ? parseFloat(tMatch[1].replace(",", ".")) : 8,
+      unit: "cm",
+      planeShapeKind: "segitiga",
+    };
+  }
 
   // 1. Balok (cuboid / beam / persegi panjang 3d)
   if (s.includes("balok") || s.includes("cuboid") || s.includes("beam") || s.includes("persegi panjang 3d")) {
@@ -265,7 +309,7 @@ function detectSmartboardItem(
 
   // 1. Cek apakah ada kata perintah aktif untuk visualisasi/pemodelan
   const hasExplicitCommand =
-    /\b(buatkan|buat|bikin|tampilkan|gambarkan|gambar|visualisasikan|render|plot|lukiskan|lukis|simulasikan|modelkan|buka|lihat|show|draw|display|generate|create)\b/i.test(t);
+    /\b(buatkan|buatin|buat|bikinin|bikin|tampilkan|gambarkan|gambar|visualisasikan|render|plot|lukiskan|lukis|simulasikan|modelkan|buka|lihat|show|draw|display|generate|create)\b/i.test(t);
 
   // 2. Cek apakah ini percakapan santai, salam, atau apresiasi murni tanpa perintah visualisasi
   const isPureChatOrPraise =
@@ -296,10 +340,10 @@ function detectSmartboardItem(
     (has3DWord &&
       (hasExplicitCommand ||
         /\b(bisakah|bisa|tolong|coba|minta|pengen|mau|dapatkah|bentuk|format|versi|secara)\b/i.test(t))) ||
-    /\b(buatkan|buat|bikin|tampilkan|gambarkan|gambar|visualisasikan|render|modelkan|lihat|buka|tolong|bisakah|bisa|minta|pengen|mau|coba)\b[\s\S]{0,35}\b(?:3d|3-d|tiga dimensi|bangun ruang)\b/i.test(
+    /\b(buatkan|buatin|buat|bikinin|bikin|tampilkan|gambarkan|gambar|visualisasikan|render|modelkan|lihat|buka|tolong|bisakah|bisa|minta|pengen|mau|coba)\b[\s\S]{0,35}\b(?:3d|3-d|tiga dimensi|bangun ruang)\b/i.test(
       t
     ) ||
-    /\b(?:3d|3-d|tiga dimensi|bangun ruang)\b[\s\S]{0,35}\b(buatkan|buat|bikin|tampilkan|gambarkan|gambar|visualisasikan|render|modelkan|lihat|buka|nya|dong|kan)\b/i.test(
+    /\b(?:3d|3-d|tiga dimensi|bangun ruang)\b[\s\S]{0,35}\b(buatkan|buatin|buat|bikinin|bikin|tampilkan|gambarkan|gambar|visualisasikan|render|modelkan|lihat|buka|nya|dong|kan)\b/i.test(
       t
     ) ||
     /\b(?:dalam bentuk|bentuk|versi|format|secara)\s+(?:model\s+)?3d\b/i.test(t) ||
@@ -310,10 +354,7 @@ function detectSmartboardItem(
     hasExplicitCommand ||
     has3DIntent ||
     has3DWord ||
-    /\b(cube|kubus|balok|tabung|cylinder|silinder|kerucut|cone|bola|sphere|prisma|limas|parabola|pelana)\s*(?:3d|\d+|r\s*=|s\s*=|p\s*=|t\s*=)/i.test(
-      t
-    ) ||
-    /\b(3d\s*(?:cube|kubus|balok|tabung|cylinder|silinder|kerucut|cone|bola|sphere|prisma|limas))\b/i.test(
+    /\b(cube|kubus|balok|tabung|cylinder|silinder|kerucut|cone|bola|sphere|prisma|limas|parabola|pelana|jajar genjang|jajargenjang|parallelogram|trapesium|trapezoid|segitiga|triangle|lingkaran|circle)\b/i.test(
       t
     );
 
@@ -531,6 +572,49 @@ function detectSmartboardItem(
         model: "counting_blocks",
         label: "Balok Hitung",
         desc: "Visualisasi balok aritmetika",
+      };
+    }
+    case "jajar_genjang": {
+      const a = shape.paramA || 12;
+      const t = shape.paramB || 8;
+      const s = shape.paramC || 10;
+      return {
+        model: "2d_shape",
+        planeShapeKind: "jajar_genjang",
+        label: `Jajar Genjang 2D (a=${a}, t=${t})`,
+        desc: `Bangun datar jajar genjang alas ${a} ${parsedUnit}, tinggi ${t} ${parsedUnit}, sisi miring ${s} ${parsedUnit}`,
+        paramA: a,
+        paramB: t,
+        paramC: s,
+        unit: parsedUnit,
+      };
+    }
+    case "trapesium": {
+      const a = shape.paramA || 8;
+      const b = shape.paramB || 14;
+      const t = shape.paramC || 6;
+      return {
+        model: "2d_shape",
+        planeShapeKind: "trapesium",
+        label: `Trapesium 2D (a=${a}, b=${b})`,
+        desc: `Bangun datar trapesium sisi sejajar ${a} & ${b} ${parsedUnit}, tinggi ${t} ${parsedUnit}`,
+        paramA: a,
+        paramB: b,
+        paramC: t,
+        unit: parsedUnit,
+      };
+    }
+    case "segitiga": {
+      const a = shape.paramA || 10;
+      const t = shape.paramB || 8;
+      return {
+        model: "2d_shape",
+        planeShapeKind: "segitiga",
+        label: `Segitiga 2D (a=${a}, t=${t})`,
+        desc: `Bangun datar segitiga alas ${a} ${parsedUnit}, tinggi ${t} ${parsedUnit}`,
+        paramA: a,
+        paramB: t,
+        unit: parsedUnit,
       };
     }
     default:
@@ -1096,6 +1180,7 @@ export default function ZAPApp() {
   // 3D Canvas / Smartboard state (Default KOSONG)
   const [active3DModel, setActive3DModel] = useState<MathModelType>("empty");
   const [activeSolidKind, setActiveSolidKind] = useState<SolidKind>("kubus");
+  const [activePlaneShapeKind, setActivePlaneShapeKind] = useState<PlaneShapeKind>("jajar_genjang");
   const [canvasParamA, setCanvasParamA] = useState<number>(10);
   const [canvasParamB, setCanvasParamB] = useState<number>(6);
   const [canvasParamC, setCanvasParamC] = useState<number>(-3);
@@ -1264,6 +1349,7 @@ export default function ZAPApp() {
     if (lastSmartboardItem) {
       setActive3DModel(lastSmartboardItem.model);
       if (lastSmartboardItem.solidKind) setActiveSolidKind(lastSmartboardItem.solidKind);
+      if (lastSmartboardItem.planeShapeKind) setActivePlaneShapeKind(lastSmartboardItem.planeShapeKind);
       if (lastSmartboardItem.paramA !== undefined) setCanvasParamA(lastSmartboardItem.paramA);
       if (lastSmartboardItem.paramB !== undefined) setCanvasParamB(lastSmartboardItem.paramB);
       if (lastSmartboardItem.paramC !== undefined) setCanvasParamC(lastSmartboardItem.paramC);
@@ -1753,6 +1839,7 @@ export default function ZAPApp() {
       if (detectedGeometry) {
         setActive3DModel(detectedGeometry.model);
         if (detectedGeometry.solidKind) setActiveSolidKind(detectedGeometry.solidKind);
+        if (detectedGeometry.planeShapeKind) setActivePlaneShapeKind(detectedGeometry.planeShapeKind);
         if (detectedGeometry.paramA !== undefined) setCanvasParamA(detectedGeometry.paramA);
         if (detectedGeometry.paramB !== undefined) setCanvasParamB(detectedGeometry.paramB);
         if (detectedGeometry.paramC !== undefined) setCanvasParamC(detectedGeometry.paramC);
@@ -1855,6 +1942,7 @@ export default function ZAPApp() {
           const lowerReply = replyText.toLowerCase();
           const activates3D =
             lowerReply.includes("objek geometri 3d") ||
+            lowerReply.includes("bangun datar") ||
             lowerReply.includes("papan tulis pintar (smartboard) di panel sebelah kanan") ||
             (lowerReply.includes("papan tulis pintar") && lowerReply.includes("aktif")) ||
             (lowerReply.includes("smartboard") && lowerReply.includes("aktif"));
@@ -1864,7 +1952,42 @@ export default function ZAPApp() {
               detectShapeKind(replyText) ||
               detectShapeKind(userQuestion) || { kind: "kubus" as const, paramA: 10 };
 
-            if (shapeFromReply.kind === "balok") {
+            if (shapeFromReply.kind === "jajar_genjang") {
+              const a = shapeFromReply.paramA || 12;
+              const t = shapeFromReply.paramB || 8;
+              const s = shapeFromReply.paramC || 10;
+              responseGeometry = {
+                model: "2d_shape",
+                planeShapeKind: "jajar_genjang",
+                label: `Jajar Genjang 2D (a=${a}, t=${t})`,
+                desc: `Bangun datar jajar genjang alas ${a} cm, tinggi ${t} cm`,
+                paramA: a,
+                paramB: t,
+                paramC: s,
+                unit: "cm",
+              };
+            } else if (shapeFromReply.kind === "trapesium") {
+              responseGeometry = {
+                model: "2d_shape",
+                planeShapeKind: "trapesium",
+                label: "Trapesium 2D (a=8, b=14)",
+                desc: "Bangun datar trapesium sisi sejajar 8 & 14 cm, tinggi 6 cm",
+                paramA: 8,
+                paramB: 14,
+                paramC: 6,
+                unit: "cm",
+              };
+            } else if (shapeFromReply.kind === "segitiga") {
+              responseGeometry = {
+                model: "2d_shape",
+                planeShapeKind: "segitiga",
+                label: "Segitiga 2D (a=10, t=8)",
+                desc: "Bangun datar segitiga alas 10 cm, tinggi 8 cm",
+                paramA: 10,
+                paramB: 8,
+                unit: "cm",
+              };
+            } else if (shapeFromReply.kind === "balok") {
               const p = shapeFromReply.paramA || 10;
               const l = shapeFromReply.paramB || 6;
               const t_val = shapeFromReply.paramC || 4;
@@ -1913,6 +2036,7 @@ export default function ZAPApp() {
 
             setActive3DModel(responseGeometry.model);
             if (responseGeometry.solidKind) setActiveSolidKind(responseGeometry.solidKind);
+            if (responseGeometry.planeShapeKind) setActivePlaneShapeKind(responseGeometry.planeShapeKind);
             if (responseGeometry.paramA !== undefined) setCanvasParamA(responseGeometry.paramA);
             if (responseGeometry.paramB !== undefined) setCanvasParamB(responseGeometry.paramB);
             if (responseGeometry.paramC !== undefined) setCanvasParamC(responseGeometry.paramC);
@@ -2142,6 +2266,7 @@ export default function ZAPApp() {
     if (item) {
       setActive3DModel(item.model);
       if (item.solidKind) setActiveSolidKind(item.solidKind);
+      if (item.planeShapeKind) setActivePlaneShapeKind(item.planeShapeKind);
       if (item.paramA !== undefined) setCanvasParamA(item.paramA);
       if (item.paramB !== undefined) setCanvasParamB(item.paramB);
       if (item.paramC !== undefined) setCanvasParamC(item.paramC);
@@ -3982,9 +4107,10 @@ export default function ZAPApp() {
             {rightPaneTab === "canvas" && (
               <div className="w-full h-full flex flex-col bg-[#080a0f] relative">
                 <InteractiveCanvas3D
-                  key={`canvas_${active3DModel}_${activeSolidKind}`}
+                  key={`canvas_${active3DModel}_${activeSolidKind}_${activePlaneShapeKind}`}
                   initialModel={active3DModel}
                   initialSolidKind={activeSolidKind}
+                  initialPlaneShapeKind={activePlaneShapeKind}
                   initialParamA={canvasParamA}
                   initialParamB={canvasParamB}
                   initialParamC={canvasParamC}
@@ -3993,6 +4119,7 @@ export default function ZAPApp() {
                   showComparisonFault={showFaultComparison}
                   onModelChange={setActive3DModel}
                   onSolidKindChange={setActiveSolidKind}
+                  onPlaneShapeChange={setActivePlaneShapeKind}
                   onParamsChange={(a, b, c, u) => {
                     setCanvasParamA(a);
                     setCanvasParamB(b);

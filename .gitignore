@@ -42,6 +42,7 @@ Thumbs.db
 # Local user backups & vault
 .zap_vault/
 .data/
+*.db
 
 # Agent local skills & codex
 .codex/
