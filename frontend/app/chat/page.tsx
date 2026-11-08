@@ -21,8 +21,10 @@ import {
   loadConversations,
   saveConversations,
   windowHistory,
+  deriveTitle,
   type StoredConversation,
 } from "@/utils/chat-memory";
+import ShareModal from "@/components/ShareModal";
 import { syncAccountBackup, restoreAccountData, clearLocalWorkingSession } from "@/utils/account-sync";
 import { useTheme } from "@/utils/theme";
 import {
@@ -1131,10 +1133,19 @@ export default function ZAPApp() {
 
   // Memory chat: daftar percakapan tersimpan + percakapan aktif
   const [conversations, setConversations] = useState<StoredConv[]>([]);
-  const [activeConversationId, setActiveConversationId] = useState<string>(
-    () => "conv_" + Date.now()
-  );
+  const [activeConversationId, setActiveConversationId] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      const queryId = sp.get("id") || sp.get("c");
+      if (queryId) return queryId;
+    }
+    return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : "conv_" + Date.now();
+  });
   const [memoryReady, setMemoryReady] = useState<boolean>(false);
+  const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
+  const [sharingConv, setSharingConv] = useState<StoredConv | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -1182,9 +1193,61 @@ export default function ZAPApp() {
               // Selalu set percakapan sesuai hasil akun ini (jika akun baru/kosong, set [] dan tidak menampilkan akun lain)
               const userConvs = restored.conversations || [];
               setConversations(userConvs);
-              if (userConvs.length === 0) {
+
+              const searchParams = new URLSearchParams(window.location.search);
+              const importId = searchParams.get("import");
+              const targetId = searchParams.get("id") || searchParams.get("c");
+
+              if (importId) {
+                fetch(`/api/chat/share?id=${encodeURIComponent(importId)}`)
+                  .then((r) => r.json())
+                  .then((json) => {
+                    if (json.exists && json.data) {
+                      const imported = json.data;
+                      const newId =
+                        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+                          ? crypto.randomUUID()
+                          : "conv_" + Date.now();
+                      const importedConv: StoredConv = {
+                        id: newId,
+                        title: imported.title || "Percakapan Impor",
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                        messages: imported.messages || [],
+                        activeProblemFirstStep: null,
+                        activeProblemContext: null,
+                        targetVar: imported.targetVar || "x",
+                        userEmail: userKey,
+                      };
+                      setConversations((prev) => {
+                        const updated = [importedConv, ...prev.filter((c) => c.id !== newId)];
+                        saveConversations(updated, userKey);
+                        return updated;
+                      });
+                      setActiveConversationId(newId);
+                      setMessages(importedConv.messages);
+                      const url = new URL(window.location.href);
+                      url.searchParams.delete("import");
+                      url.searchParams.set("id", newId);
+                      window.history.replaceState(null, "", url.pathname + url.search);
+                    } else if (userConvs.length === 0) {
+                      startNewChat();
+                    }
+                  })
+                  .catch(() => {
+                    if (userConvs.length === 0) startNewChat();
+                  });
+              } else if (targetId) {
+                const found = userConvs.find((c) => c.id === targetId);
+                if (found) {
+                  openConversation(found.id);
+                } else if (userConvs.length === 0) {
+                  startNewChat();
+                }
+              } else if (userConvs.length === 0) {
                 startNewChat();
               }
+
               if (restored.workspaces && restored.workspaces.length > 0) {
                 setWorkspaces(restored.workspaces);
               }
@@ -1316,6 +1379,18 @@ export default function ZAPApp() {
       saveConversations(next, userKey);
       // Auto-backup percakapan akun Google ke cloud
       syncAccountBackup(currentUser, { conversations: next });
+
+      // Sinkronkan URL browser agar sesi memiliki URL-nya sendiri (/chat?id=<uuid>)
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        if (url.searchParams.get("id") !== activeConversationId) {
+          url.searchParams.set("id", activeConversationId);
+          url.searchParams.delete("import");
+          url.searchParams.delete("c");
+          window.history.replaceState(null, "", url.pathname + url.search);
+        }
+      }
+
       return next;
     });
   }, [messages, activeProblemFirstStep, activeProblemContext, targetVar, activeConversationId, memoryReady, currentUser]);
@@ -1355,7 +1430,10 @@ export default function ZAPApp() {
   };
 
   const startNewChat = () => {
-    const newId = "conv_" + Date.now();
+    const newId =
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : "conv_" + Date.now();
     setActiveConversationId(newId);
     createdAtRef.current = Date.now();
     setMessages([]);
@@ -1367,6 +1445,14 @@ export default function ZAPApp() {
     setCanvasShowSlice(false);
     setShowRightPane(false);
     setRightPaneTab("start");
+
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("id");
+      url.searchParams.delete("c");
+      url.searchParams.delete("import");
+      window.history.replaceState(null, "", url.pathname + (url.search ? url.search : ""));
+    }
   };
 
   const openConversation = (convId: string) => {
@@ -1378,6 +1464,14 @@ export default function ZAPApp() {
     setActiveProblemFirstStep(target.activeProblemFirstStep);
     setActiveProblemContext(target.activeProblemContext);
     setTargetVar(target.targetVar || "x");
+
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("id", target.id);
+      url.searchParams.delete("c");
+      url.searchParams.delete("import");
+      window.history.replaceState(null, "", url.pathname + url.search);
+    }
 
     // Kembalikan status Papan Tulis sesuai konteks percakapan yang dibuka
     const lastSmartboardItem = [...target.messages]
@@ -1398,6 +1492,30 @@ export default function ZAPApp() {
       setShowRightPane(false);
       setRightPaneTab("start");
     }
+  };
+
+  const handleOpenShareModal = (conv?: StoredConv) => {
+    const target =
+      conv ||
+      conversations.find((c) => c.id === activeConversationId) || {
+        id: activeConversationId,
+        title: deriveTitle(messages),
+        createdAt: createdAtRef.current,
+        updatedAt: Date.now(),
+        messages: messages,
+        activeProblemFirstStep,
+        activeProblemContext,
+        targetVar,
+        userEmail: currentUser?.email,
+      };
+
+    if (!target.messages || target.messages.length === 0) {
+      alert("Percakapan masih kosong, kirim pesan terlebih dahulu sebelum membagikan.");
+      return;
+    }
+
+    setSharingConv(target as StoredConv);
+    setShareModalOpen(true);
   };
 
   const deleteConversation = (convId: string, e: React.MouseEvent) => {
@@ -1868,28 +1986,8 @@ export default function ZAPApp() {
     window.speechSynthesis.speak(utterance);
   };
 
-  const handleShareMessage = async (text: string, msgId: string) => {
-    if (typeof window === "undefined") return;
-    try {
-      if (navigator.share && /mobile|android|iphone/i.test(navigator.userAgent)) {
-        await navigator.share({
-          title: "ChatZAP Socratic Assistant",
-          text: text,
-        });
-      } else {
-        await navigator.clipboard.writeText(text);
-        setSharedMsgId(msgId);
-        setTimeout(() => setSharedMsgId(null), 2000);
-      }
-    } catch {
-      try {
-        await navigator.clipboard.writeText(text);
-        setSharedMsgId(msgId);
-        setTimeout(() => setSharedMsgId(null), 2000);
-      } catch (err) {
-        console.warn("Gagal membagikan pesan:", err);
-      }
-    }
+  const handleShareMessage = async (_text: string, _msgId: string) => {
+    handleOpenShareModal();
   };
 
   const handleOpenSmartboard = (item?: DetectedSmartboardItem | null) => {
@@ -2392,20 +2490,37 @@ export default function ZAPApp() {
                   <div
                     key={conv.id}
                     onClick={() => openConversation(conv.id)}
-                    className="group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition cursor-pointer"
+                    className={`group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer ${
+                      conv.id === activeConversationId
+                        ? "bg-slate-200/70 dark:bg-white/[0.08] text-slate-900 dark:text-zinc-100 font-medium"
+                        : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
+                    }`}
                   >
                     <span className="truncate flex-1">{conv.title}</span>
                     <span className="text-[10px] text-slate-400 dark:text-zinc-600 group-hover:hidden flex-shrink-0">
                       {formatRelativeTime(conv.updatedAt)}
                     </span>
-                    <button
-                      type="button"
-                      onClick={(e) => deleteConversation(conv.id, e)}
-                      className="hidden group-hover:block text-slate-400 dark:text-zinc-500 hover:text-rose-500 dark:hover:text-rose-400 flex-shrink-0"
-                      title="Hapus sesi"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
+                    <div className="hidden group-hover:flex items-center gap-1.5 flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenShareModal(conv);
+                        }}
+                        className="text-slate-400 dark:text-zinc-500 hover:text-sky-500 dark:hover:text-sky-400 transition"
+                        title="Bagikan tautan percakapan"
+                      >
+                        <Share2 className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => deleteConversation(conv.id, e)}
+                        className="text-slate-400 dark:text-zinc-500 hover:text-rose-500 dark:hover:text-rose-400 transition"
+                        title="Hapus sesi"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
                 ));
               })()}
@@ -2615,6 +2730,19 @@ export default function ZAPApp() {
                 <RotateCw className="w-3 h-3" />
               </button>
             </div>
+
+            {/* Tombol Bagikan Percakapan */}
+            {messages.length > 0 && (
+              <button
+                type="button"
+                onClick={() => handleOpenShareModal()}
+                title="Bagikan percakapan ini (URL Publik)"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-white/[0.05] hover:bg-slate-200 dark:hover:bg-white/[0.1] border border-slate-200 dark:border-white/[0.08] transition shadow-sm"
+              >
+                <Share2 className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />
+                <span className="hidden sm:inline">Bagikan</span>
+              </button>
+            )}
 
             {/* If Right Pane is closed, show toggle button (seperti di Screenshot 1) */}
             {!showRightPane && (
@@ -4183,6 +4311,15 @@ export default function ZAPApp() {
           </div>
         </div>
       )}
+
+      {/* Share Modal Dialog */}
+      <ShareModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        conversation={sharingConv}
+        currentUser={currentUser}
+        active3DModel={active3DModel}
+      />
     </div>
   );
 }
