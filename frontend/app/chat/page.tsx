@@ -780,7 +780,7 @@ function PromptActionBarLeft({
       {showAttachMenu && (
         <div
           ref={attachMenuRef}
-          className="absolute left-0 bottom-full mb-2.5 w-72 bg-white/70 dark:bg-[#12131a]/70 backdrop-blur-md border border-slate-200/70 dark:border-white/[0.1] rounded-2xl shadow-2xl p-1.5 z-50 text-xs text-slate-700 dark:text-zinc-300 animate-in fade-in zoom-in-95 duration-150"
+          className="absolute left-0 bottom-full mb-2.5 w-72 bg-white/85 dark:bg-[#13151f]/85 backdrop-blur-2xl backdrop-saturate-150 border border-slate-200/80 dark:border-white/[0.12] rounded-2xl shadow-2xl p-1.5 z-50 text-xs text-slate-700 dark:text-zinc-300 animate-in fade-in zoom-in-95 duration-150"
         >
           <div className="px-3 py-2 flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] text-slate-500 dark:text-zinc-400 font-medium text-[11px]">
             <span className="flex items-center gap-1.5 text-slate-800 dark:text-zinc-200">
@@ -847,7 +847,7 @@ function PromptActionBarLeft({
               </button>
 
               {showSubUploadMenu && (
-                <div className="absolute left-full bottom-0 ml-1.5 w-60 bg-white/70 dark:bg-[#12131a]/70 backdrop-blur-md border border-slate-200/70 dark:border-white/[0.1] rounded-2xl shadow-2xl p-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
+                <div className="absolute left-full bottom-0 ml-1.5 w-60 bg-white/85 dark:bg-[#13151f]/85 backdrop-blur-2xl backdrop-saturate-150 border border-slate-200/80 dark:border-white/[0.12] rounded-2xl shadow-2xl p-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
                   <button
                     type="button"
                     onClick={() => {
@@ -941,7 +941,7 @@ function PromptActionBarLeft({
       {showWorkspaceMenu && (
         <div
           ref={workspaceMenuRef}
-          className="absolute left-6 bottom-full mb-2.5 w-72 bg-white/70 dark:bg-[#12131a]/70 backdrop-blur-md border border-slate-200/70 dark:border-white/[0.1] rounded-2xl shadow-2xl p-2 z-50 text-xs text-slate-700 dark:text-zinc-300 animate-in fade-in zoom-in-95 duration-150"
+          className="absolute left-6 bottom-full mb-2.5 w-72 bg-white/85 dark:bg-[#13151f]/85 backdrop-blur-2xl backdrop-saturate-150 border border-slate-200/80 dark:border-white/[0.12] rounded-2xl shadow-2xl p-2 z-50 text-xs text-slate-700 dark:text-zinc-300 animate-in fade-in zoom-in-95 duration-150"
         >
           <div className="px-2.5 py-1.5 flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] text-slate-500 dark:text-zinc-400 font-medium text-[11px]">
             <span className="text-slate-800 dark:text-zinc-200">Mode &amp; Izin Workspace</span>
@@ -3124,7 +3124,7 @@ export default function ZAPApp() {
 
                   {/* Dropdown Popover */}
                   {showPillWorkspaceMenu && (
-                    <div className="absolute left-0 top-full mt-1.5 w-60 bg-white/70 dark:bg-[#12131a]/70 backdrop-blur-md border border-slate-200/70 dark:border-white/[0.1] rounded-2xl shadow-xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150 text-left">
+                    <div className="absolute left-0 top-full mt-1.5 w-60 bg-white/85 dark:bg-[#13151f]/85 backdrop-blur-2xl backdrop-saturate-150 border border-slate-200/80 dark:border-white/[0.12] rounded-2xl shadow-xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150 text-left">
                       <div className="px-3 py-1 text-[10px] uppercase font-mono tracking-wider text-slate-400 dark:text-zinc-500 border-b border-slate-100 dark:border-white/[0.06] mb-1">
                         Pilih Ruang Kerja
                       </div>
@@ -3194,7 +3194,7 @@ export default function ZAPApp() {
 
                   {/* Mode Dropdown Popover */}
                   {showPillModeMenu && (
-                    <div className="absolute left-0 top-full mt-1.5 w-64 bg-white/70 dark:bg-[#12131a]/70 backdrop-blur-md border border-slate-200/70 dark:border-white/[0.1] rounded-2xl shadow-xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150 text-left">
+                    <div className="absolute left-0 top-full mt-1.5 w-64 bg-white/85 dark:bg-[#13151f]/85 backdrop-blur-2xl backdrop-saturate-150 border border-slate-200/80 dark:border-white/[0.12] rounded-2xl shadow-xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150 text-left">
                       <div className="px-3 py-1 text-[10px] uppercase font-mono tracking-wider text-slate-400 dark:text-zinc-500 border-b border-slate-100 dark:border-white/[0.06] mb-1">
                         Pilih Moda Pedagogi
                       </div>
