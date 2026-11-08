@@ -33,6 +33,7 @@ export interface AIModel {
   latency: string;
   description: string;
   icon: React.ElementType;
+  iconColor?: string;
 }
 
 export const AVAILABLE_MODELS: AIModel[] = [
@@ -48,6 +49,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     latency: "< 200ms",
     description: "Orkestrator pintar otomatis: mengarahkan ke Nemotron-3.5 Bolt (Sokrates kilat), Nemotron-3 Omni (Matematika), dan Nemotron-3.5 Super-VL (Geometri 3D).",
     icon: ZapLogo,
+    iconColor: "text-amber-500 dark:text-amber-400",
   },
 
   // 1. NVIDIA NIM Specialized Agent Cluster (Verified Valid Key)
@@ -62,6 +64,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     latency: "< 200ms",
     description: "Agent tutor percakapan Sokrates super cepat dengan respon instan dan empati pedagogis tinggi.",
     icon: NvidiaLogo,
+    iconColor: "text-[#76B900]",
   },
   {
     id: "nvidia-math-reasoning",
@@ -74,6 +77,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     latency: "~450ms",
     description: "Agent spesialis penalaran matematis murni dengan Chain-of-Thought untuk pembuktian dan kontra-contoh.",
     icon: NvidiaLogo,
+    iconColor: "text-[#76B900]",
   },
   {
     id: "nvidia-spatial-vl",
@@ -86,6 +90,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     latency: "~600ms",
     description: "Agent spesialis pemodelan geometri 3D, koordinat spasial, grafik kartesius, dan penampang bidang irisan.",
     icon: NvidiaLogo,
+    iconColor: "text-[#76B900]",
   },
   {
     id: "nvidia-ultra-550b",
@@ -98,6 +103,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     latency: "~900ms",
     description: "Model frontier raksasa 550B untuk analisis aljabar tingkat lanjut, pembuktian teorema, dan soal olimpiade.",
     icon: NvidiaLogo,
+    iconColor: "text-[#76B900]",
   },
   {
     id: "poolside-laguna",
@@ -110,6 +116,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     latency: "< 250ms",
     description: "Agent sintesis kode cepat untuk scripting Three.js, visualisasi grafik SVG, dan matematika komputasi.",
     icon: NvidiaLogo,
+    iconColor: "text-[#76B900]",
   },
   {
     id: "deepseek-v4.1-flash",
@@ -122,6 +129,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     latency: "~350ms",
     description: "Model MoE penalaran analitis mendalam dari DeepSeek yang diakselerasi di cloud NVIDIA NIM.",
     icon: DeepSeekLogo,
+    iconColor: "text-[#1E88E5] dark:text-[#42A5F5]",
   },
 
   // 1. Google Gemini (Default Auto Cloud)
@@ -136,6 +144,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     latency: "< 350ms",
     description: "Model default ZAP yang otomatis aktif saat login Google tanpa perlu konfigurasi API key manual.",
     icon: GeminiLogo,
+    iconColor: "text-[#4E8BF5]",
   },
 
   // 2. OpenAI ChatGPT
@@ -150,6 +159,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     latency: "~400ms",
     description: "Model multimodal cerdas OpenAI untuk pemahaman teks dan asistensi Sokrates bertahap.",
     icon: OpenAILogo,
+    iconColor: "text-[#10A37F]",
   },
   {
     id: "gpt-4o-mini",
@@ -162,6 +172,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     latency: "~200ms",
     description: "Model respons cepat dan hemat biaya dari OpenAI untuk tutoring kilat.",
     icon: OpenAILogo,
+    iconColor: "text-[#10A37F]",
   },
 
   // 3. Anthropic Claude
@@ -176,6 +187,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     latency: "~600ms",
     description: "Model reasoning dengan kekakuan logika dan kemampuan pemecahan soal terstruktur.",
     icon: ClaudeLogo,
+    iconColor: "text-[#D97757]",
   },
 
   // 4. Mistral Codestral
@@ -190,6 +202,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     latency: "~220ms",
     description: "Model matematika dan komputasi cepat dari Mistral AI.",
     icon: MistralLogo,
+    iconColor: "text-[#FF7000]",
   },
 
   // 5. SymPy Deterministic Engine (Offline 0ms)
@@ -204,6 +217,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     latency: "0ms",
     description: "Mesin aljabar simbolik murni 100% deterministik tanpa inferensi LLM generatif.",
     icon: SymPyLogo,
+    iconColor: "text-[#3B9C3F]",
   },
 
   // 6. Custom API Endpoint
@@ -218,6 +232,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     latency: "Kustom",
     description: "Hubungkan model lokal milikmu sendiri via Ollama, LM Studio, vLLM, atau OpenAI-compatible proxy.",
     icon: OllamaLogo,
+    iconColor: "text-purple-400",
   },
 ];
 
@@ -309,18 +324,18 @@ export default function ModelPickerWithEffort({
       {/* Minimal Context Menu (Exact DeepSeek Harness layout in Image 1) */}
       {isOpen && (
         <div
-          className={`absolute right-0 z-50 select-none ${
-            dropUp ? "bottom-full mb-2" : "top-full mt-2"
+          className={`absolute right-0 z-50 select-none animate-in fade-in-0 zoom-in-95 duration-150 ease-out origin-bottom-right ${
+            dropUp ? "bottom-full mb-2.5" : "top-full mt-2.5"
           }`}
         >
           {/* Main 2-Row Context Menu Card */}
-          <div className="w-64 sm:w-72 bg-white dark:bg-[#181a1f] border border-slate-200 dark:border-white/[0.08] rounded-xl shadow-2xl shadow-slate-300/40 dark:shadow-black/80 p-1 relative text-slate-800 dark:text-zinc-200">
+          <div className="w-64 sm:w-72 bg-white/85 dark:bg-[#14161f]/85 backdrop-blur-2xl border border-slate-200/80 dark:border-white/[0.12] rounded-2xl shadow-2xl shadow-slate-400/20 dark:shadow-black/90 p-1.5 relative text-slate-800 dark:text-zinc-200">
             {/* Row 1: Model */}
             <button
               type="button"
               onClick={() => setActiveSubmenu(activeSubmenu === "model" ? null : "model")}
               onMouseEnter={() => setActiveSubmenu("model")}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition cursor-pointer ${
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition cursor-pointer ${
                 activeSubmenu === "model"
                   ? "bg-slate-100 dark:bg-white/[0.08] text-slate-900 dark:text-white font-medium"
                   : "text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-white/[0.04] hover:text-slate-900 dark:hover:text-white"
@@ -340,7 +355,7 @@ export default function ModelPickerWithEffort({
               type="button"
               onClick={() => setActiveSubmenu(activeSubmenu === "effort" ? null : "effort")}
               onMouseEnter={() => setActiveSubmenu("effort")}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition cursor-pointer ${
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition cursor-pointer ${
                 activeSubmenu === "effort"
                   ? "bg-slate-100 dark:bg-white/[0.08] text-slate-900 dark:text-white font-medium"
                   : "text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-white/[0.04] hover:text-slate-900 dark:hover:text-white"
@@ -358,11 +373,11 @@ export default function ModelPickerWithEffort({
             {/* Submenu 1: Model Selector (Flyout to left on sm:, in-place on xs:) */}
             {activeSubmenu === "model" && (
               <div
-                className="fixed inset-x-3 bottom-24 sm:absolute sm:inset-auto sm:right-full sm:mr-1.5 sm:bottom-0 sm:w-64 bg-white dark:bg-[#181a1f] border border-slate-200 dark:border-white/[0.08] rounded-xl shadow-2xl shadow-slate-300/40 dark:shadow-black/80 p-1 z-50 animate-fadeIn"
+                className="fixed inset-x-3 bottom-24 sm:absolute sm:inset-auto sm:right-full sm:mr-2 sm:bottom-0 sm:w-72 bg-white/90 dark:bg-[#14161f]/90 backdrop-blur-2xl border border-slate-200/80 dark:border-white/[0.12] rounded-2xl shadow-2xl shadow-slate-400/20 dark:shadow-black/90 p-1.5 z-50 animate-in fade-in-0 zoom-in-95 duration-150 ease-out origin-bottom-right"
                 onMouseEnter={() => setActiveSubmenu("model")}
               >
-                <div className="px-2.5 py-1.5 text-xs font-mono text-slate-500 dark:text-zinc-500 uppercase tracking-wider flex items-center justify-between">
-                  <span>Pilih Model</span>
+                <div className="px-3 py-1.5 text-[11px] font-mono text-slate-500 dark:text-zinc-500 uppercase tracking-wider flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] mb-1">
+                  <span>PILIH MODEL</span>
                   <button
                     type="button"
                     onClick={() => setActiveSubmenu(null)}
@@ -371,7 +386,7 @@ export default function ModelPickerWithEffort({
                     ✕
                   </button>
                 </div>
-                <div className="space-y-0.5 max-h-60 overflow-y-auto">
+                <div className="space-y-0.5 max-h-64 overflow-y-auto px-0.5">
                   {AVAILABLE_MODELS.map((model) => {
                     const isSelected = model.id === currentModel.id;
                     const Icon = model.icon;
@@ -380,14 +395,14 @@ export default function ModelPickerWithEffort({
                         key={model.id}
                         type="button"
                         onClick={() => handleSelectModel(model)}
-                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition cursor-pointer text-left ${
+                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition cursor-pointer text-left ${
                           isSelected
                             ? "bg-slate-100 dark:bg-white/[0.08] text-slate-900 dark:text-white font-medium"
                             : "text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-white/[0.04] hover:text-slate-900 dark:hover:text-white"
                         }`}
                       >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Icon className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 flex-shrink-0" />
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <Icon className={`w-4 h-4 flex-shrink-0 ${model.iconColor || "text-slate-400"}`} />
                           <span className="truncate">{model.name}</span>
                         </div>
                         {isSelected && (
@@ -404,7 +419,7 @@ export default function ModelPickerWithEffort({
                     setIsOpen(false);
                     setActiveSubmenu(null);
                   }}
-                  className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.04] transition"
+                  className="flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.04] transition"
                 >
                   <span>Kelola API Key & Hub...</span>
                   <ExternalLink className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
@@ -415,10 +430,10 @@ export default function ModelPickerWithEffort({
             {/* Submenu 2: Reasoning Effort Selector */}
             {activeSubmenu === "effort" && (
               <div
-                className="fixed inset-x-3 bottom-24 sm:absolute sm:inset-auto sm:right-full sm:mr-1.5 sm:bottom-0 sm:w-36 bg-white dark:bg-[#181a1f] border border-slate-200 dark:border-white/[0.08] rounded-xl shadow-2xl shadow-slate-300/40 dark:shadow-black/80 p-1 z-50 animate-fadeIn"
+                className="fixed inset-x-3 bottom-24 sm:absolute sm:inset-auto sm:right-full sm:mr-2 sm:bottom-0 sm:w-40 bg-white/90 dark:bg-[#14161f]/90 backdrop-blur-2xl border border-slate-200/80 dark:border-white/[0.12] rounded-2xl shadow-2xl shadow-slate-400/20 dark:shadow-black/90 p-1.5 z-50 animate-in fade-in-0 zoom-in-95 duration-150 ease-out origin-bottom-right"
                 onMouseEnter={() => setActiveSubmenu("effort")}
               >
-                <div className="px-2.5 py-1.5 text-xs font-mono text-slate-500 dark:text-zinc-500 uppercase tracking-wider flex items-center justify-between">
+                <div className="px-3 py-1.5 text-[11px] font-mono text-slate-500 dark:text-zinc-500 uppercase tracking-wider flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] mb-1">
                   <span>Effort</span>
                   <button
                     type="button"
@@ -436,7 +451,7 @@ export default function ModelPickerWithEffort({
                         key={opt}
                         type="button"
                         onClick={() => handleSelectEffort(opt)}
-                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition cursor-pointer text-left ${
+                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition cursor-pointer text-left ${
                           isSelected
                             ? "bg-slate-100 dark:bg-white/[0.08] text-slate-900 dark:text-white font-medium"
                             : "text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-white/[0.04] hover:text-slate-900 dark:hover:text-white"

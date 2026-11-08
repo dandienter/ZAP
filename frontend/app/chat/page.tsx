@@ -3464,17 +3464,21 @@ export default function ZAPApp() {
 
                   {/* Assistant Message */}
                   {msg.sender === "assistant" && (
-                    <div className="flex gap-3 sm:gap-4 items-start py-1">
-                      <ZapLogo className="w-7 h-7 flex-shrink-0 mt-1 text-slate-900 dark:text-white" />
+                    <div className="py-2 space-y-3 w-full">
+                      {/* Header Row: Zap Logo (pas in dikit) + Detail Mesin (simple & glass) + Timestamp */}
+                      <div className="flex items-center gap-2 select-none">
+                        <ZapLogo className="w-5 h-5 text-slate-900 dark:text-white flex-shrink-0" />
 
-                      <div className="flex-1 space-y-3 min-w-0 max-w-full">
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-[11px] text-slate-700 dark:text-zinc-300 font-medium px-2.5 py-0.5 rounded-full bg-slate-100/80 dark:bg-white/[0.05] backdrop-blur-md border border-slate-200/80 dark:border-white/[0.08] font-mono flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            <span>{msg.modelName || selectedModel.name}</span>
-                          </span>
-                          <span className="text-[11px] text-slate-400 dark:text-zinc-500 font-mono">{msg.timestamp}</span>
+                        {/* Detail Mesin: Simple & Glass Badge */}
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-200/60 dark:bg-white/[0.06] backdrop-blur-xl border border-slate-300/50 dark:border-white/[0.08] text-[11px] font-mono text-slate-700 dark:text-zinc-300 shadow-sm">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          <span className="font-medium">{msg.modelName || selectedModel.name}</span>
                         </div>
+
+                        <span className="text-[11px] text-slate-400 dark:text-zinc-500 font-mono ml-0.5">
+                          {msg.timestamp}
+                        </span>
+                      </div>
 
                         {msg.replyText && (
                           <div className="text-slate-800 dark:text-zinc-100 text-[15.5px] leading-relaxed pt-0.5">
@@ -3717,7 +3721,6 @@ export default function ZAPApp() {
                           )}
                         </div>
                       </div>
-                    </div>
                   )}
                 </div>
               ))}
