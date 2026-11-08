@@ -1022,27 +1022,50 @@ function PromptActionBarLeft({
               Ruang Kerja Aktif
             </div>
             <div className="space-y-0.5 max-h-32 overflow-y-auto">
-              {workspaces.map((ws) => (
-                <button
-                  key={ws.id}
-                  type="button"
-                  onClick={() => {
-                    setActiveWorkspaceId(ws.id);
-                    setShowWorkspaceMenu(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs transition cursor-pointer ${
-                    activeWorkspaceId === ws.id
-                      ? "bg-slate-100 dark:bg-white/[0.08] text-slate-900 dark:text-white font-medium"
-                      : "hover:bg-slate-50 dark:hover:bg-white/[0.04] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    <Folder className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 flex-shrink-0" />
-                    <span className="truncate">{ws.name}</span>
-                  </div>
-                  {activeWorkspaceId === ws.id && <Check className="w-3 h-3 text-slate-900 dark:text-white flex-shrink-0" />}
-                </button>
-              ))}
+              {workspaces.length === 0 ? (
+                <div className="px-2 py-1.5 text-xs text-slate-400 dark:text-zinc-500 italic">
+                  Belum ada workspace
+                </div>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveWorkspaceId("");
+                      setShowWorkspaceMenu(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs transition cursor-pointer ${
+                      !activeWorkspaceId
+                        ? "bg-slate-100 dark:bg-white/[0.08] text-slate-900 dark:text-white font-medium"
+                        : "hover:bg-slate-50 dark:hover:bg-white/[0.04] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
+                    }`}
+                  >
+                    <span className="truncate">Tanpa Workspace</span>
+                    {!activeWorkspaceId && <Check className="w-3 h-3 text-slate-900 dark:text-white flex-shrink-0" />}
+                  </button>
+                  {workspaces.map((ws) => (
+                    <button
+                      key={ws.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveWorkspaceId(ws.id);
+                        setShowWorkspaceMenu(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs transition cursor-pointer ${
+                        activeWorkspaceId === ws.id
+                          ? "bg-slate-100 dark:bg-white/[0.08] text-slate-900 dark:text-white font-medium"
+                          : "hover:bg-slate-50 dark:hover:bg-white/[0.04] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <Folder className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 flex-shrink-0" />
+                        <span className="truncate">{ws.name}</span>
+                      </div>
+                      {activeWorkspaceId === ws.id && <Check className="w-3 h-3 text-slate-900 dark:text-white flex-shrink-0" />}
+                    </button>
+                  ))}
+                </>
+              )}
             </div>
           </div>
 
@@ -1146,6 +1169,14 @@ export default function ZAPApp() {
   const [currentUser, setCurrentUser] = useState<ZAPUser | null>(null);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState<boolean>(false);
 
+  // Helper identifikasi akun tamu vs akun Google login
+  const isGuestAccount = (user: ZAPUser | null | undefined): boolean => {
+    if (!user) return false;
+    if (user.isGuest === true) return true;
+    if (user.provider === "google" || user.email?.toLowerCase().includes("@gmail")) return false;
+    return user.provider === "zap" && (user.email?.toLowerCase().includes("@student.zap") || user.name?.toLowerCase().includes("tamu"));
+  };
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState<string>("");
   const [targetVar, setTargetVar] = useState<string>("x");
@@ -1208,7 +1239,7 @@ export default function ZAPApp() {
 
   // File upload state (lampiran di input dan berkas workspace)
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
-  const [workspaceFiles, setWorkspaceFiles] = useState<UploadedFile[]>(DEFAULT_WORKSPACE_FILES);
+  const [workspaceFiles, setWorkspaceFiles] = useState<UploadedFile[]>([]);
   const [previewFile, setPreviewFile] = useState<UploadedFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -1222,10 +1253,8 @@ export default function ZAPApp() {
   const workspaceMenuRef = useRef<HTMLDivElement>(null);
 
   // Workspace management & filtering
-  const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([
-    { id: "default", name: "Default workspace", createdAt: Date.now() },
-  ]);
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>("default");
+  const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([]);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>("");
   const [showNewWorkspaceModal, setShowNewWorkspaceModal] = useState<boolean>(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState<string>("");
 
@@ -1539,15 +1568,22 @@ export default function ZAPApp() {
         const storedWs = localStorage.getItem("zap_workspaces");
         if (storedWs) {
           const parsed = JSON.parse(storedWs);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setWorkspaces(parsed);
+          if (Array.isArray(parsed)) {
+            const manualOnly = parsed.filter((w: WorkspaceItem) => w.id !== "default" && w.name !== "Default workspace");
+            setWorkspaces(manualOnly);
+            if (manualOnly.length > 0) {
+              setActiveWorkspaceId(manualOnly[0].id);
+            } else {
+              setActiveWorkspaceId("");
+            }
           }
         }
         const storedFiles = localStorage.getItem("zap_workspace_files");
         if (storedFiles) {
           const parsed = JSON.parse(storedFiles);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setWorkspaceFiles(parsed);
+          if (Array.isArray(parsed)) {
+            const customOnly = parsed.filter((f: UploadedFile) => f.workspaceId !== "default");
+            setWorkspaceFiles(customOnly);
           }
         }
       } catch (wsErr) {
@@ -2440,6 +2476,22 @@ export default function ZAPApp() {
     setShowNewWorkspaceModal(false);
   };
 
+  const handleDeleteWorkspace = (wsId: string) => {
+    const next = workspaces.filter((w) => w.id !== wsId);
+    setWorkspaces(next);
+    if (activeWorkspaceId === wsId) {
+      setActiveWorkspaceId("");
+    }
+    try {
+      localStorage.setItem("zap_workspaces", JSON.stringify(next));
+      const nextFiles = workspaceFiles.filter((f) => f.workspaceId !== wsId);
+      setWorkspaceFiles(nextFiles);
+      localStorage.setItem("zap_workspace_files", JSON.stringify(nextFiles));
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -2546,7 +2598,7 @@ export default function ZAPApp() {
     return (
       <div className="flex h-screen w-screen bg-[#090a0f] text-zinc-400 items-center justify-center font-sans text-xs select-none">
         <div className="flex items-center gap-2.5">
-          <ZapLogo className="w-5 h-5 text-white animate-pulse" />
+          <ZapLogo className="w-4.5 h-4.5 text-white animate-pulse" />
           <span>Memuat ChatZAP Studio...</span>
         </div>
       </div>
@@ -2576,16 +2628,16 @@ export default function ZAPApp() {
         onChange={handleFileUpload}
       />
 
-      {/* 1. LEFT SIDEBAR (Persis seperti Screenshot 0 & 1) */}
+      {/* 1. LEFT SIDEBAR (Lebih lebar & Tipografi Jelas) */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-[#131418] border-r border-slate-200 dark:border-white/[0.06] flex flex-col transition-transform duration-200 ease-in-out sm:static sm:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-72 sm:w-[280px] bg-white dark:bg-[#131418] border-r border-slate-200 dark:border-white/[0.06] flex flex-col transition-transform duration-200 ease-in-out sm:static sm:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full sm:hidden"
         }`}
       >
         {/* Brand Header: ChatZAP + Toggle button */}
         <div className="h-12 px-3.5 flex items-center justify-between border-b border-transparent">
           <div className="flex items-center gap-2">
-            <ZapLogo className="w-5 h-5 text-slate-900 dark:text-white" />
+            <ZapLogo className="w-4.5 h-4.5 text-slate-900 dark:text-white" />
             <span className="font-bold text-sm tracking-tight text-slate-900 dark:text-white">ChatZAP</span>
           </div>
           <button
@@ -2602,7 +2654,7 @@ export default function ZAPApp() {
         <div className="px-3 py-2">
           <button
             onClick={startNewChat}
-            className="w-full py-2 px-3 rounded-xl bg-slate-100 dark:bg-[#1e2025] hover:bg-slate-200 dark:hover:bg-[#272a32] text-slate-800 dark:text-zinc-200 font-medium text-xs flex items-center justify-center gap-2 transition border border-slate-200 dark:border-white/[0.04] active:scale-[0.99] cursor-pointer"
+            className="w-full py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-[#1e2025] hover:bg-slate-200 dark:hover:bg-[#272a32] text-slate-800 dark:text-zinc-200 font-medium text-[13px] flex items-center justify-center gap-2 transition border border-slate-200/80 dark:border-white/[0.04] active:scale-[0.99] cursor-pointer"
           >
             <PlusCircle className="w-4 h-4 text-slate-500 dark:text-zinc-400" />
             <span>New Session</span>
@@ -2614,35 +2666,37 @@ export default function ZAPApp() {
           <button
             type="button"
             onClick={() => setShowPluginModal(true)}
-            className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.05] transition text-left cursor-pointer"
+            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13.5px] font-medium text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.05] transition text-left cursor-pointer"
           >
-            <Sparkles className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
+            <Sparkles className="w-4 h-4 text-slate-500 dark:text-zinc-400" />
             <span>Plugins</span>
           </button>
 
           <button
             type="button"
             onClick={() => setShowTasksModal(true)}
-            className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.05] transition text-left cursor-pointer"
+            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13.5px] font-medium text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.05] transition text-left cursor-pointer"
           >
-            <Clock className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
+            <Clock className="w-4 h-4 text-slate-500 dark:text-zinc-400" />
             <span>Automation tasks</span>
           </button>
 
           <button
             type="button"
             onClick={() => setShowMoreModal(true)}
-            className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.05] transition text-left cursor-pointer"
+            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13.5px] font-medium text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.05] transition text-left cursor-pointer"
           >
-            <LayoutGrid className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
+            <LayoutGrid className="w-4 h-4 text-slate-500 dark:text-zinc-400" />
             <span>More</span>
           </button>
         </div>
 
-        {/* Workspaces Section */}
+        {/* SECTION 1: RIWAYAT CHAT (Mandiri & Terpisah dari Workspace) */}
         <div className="flex-1 flex flex-col min-h-0 pt-3">
           <div className="flex items-center justify-between px-3.5 pb-1.5 text-slate-400 dark:text-zinc-400">
-            <span className="text-[11px] font-medium text-slate-500 dark:text-zinc-400">Workspaces</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider font-mono text-slate-500 dark:text-zinc-400">
+              Riwayat Chat
+            </span>
             <div className="flex items-center gap-1">
               <button
                 type="button"
@@ -2664,17 +2718,9 @@ export default function ZAPApp() {
                     ? "bg-slate-200 dark:bg-white/[0.1] text-slate-900 dark:text-white border border-slate-300 dark:border-white/[0.15]"
                     : "hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
                 }`}
-                title="Filter workspaces & status"
+                title="Filter status percakapan"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowNewWorkspaceModal(true)}
-                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 transition cursor-pointer"
-                title="Buat workspace baru"
-              >
-                <FolderPlus className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -2682,7 +2728,7 @@ export default function ZAPApp() {
           {/* Quick Search Session Bar */}
           {isSearchingSession && (
             <div className="px-3 pb-2 pt-1">
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-100 dark:bg-[#18191e] border border-slate-200 dark:border-white/[0.08] text-xs">
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-[#18191e] border border-slate-200 dark:border-white/[0.08] text-xs">
                 <Search className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 flex-shrink-0" />
                 <input
                   type="text"
@@ -2705,11 +2751,11 @@ export default function ZAPApp() {
             </div>
           )}
 
-          {/* Workspace Filter Popover */}
+          {/* Chat Filter Popover */}
           {showWorkspaceFilter && (
             <div className="mx-3 mb-2 p-2.5 rounded-xl bg-white dark:bg-[#191b22] border border-slate-200 dark:border-white/[0.1] text-xs space-y-2 shadow-xl">
               <div className="flex items-center justify-between text-[11px] text-slate-700 dark:text-zinc-300 font-medium pb-1.5 border-b border-slate-100 dark:border-white/[0.06]">
-                <span>Filter &amp; Pengelompokan</span>
+                <span>Filter Percakapan</span>
                 <button
                   type="button"
                   onClick={() => setShowWorkspaceFilter(false)}
@@ -2717,22 +2763,6 @@ export default function ZAPApp() {
                 >
                   <X className="w-3 h-3" />
                 </button>
-              </div>
-
-              {/* Workspace Picker */}
-              <div className="space-y-1">
-                <label className="text-[10px] text-slate-400 dark:text-zinc-500 uppercase font-mono">Workspace</label>
-                <select
-                  value={activeWorkspaceId}
-                  onChange={(e) => setActiveWorkspaceId(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-[#121318] border border-slate-200 dark:border-white/[0.08] rounded-lg px-2 py-1 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none cursor-pointer"
-                >
-                  {workspaces.map((ws) => (
-                    <option key={ws.id} value={ws.id}>
-                      {ws.name}
-                    </option>
-                  ))}
-                </select>
               </div>
 
               {/* Status Filter */}
@@ -2763,108 +2793,174 @@ export default function ZAPApp() {
             </div>
           )}
 
+          {/* Flat List Riwayat Percakapan */}
           <div className="flex-1 overflow-y-auto px-2 space-y-0.5">
-            {/* Active Workspace Tree Item */}
-            <div className="flex items-center justify-between px-2.5 py-1 text-xs text-slate-700 dark:text-zinc-300 font-medium">
-              <div className="flex items-center gap-2 truncate">
-                <Folder className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 flex-shrink-0" />
-                <span className="truncate">
-                  {workspaces.find((w) => w.id === activeWorkspaceId)?.name || "Default workspace"}
-                </span>
+            {/* Tampilkan item 'New Session' jika sedang berada di sesi baru yang belum disimpan */}
+            {(!conversations.some((c) => c.id === activeConversationId) || messages.length === 0) && (
+              <div
+                onClick={startNewChat}
+                className={`flex items-center justify-between px-2.5 py-2 rounded-xl text-[13px] font-medium cursor-pointer transition ${
+                  messages.length === 0 && !conversations.some((c) => c.id === activeConversationId)
+                    ? "bg-slate-100 dark:bg-[#1e2025] text-slate-900 dark:text-white border border-slate-200/80 dark:border-transparent"
+                    : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
+                }`}
+              >
+                <span className="truncate">New Session</span>
               </div>
-              <span className="text-[10px] font-mono text-slate-400 dark:text-zinc-500">
-                {conversations.length}
-              </span>
-            </div>
+            )}
 
-            {/* Tree Children */}
-            <div className="pl-4 space-y-0.5">
-              {/* Tampilkan item 'New Session' jika sedang berada di sesi baru yang belum disimpan */}
-              {(!conversations.some((c) => c.id === activeConversationId) || messages.length === 0) && (
+            {/* Daftar sesi percakapan */}
+            {(() => {
+              const filtered = conversations
+                .filter((c) => {
+                  if (sessionSearchQuery.trim()) {
+                    const q = sessionSearchQuery.toLowerCase();
+                    const matchTitle = c.title.toLowerCase().includes(q);
+                    const matchMsg = c.messages.some((m) =>
+                      (m.rawText || m.replyText || m.steps?.join(" ") || "").toLowerCase().includes(q)
+                    );
+                    if (!matchTitle && !matchMsg) return false;
+                  }
+                  if (workspaceStatusFilter === "fault") {
+                    return c.messages.some((m) => m.diagnosis?.diagnosis?.has_fault);
+                  }
+                  if (workspaceStatusFilter === "valid") {
+                    return c.messages.some((m) => m.diagnosis && !m.diagnosis.diagnosis?.has_fault);
+                  }
+                  if (workspaceStatusFilter === "3d") {
+                    return c.messages.some((m) => m.smartboardItem);
+                  }
+                  return true;
+                });
+
+              if (filtered.length === 0 && (sessionSearchQuery || workspaceStatusFilter !== "all")) {
+                return (
+                  <div className="px-2.5 py-3 text-center text-slate-400 dark:text-zinc-500 text-[12px] italic">
+                    Tidak ada sesi yang cocok dengan filter
+                  </div>
+                );
+              }
+
+              if (conversations.length === 0 && messages.length > 0) {
+                return (
+                  <div className="px-2.5 py-3 text-center text-slate-400 dark:text-zinc-500 text-[12px] italic">
+                    Belum ada riwayat percakapan tersimpan
+                  </div>
+                );
+              }
+
+              return filtered.slice(0, 40).map((conv) => (
                 <div
-                  onClick={startNewChat}
-                  className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition ${
-                    messages.length === 0 && !conversations.some((c) => c.id === activeConversationId)
-                      ? "bg-slate-100 dark:bg-[#1e2025] text-slate-900 dark:text-white border border-slate-200/80 dark:border-transparent"
+                  key={conv.id}
+                  onClick={() => openConversation(conv.id)}
+                  className={`group flex items-center justify-between px-2.5 py-2 rounded-xl text-[13px] transition cursor-pointer ${
+                    conv.id === activeConversationId
+                      ? "bg-slate-100 dark:bg-white/[0.08] text-slate-900 dark:text-white font-medium border border-slate-200/60 dark:border-white/[0.08]"
                       : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
                   }`}
                 >
-                  <span className="truncate">New Session</span>
+                  <span className="truncate flex-1 font-normal text-slate-700 dark:text-zinc-300 group-hover:text-slate-900 dark:group-hover:text-white">
+                    {conv.title}
+                  </span>
+                  <span className="text-[11px] font-mono text-slate-400 dark:text-zinc-500 group-hover:hidden flex-shrink-0 ml-1.5">
+                    {formatRelativeTime(conv.updatedAt)}
+                  </span>
+                  <div className="hidden group-hover:flex items-center gap-1.5 flex-shrink-0 ml-1.5">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenShareModal(conv);
+                      }}
+                      className="text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-white transition"
+                      title="Bagikan tautan percakapan"
+                    >
+                      <Share2 className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => deleteConversation(conv.id, e)}
+                      className="text-slate-400 dark:text-zinc-500 hover:text-rose-500 dark:hover:text-rose-400 transition"
+                      title="Hapus sesi"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
-              )}
+              ));
+            })()}
+          </div>
+        </div>
 
-              {/* Daftar semua sesi percakapan dari memory, terurut berdasarkan kapan terakhir kali chat dikirim */}
-              {(() => {
-                const filtered = conversations
-                  .filter((c) => {
-                    if (sessionSearchQuery.trim()) {
-                      const q = sessionSearchQuery.toLowerCase();
-                      const matchTitle = c.title.toLowerCase().includes(q);
-                      const matchMsg = c.messages.some((m) =>
-                        (m.rawText || m.replyText || m.steps?.join(" ") || "").toLowerCase().includes(q)
-                      );
-                      if (!matchTitle && !matchMsg) return false;
-                    }
-                    if (workspaceStatusFilter === "fault") {
-                      return c.messages.some((m) => m.diagnosis?.diagnosis?.has_fault);
-                    }
-                    if (workspaceStatusFilter === "valid") {
-                      return c.messages.some((m) => m.diagnosis && !m.diagnosis.diagnosis?.has_fault);
-                    }
-                    if (workspaceStatusFilter === "3d") {
-                      return c.messages.some((m) => m.smartboardItem);
-                    }
-                    return true;
-                  });
+        {/* SECTION 2: WORKSPACES (Dibuat Manual oleh Pengguna) */}
+        <div className="border-t border-slate-200/70 dark:border-white/[0.06] pt-2.5 pb-2 shrink-0">
+          <div className="flex items-center justify-between px-3.5 pb-1.5 text-slate-400 dark:text-zinc-400">
+            <span className="text-[11px] font-semibold uppercase tracking-wider font-mono text-slate-500 dark:text-zinc-400">
+              Workspaces
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowNewWorkspaceModal(true)}
+              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
+              title="Buat workspace baru"
+            >
+              <FolderPlus className="w-3.5 h-3.5" />
+            </button>
+          </div>
 
-                if (filtered.length === 0 && (sessionSearchQuery || workspaceStatusFilter !== "all")) {
-                  return (
-                    <div className="px-2.5 py-3 text-center text-slate-400 dark:text-zinc-500 text-[11px] italic">
-                      Tidak ada sesi yang cocok dengan filter
-                    </div>
-                  );
-                }
-
-                return filtered.slice(0, 30).map((conv) => (
+          {workspaces.length === 0 ? (
+            <div className="px-3 pt-0.5">
+              <button
+                type="button"
+                onClick={() => setShowNewWorkspaceModal(true)}
+                className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg border border-dashed border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-white/[0.15] text-[12px] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer group"
+              >
+                <FolderPlus className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 group-hover:text-amber-500 transition" />
+                <span>+ Buat Workspace</span>
+              </button>
+            </div>
+          ) : (
+            <div className="px-2 space-y-0.5 max-h-36 overflow-y-auto">
+              {workspaces.map((ws) => {
+                const isActive = ws.id === activeWorkspaceId;
+                const wsFiles = workspaceFiles.filter((f) => f.workspaceId === ws.id);
+                return (
                   <div
-                    key={conv.id}
-                    onClick={() => openConversation(conv.id)}
-                    className={`group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer ${
-                      conv.id === activeConversationId
-                        ? "bg-slate-100 dark:bg-white/[0.08] text-slate-900 dark:text-white font-medium border border-slate-200/60 dark:border-white/[0.08]"
-                        : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
+                    key={ws.id}
+                    onClick={() => setActiveWorkspaceId(isActive ? "" : ws.id)}
+                    className={`group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[13px] transition cursor-pointer ${
+                      isActive
+                        ? "bg-slate-100 dark:bg-white/[0.08] text-slate-900 dark:text-white font-medium"
+                        : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 hover:bg-slate-50 dark:hover:bg-white/[0.04]"
                     }`}
                   >
-                    <span className="truncate flex-1">{conv.title}</span>
-                    <span className="text-[10px] text-slate-400 dark:text-zinc-500 group-hover:hidden flex-shrink-0">
-                      {formatRelativeTime(conv.updatedAt)}
-                    </span>
-                    <div className="hidden group-hover:flex items-center gap-1.5 flex-shrink-0">
+                    <div className="flex items-center gap-2 truncate">
+                      <Folder className={`w-3.5 h-3.5 flex-shrink-0 ${isActive ? "text-amber-500" : "text-slate-400 dark:text-zinc-500"}`} />
+                      <span className="truncate">{ws.name}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {wsFiles.length > 0 && (
+                        <span className="text-[10px] font-mono text-slate-400 dark:text-zinc-500">
+                          {wsFiles.length}
+                        </span>
+                      )}
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleOpenShareModal(conv);
+                          handleDeleteWorkspace(ws.id);
                         }}
-                        className="text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-white transition"
-                        title="Bagikan tautan percakapan"
-                      >
-                        <Share2 className="w-3 h-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => deleteConversation(conv.id, e)}
-                        className="text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-white transition"
-                        title="Hapus sesi"
+                        className="hidden group-hover:block p-0.5 text-slate-400 hover:text-rose-500 transition"
+                        title="Hapus workspace"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
                   </div>
-                ));
-              })()}
+                );
+              })}
             </div>
-          </div>
+          )}
         </div>
 
         {/* Sidebar Footer: Signed in to ChatZAP + Clean Dropdown Popup */}
@@ -2873,12 +2969,12 @@ export default function ZAPApp() {
             onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
             className="flex items-center justify-between w-full hover:bg-slate-100 dark:hover:bg-white/[0.04] p-1.5 rounded-xl cursor-pointer transition"
           >
-            <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-zinc-300 min-w-0">
+            <div className="flex items-center gap-2.5 text-[13px] text-slate-700 dark:text-zinc-300 font-medium min-w-0">
               {currentUser?.avatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={currentUser.avatar} alt={currentUser.name} className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
+                <img src={currentUser.avatar} alt={currentUser.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0 ring-1 ring-black/5 dark:ring-white/10" />
               ) : (
-                <div className="w-5 h-5 rounded-full bg-slate-700 dark:bg-zinc-700 flex items-center justify-center text-[10px] text-white flex-shrink-0 font-bold">
+                <div className="w-6 h-6 rounded-full bg-emerald-600 dark:bg-emerald-500 flex items-center justify-center text-[11px] text-white flex-shrink-0 font-bold">
                   {currentUser?.name?.charAt(0) || "U"}
                 </div>
               )}
@@ -2886,12 +2982,12 @@ export default function ZAPApp() {
                 {currentUser?.name ? `Signed in as ${currentUser.name}` : "Signed in to ChatZAP"}
               </span>
             </div>
-            <ChevronDown className="w-3 h-3 text-slate-400 dark:text-zinc-500 flex-shrink-0" />
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 flex-shrink-0" />
           </div>
 
           {/* Profile Dropdown Popup (Settings, Appearance, Models, Logout) */}
           {profileDropdownOpen && (
-            <div className="absolute left-2 bottom-full mb-2.5 w-[256px] bg-white/90 dark:bg-[#13151f]/90 backdrop-blur-2xl backdrop-saturate-150 border border-slate-200/80 dark:border-white/[0.1] rounded-2xl shadow-2xl shadow-slate-900/15 dark:shadow-black/80 p-1.5 z-50 text-xs text-slate-800 dark:text-zinc-200 animate-in fade-in-0 zoom-in-95 duration-150 ease-out origin-bottom-left select-none">
+            <div className="absolute left-2 bottom-full mb-2.5 w-[260px] bg-white/95 dark:bg-[#13151f]/95 backdrop-blur-2xl backdrop-saturate-150 border border-slate-200/90 dark:border-white/[0.12] rounded-2xl shadow-2xl shadow-slate-900/15 dark:shadow-black/80 p-1.5 z-50 text-xs text-slate-800 dark:text-zinc-200 animate-in fade-in-0 zoom-in-95 duration-150 ease-out origin-bottom-left select-none">
               {/* User Identity Header */}
               <div className="p-2 border-b border-slate-100 dark:border-white/[0.06] mb-1">
                 <div className="flex items-center gap-2.5">
@@ -2909,14 +3005,16 @@ export default function ZAPApp() {
                   )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-1">
-                      <span className="font-semibold text-slate-900 dark:text-white truncate text-[13px] leading-tight">
+                      <span className="font-semibold text-slate-900 dark:text-white truncate text-[13.5px] leading-tight">
                         {currentUser?.name || "Pengguna ZAP"}
                       </span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-slate-100 dark:bg-white/[0.08] text-slate-600 dark:text-zinc-400 shrink-0 font-normal">
-                        {currentUser?.jenjang || "SMA"}
-                      </span>
+                      {isGuestAccount(currentUser) && (
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.08] text-slate-600 dark:text-zinc-400 shrink-0 font-normal">
+                          Tamu
+                        </span>
+                      )}
                     </div>
-                    <div className="text-[11px] text-slate-400 dark:text-zinc-400 truncate mt-0.5">
+                    <div className="text-[11.5px] text-slate-400 dark:text-zinc-400 truncate mt-0.5">
                       {currentUser?.email || "siswa@logicodix.ai"}
                     </div>
                   </div>
@@ -3091,7 +3189,7 @@ export default function ZAPApp() {
             <div className="my-auto flex flex-col items-center justify-center text-center py-8">
               {/* Logo + Title: Into the Unknown + Preview */}
               <div className="flex items-center gap-3 mb-5">
-                <ZapLogo className="w-7 h-7 text-slate-900 dark:text-white" />
+                <ZapLogo className="w-5.5 h-5.5 text-slate-900 dark:text-white" />
                 <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Into the Unknown</h1>
                 <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 dark:bg-white/[0.08] dark:text-zinc-300 dark:border-white/[0.1]">
                   Preview
@@ -3115,36 +3213,59 @@ export default function ZAPApp() {
                     }`}
                   >
                     <Folder className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
-                    <span>{workspaces.find((w) => w.id === activeWorkspaceId)?.name || "Default workspace"}</span>
+                    <span>
+                      {workspaces.find((w) => w.id === activeWorkspaceId)?.name || (workspaces.length === 0 ? "Workspace (Opsional)" : "Pilih Workspace")}
+                    </span>
                     <ChevronDown className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
                   </button>
 
                   {/* Dropdown Popover */}
                   {showPillWorkspaceMenu && (
-                    <div className="absolute left-0 top-full mt-1.5 w-60 bg-white/85 dark:bg-[#13151f]/85 backdrop-blur-2xl backdrop-saturate-150 border border-slate-200/80 dark:border-white/[0.12] rounded-2xl shadow-xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150 text-left">
-                      <div className="px-3 py-1 text-[10px] uppercase font-mono tracking-wider text-slate-400 dark:text-zinc-500 border-b border-slate-100 dark:border-white/[0.06] mb-1">
+                    <div className="absolute left-0 top-full mt-1.5 w-60 bg-white/95 dark:bg-[#13151f]/95 backdrop-blur-2xl backdrop-saturate-150 border border-slate-200/90 dark:border-white/[0.12] rounded-2xl shadow-2xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150 text-left">
+                      <div className="px-3 py-1.5 text-[10px] uppercase font-mono tracking-wider text-slate-400 dark:text-zinc-500 border-b border-slate-100 dark:border-white/[0.06] mb-1">
                         Pilih Ruang Kerja
                       </div>
-                      <div className="max-h-44 overflow-y-auto px-1 space-y-0.5">
-                        {workspaces.map((ws) => (
+                      {workspaces.length === 0 ? (
+                        <div className="px-3 py-2 text-center text-xs text-slate-400 dark:text-zinc-500 italic">
+                          Belum ada workspace
+                        </div>
+                      ) : (
+                        <div className="max-h-44 overflow-y-auto px-1 space-y-0.5">
                           <button
-                            key={ws.id}
                             type="button"
                             onClick={() => {
-                              setActiveWorkspaceId(ws.id);
+                              setActiveWorkspaceId("");
                               setShowPillWorkspaceMenu(false);
                             }}
                             className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-left transition cursor-pointer ${
-                              ws.id === activeWorkspaceId
+                              !activeWorkspaceId
                                 ? "bg-slate-100 dark:bg-white/[0.08] text-slate-900 dark:text-white font-medium"
                                 : "text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-white/[0.04] hover:text-slate-900 dark:hover:text-zinc-200"
                             }`}
                           >
-                            <span className="truncate">{ws.name}</span>
-                            {ws.id === activeWorkspaceId && <Check className="w-3.5 h-3.5 text-slate-700 dark:text-zinc-300" />}
+                            <span className="truncate">Tanpa Workspace</span>
+                            {!activeWorkspaceId && <Check className="w-3.5 h-3.5 text-slate-700 dark:text-zinc-300" />}
                           </button>
-                        ))}
-                      </div>
+                          {workspaces.map((ws) => (
+                            <button
+                              key={ws.id}
+                              type="button"
+                              onClick={() => {
+                                setActiveWorkspaceId(ws.id);
+                                setShowPillWorkspaceMenu(false);
+                              }}
+                              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-left transition cursor-pointer ${
+                                ws.id === activeWorkspaceId
+                                  ? "bg-slate-100 dark:bg-white/[0.08] text-slate-900 dark:text-white font-medium"
+                                  : "text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-white/[0.04] hover:text-slate-900 dark:hover:text-zinc-200"
+                              }`}
+                            >
+                              <span className="truncate">{ws.name}</span>
+                              {ws.id === activeWorkspaceId && <Check className="w-3.5 h-3.5 text-slate-700 dark:text-zinc-300" />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       <div className="border-t border-slate-100 dark:border-white/[0.06] mt-1 pt-1 px-1">
                         <button
                           type="button"
@@ -3154,7 +3275,7 @@ export default function ZAPApp() {
                           }}
                           className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
                         >
-                          <Plus className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
+                          <FolderPlus className="w-3.5 h-3.5 text-amber-500" />
                           <span>Buat Workspace Baru</span>
                         </button>
                       </div>
@@ -3464,11 +3585,11 @@ export default function ZAPApp() {
                     <div className="py-2 space-y-3 w-full">
                       {/* Header Row: Zap Logo (pas in dikit) + Detail Mesin (simple & glass) + Timestamp */}
                       <div className="flex items-center gap-2 select-none">
-                        <ZapLogo className="w-5 h-5 text-slate-900 dark:text-white flex-shrink-0" />
+                        <ZapLogo className="w-4.5 h-4.5 text-slate-900 dark:text-white flex-shrink-0" />
 
                         {/* Detail Mesin: Simple & Glass Badge */}
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-200/60 dark:bg-white/[0.06] backdrop-blur-xl border border-slate-300/50 dark:border-white/[0.08] text-[11px] font-mono text-slate-700 dark:text-zinc-300 shadow-sm">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100/90 dark:bg-white/[0.06] backdrop-blur-md border border-slate-200/90 dark:border-white/[0.08] text-[11px] font-sans font-medium text-slate-700 dark:text-zinc-300 shadow-xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-emerald-500/20" />
                           <span className="font-medium">{msg.modelName || selectedModel.name}</span>
                         </div>
 
@@ -3724,7 +3845,7 @@ export default function ZAPApp() {
 
               {loading && (
                 <div className="flex gap-2.5 items-center">
-                  <ZapLogo className="w-5 h-5 animate-pulse text-slate-900 dark:text-white" />
+                  <ZapLogo className="w-4.5 h-4.5 animate-pulse text-slate-900 dark:text-white" />
                   <div className="bg-white/80 dark:bg-[#14161f]/80 backdrop-blur-xl border border-slate-200/80 dark:border-white/[0.08] rounded-2xl px-4 py-2 text-sm text-slate-700 dark:text-zinc-300 flex items-center gap-2.5 shadow-sm">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                     <span>{loadingStatus}</span>
@@ -4010,7 +4131,7 @@ export default function ZAPApp() {
                   <span className="font-medium text-xs text-slate-800 dark:text-zinc-200 flex items-center gap-2 truncate">
                     <Folder className="w-4 h-4 text-slate-500 dark:text-zinc-400 flex-shrink-0" />
                     <span className="truncate">
-                      Workspace: {workspaces.find((w) => w.id === activeWorkspaceId)?.name || "Default workspace"}
+                      Workspace: {workspaces.find((w) => w.id === activeWorkspaceId)?.name || "Tanpa Workspace"}
                     </span>
                     <span className="text-[10px] text-slate-500 dark:text-zinc-500 font-mono bg-slate-200/60 dark:bg-white/[0.04] px-1.5 py-0.5 rounded flex-shrink-0">
                       {workspaceFiles.length} berkas
@@ -4734,17 +4855,21 @@ export default function ZAPApp() {
                           <div className="font-medium text-slate-900 dark:text-white mt-0.5">{currentUser?.name}</div>
                         </div>
                         <div>
-                          <label className="text-[10px] font-mono text-slate-400 dark:text-zinc-500 uppercase">Email Google</label>
+                          <label className="text-[10px] font-mono text-slate-400 dark:text-zinc-500 uppercase">{isGuestAccount(currentUser) ? "Email Akun" : "Email Google"}</label>
                           <div className="font-medium text-slate-900 dark:text-white mt-0.5 truncate">{currentUser?.email}</div>
                         </div>
-                        <div>
-                          <label className="text-[10px] font-mono text-slate-400 dark:text-zinc-500 uppercase">Jenjang Pendidikan</label>
-                          <div className="font-medium text-slate-900 dark:text-white mt-0.5">{currentUser?.jenjang || "SMA"}</div>
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-mono text-slate-400 dark:text-zinc-500 uppercase">Peran</label>
-                          <div className="font-medium text-slate-900 dark:text-white mt-0.5">{currentUser?.role || "Siswa"}</div>
-                        </div>
+                        {isGuestAccount(currentUser) && (
+                          <>
+                            <div>
+                              <label className="text-[10px] font-mono text-slate-400 dark:text-zinc-500 uppercase">Jenjang Pendidikan</label>
+                              <div className="font-medium text-slate-900 dark:text-white mt-0.5">{currentUser?.jenjang || "Tamu"}</div>
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-mono text-slate-400 dark:text-zinc-500 uppercase">Peran</label>
+                              <div className="font-medium text-slate-900 dark:text-white mt-0.5">{currentUser?.role || "Tamu"}</div>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
 

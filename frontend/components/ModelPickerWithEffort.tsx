@@ -329,19 +329,19 @@ export default function ModelPickerWithEffort({
           }`}
         >
           {/* Main 2-Row Context Menu Card */}
-          <div className="w-64 sm:w-72 bg-white/80 dark:bg-[#13151f]/80 backdrop-blur-2xl backdrop-saturate-150 border border-slate-200/80 dark:border-white/[0.12] rounded-2xl shadow-2xl shadow-slate-900/10 dark:shadow-black/80 p-1.5 relative text-slate-800 dark:text-zinc-200">
+          <div className="w-68 sm:w-72 bg-white/95 dark:bg-[#13151f]/95 backdrop-blur-2xl backdrop-saturate-150 border border-slate-200/90 dark:border-white/[0.12] rounded-2xl shadow-2xl shadow-slate-900/15 dark:shadow-black/80 p-1.5 relative text-slate-800 dark:text-zinc-200">
             {/* Row 1: Model */}
             <button
               type="button"
               onClick={() => setActiveSubmenu(activeSubmenu === "model" ? null : "model")}
               onMouseEnter={() => setActiveSubmenu("model")}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition cursor-pointer ${
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] transition cursor-pointer ${
                 activeSubmenu === "model"
-                  ? "bg-slate-200/70 dark:bg-white/[0.1] text-slate-900 dark:text-white font-medium"
+                  ? "bg-slate-100 dark:bg-white/[0.1] text-slate-900 dark:text-white font-medium"
                   : "text-slate-700 dark:text-zinc-300 hover:bg-slate-100/70 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-white"
               }`}
             >
-              <span className="font-normal text-slate-700 dark:text-zinc-300">Model</span>
+              <span className="font-medium text-slate-800 dark:text-zinc-200">Model</span>
               <div className="flex items-center gap-1.5 text-slate-500 dark:text-zinc-400">
                 <span className="truncate max-w-[140px] font-normal text-right">
                   {currentModel.id.includes("deepseek") ? "DeepSeek-V4.1-Flash" : currentModel.shortName}
@@ -355,13 +355,13 @@ export default function ModelPickerWithEffort({
               type="button"
               onClick={() => setActiveSubmenu(activeSubmenu === "effort" ? null : "effort")}
               onMouseEnter={() => setActiveSubmenu("effort")}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition cursor-pointer ${
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] transition cursor-pointer ${
                 activeSubmenu === "effort"
-                  ? "bg-slate-200/70 dark:bg-white/[0.1] text-slate-900 dark:text-white font-medium"
+                  ? "bg-slate-100 dark:bg-white/[0.1] text-slate-900 dark:text-white font-medium"
                   : "text-slate-700 dark:text-zinc-300 hover:bg-slate-100/70 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-white"
               }`}
             >
-              <span className="font-normal text-slate-700 dark:text-zinc-300">Effort</span>
+              <span className="font-medium text-slate-800 dark:text-zinc-200">Effort</span>
               <div className="flex items-center gap-1.5 text-slate-500 dark:text-zinc-400">
                 <span className="font-normal text-right">
                   {formatEffort(reasoningEffort)}
@@ -373,10 +373,10 @@ export default function ModelPickerWithEffort({
             {/* Submenu 1: Model Selector (Flyout to left on sm:, in-place on xs:) */}
             {activeSubmenu === "model" && (
               <div
-                className="fixed inset-x-3 bottom-24 sm:absolute sm:inset-auto sm:right-full sm:mr-2 sm:bottom-0 sm:w-72 bg-white/85 dark:bg-[#13151f]/85 backdrop-blur-2xl backdrop-saturate-150 border border-slate-200/80 dark:border-white/[0.12] rounded-2xl shadow-2xl shadow-slate-900/15 dark:shadow-black/80 p-1.5 z-50 animate-in fade-in-0 zoom-in-95 duration-150 ease-out origin-bottom-right"
+                className="fixed inset-x-3 bottom-24 sm:absolute sm:inset-auto sm:right-full sm:mr-2 sm:bottom-0 sm:w-80 bg-white/95 dark:bg-[#13151f]/95 backdrop-blur-2xl backdrop-saturate-150 border border-slate-200/90 dark:border-white/[0.12] rounded-2xl shadow-2xl shadow-slate-900/20 dark:shadow-black/90 p-1.5 z-50 animate-in fade-in-0 zoom-in-95 duration-150 ease-out origin-bottom-right"
                 onMouseEnter={() => setActiveSubmenu("model")}
               >
-                <div className="px-3 py-1.5 text-[11px] font-mono text-slate-500 dark:text-zinc-500 uppercase tracking-wider flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] mb-1">
+                <div className="px-3 py-2 text-[11px] font-mono text-slate-500 dark:text-zinc-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-100 dark:border-white/[0.08] mb-1">
                   <span>PILIH MODEL</span>
                   <button
                     type="button"
@@ -386,7 +386,7 @@ export default function ModelPickerWithEffort({
                     ✕
                   </button>
                 </div>
-                <div className="space-y-0.5 max-h-64 overflow-y-auto px-0.5">
+                <div className="space-y-0.5 max-h-72 overflow-y-auto px-0.5">
                   {AVAILABLE_MODELS.map((model) => {
                     const isSelected = model.id === currentModel.id;
                     const Icon = model.icon;
@@ -395,9 +395,9 @@ export default function ModelPickerWithEffort({
                         key={model.id}
                         type="button"
                         onClick={() => handleSelectModel(model)}
-                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition cursor-pointer text-left ${
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] transition cursor-pointer text-left ${
                           isSelected
-                            ? "bg-slate-200/70 dark:bg-white/[0.1] text-slate-900 dark:text-white font-medium"
+                            ? "bg-slate-100 dark:bg-white/[0.1] text-slate-900 dark:text-white font-medium"
                             : "text-slate-700 dark:text-zinc-300 hover:bg-slate-100/70 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-white"
                         }`}
                       >
@@ -412,16 +412,16 @@ export default function ModelPickerWithEffort({
                     );
                   })}
                 </div>
-                <div className="my-1 border-t border-slate-200 dark:border-white/[0.06]" />
+                <div className="my-1 border-t border-slate-100 dark:border-white/[0.08]" />
                 <Link
                   href="/connector"
                   onClick={() => {
                     setIsOpen(false);
                     setActiveSubmenu(null);
                   }}
-                  className="flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-white/[0.05] transition"
+                  className="flex items-center justify-between px-3 py-2 rounded-xl text-[12px] font-medium text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-white/[0.05] transition"
                 >
-                  <span>Kelola API Key & Hub...</span>
+                  <span>Kelola API Key &amp; Hub...</span>
                   <ExternalLink className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
                 </Link>
               </div>
@@ -430,10 +430,10 @@ export default function ModelPickerWithEffort({
             {/* Submenu 2: Reasoning Effort Selector */}
             {activeSubmenu === "effort" && (
               <div
-                className="fixed inset-x-3 bottom-24 sm:absolute sm:inset-auto sm:right-full sm:mr-2 sm:bottom-0 sm:w-40 bg-white/85 dark:bg-[#13151f]/85 backdrop-blur-2xl backdrop-saturate-150 border border-slate-200/80 dark:border-white/[0.12] rounded-2xl shadow-2xl shadow-slate-900/15 dark:shadow-black/80 p-1.5 z-50 animate-in fade-in-0 zoom-in-95 duration-150 ease-out origin-bottom-right"
+                className="fixed inset-x-3 bottom-24 sm:absolute sm:inset-auto sm:right-full sm:mr-2 sm:bottom-0 sm:w-44 bg-white/95 dark:bg-[#13151f]/95 backdrop-blur-2xl backdrop-saturate-150 border border-slate-200/90 dark:border-white/[0.12] rounded-2xl shadow-2xl shadow-slate-900/20 dark:shadow-black/90 p-1.5 z-50 animate-in fade-in-0 zoom-in-95 duration-150 ease-out origin-bottom-right"
                 onMouseEnter={() => setActiveSubmenu("effort")}
               >
-                <div className="px-3 py-1.5 text-[11px] font-mono text-slate-500 dark:text-zinc-500 uppercase tracking-wider flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] mb-1">
+                <div className="px-3 py-2 text-[11px] font-mono text-slate-500 dark:text-zinc-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-100 dark:border-white/[0.08] mb-1">
                   <span>Effort</span>
                   <button
                     type="button"
@@ -451,10 +451,10 @@ export default function ModelPickerWithEffort({
                         key={opt}
                         type="button"
                         onClick={() => handleSelectEffort(opt)}
-                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition cursor-pointer text-left ${
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] transition cursor-pointer text-left ${
                           isSelected
-                            ? "bg-slate-200/60 dark:bg-white/[0.1] text-slate-900 dark:text-white font-medium"
-                            : "text-slate-700 dark:text-zinc-300 hover:bg-slate-100/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-white"
+                            ? "bg-slate-100 dark:bg-white/[0.1] text-slate-900 dark:text-white font-medium"
+                            : "text-slate-700 dark:text-zinc-300 hover:bg-slate-100/70 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-white"
                         }`}
                       >
                         <span>{formatEffort(opt)}</span>

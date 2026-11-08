@@ -71,7 +71,8 @@ export default function LoginPage() {
       provider: "zap",
       tier: "standard",
       role: studentRole,
-      jenjang: "sma",
+      jenjang: "Tamu",
+      isGuest: true,
     };
 
     if (typeof window !== "undefined") {

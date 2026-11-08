@@ -31,7 +31,7 @@ export default function LandingPage() {
       <nav className="h-16 px-6 sm:px-12 flex items-center justify-between border-b border-white/[0.06] bg-[#030305]/80 backdrop-blur-md sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <Link href="/" className="flex items-center gap-2.5 transition group">
-            <ZapLogo className="w-7 h-7 text-white group-hover:scale-105 transition-transform" />
+            <ZapLogo className="w-5.5 h-5.5 text-white group-hover:scale-105 transition-transform" />
             <div className="flex items-center gap-2">
               <span className="font-bold text-sm tracking-wide text-white">ChatZAP</span>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.06] text-zinc-400 border border-white/[0.08]">

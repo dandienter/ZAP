@@ -21,6 +21,7 @@ export interface ZAPUser {
   jenjang?: string;
   provider: "google" | "zap";
   tier: "standard" | "pro";
+  isGuest?: boolean;
 }
 
 interface GoogleAuthButtonProps {
@@ -100,8 +101,7 @@ export default function GoogleAuthButton({
           avatar: payload.picture || undefined,
           provider: "google",
           tier: "standard",
-          role: "siswa",
-          jenjang: "sma",
+          isGuest: false,
         };
 
         setUser(realGoogleUser);
@@ -209,8 +209,7 @@ export default function GoogleAuthButton({
       avatar: "https://lh3.googleusercontent.com/a/default-user=s96-c",
       provider: "google",
       tier: "standard",
-      role: "siswa",
-      jenjang: "sma",
+      isGuest: false,
     };
 
     if (typeof window !== "undefined") {
