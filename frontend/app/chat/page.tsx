@@ -2861,9 +2861,9 @@ export default function ZAPApp() {
         </div>
 
         {/* Main Body of Chat */}
-        <div className="flex-1 overflow-y-auto px-4 flex flex-col justify-between">
-          {messages.length === 0 ? (
-            /* EMPTY HERO STATE (Persis seperti Screenshot 0 dan 1) */
+        {messages.length === 0 ? (
+          /* EMPTY HERO STATE (Persis seperti Screenshot 0 dan 1) */
+          <div className="flex-1 overflow-y-auto px-4 flex flex-col justify-between">
             <div className="my-auto flex flex-col items-center justify-center text-center py-8">
               {/* Logo + Title: Into the Unknown + Preview */}
               <div className="flex items-center gap-3 mb-5">
@@ -2989,9 +2989,13 @@ export default function ZAPApp() {
                 </div>
               </div>
             </div>
-          ) : (
-            /* ACTIVE MESSAGES STREAM */
-            <div className="space-y-4 py-4 w-full max-w-xl mx-auto">
+          </div>
+        ) : (
+          /* ACTIVE CHAT LAYOUT: Scrollable Messages Stream + Permanently Fixed Bottom Composer */
+          <>
+            {/* 1. SCROLLABLE MESSAGES STREAM */}
+            <div className="flex-1 overflow-y-auto px-4 min-h-0">
+              <div className="space-y-4 py-4 w-full max-w-xl mx-auto">
               {messages.map((msg) => (
                 <div key={msg.id} className="space-y-2.5">
                   {/* User Message */}
@@ -3362,108 +3366,107 @@ export default function ZAPApp() {
                 </div>
               )}
 
-              <div ref={messagesEndRef} />
+              <div ref={messagesEndRef} className="h-2" />
             </div>
-          )}
+          </div>
 
-          {/* Bottom Composer when messages exist */}
-          {messages.length > 0 && (
-            <div className="p-3 w-full max-w-xl mx-auto flex-shrink-0">
-              <div className="w-full bg-white dark:bg-[#17181c] border border-slate-200 dark:border-white/[0.08] focus-within:border-blue-500 dark:focus-within:border-zinc-500 rounded-2xl p-3 shadow-xl transition-all text-left">
-                {/* Attached File Chips */}
-                {attachedFiles.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pb-2">
-                    {attachedFiles.map((f) => (
-                      <div
-                        key={f.id}
-                        className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-[#22252c] border border-slate-200 dark:border-white/[0.1] text-xs text-slate-800 dark:text-zinc-200"
+          {/* 2. FIXED BOTTOM COMPOSER (Stays strictly fixed at bottom when scrolling messages) */}
+          <div className="p-3 w-full max-w-xl mx-auto flex-shrink-0 z-10 bg-[#f8fafc] dark:bg-[#0e0f12]">
+            <div className="w-full bg-white dark:bg-[#17181c] border border-slate-200 dark:border-white/[0.08] focus-within:border-blue-500 dark:focus-within:border-zinc-500 rounded-2xl p-3 shadow-xl transition-all text-left">
+              {/* Attached File Chips */}
+              {attachedFiles.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pb-2">
+                  {attachedFiles.map((f) => (
+                    <div
+                      key={f.id}
+                      className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-[#22252c] border border-slate-200 dark:border-white/[0.1] text-xs text-slate-800 dark:text-zinc-200"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-blue-500" />
+                      <span className="font-medium max-w-[140px] truncate">{f.name}</span>
+                      <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono">({Math.round(f.size / 1024) || 1}KB)</span>
+                      <button
+                        type="button"
+                        onClick={() => setAttachedFiles((prev) => prev.filter((item) => item.id !== f.id))}
+                        className="text-slate-400 dark:text-zinc-500 hover:text-rose-500 cursor-pointer ml-0.5"
+                        title="Hapus lampiran"
                       >
-                        <FileText className="w-3.5 h-3.5 text-blue-500" />
-                        <span className="font-medium max-w-[140px] truncate">{f.name}</span>
-                        <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono">({Math.round(f.size / 1024) || 1}KB)</span>
-                        <button
-                          type="button"
-                          onClick={() => setAttachedFiles((prev) => prev.filter((item) => item.id !== f.id))}
-                          className="text-slate-400 dark:text-zinc-500 hover:text-rose-500 cursor-pointer ml-0.5"
-                          title="Hapus lampiran"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-                <textarea
-                  ref={textareaRef}
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  rows={2}
-                  placeholder="Describe what you want to build, / commands, @ files or sessions"
-                  className="w-full bg-transparent text-sm text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none resize-none font-sans leading-relaxed"
+              <textarea
+                ref={textareaRef}
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                rows={2}
+                placeholder="Describe what you want to build, / commands, @ files or sessions"
+                className="w-full bg-transparent text-sm text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none resize-none font-sans leading-relaxed"
+              />
+
+              <div className="flex items-center justify-between pt-2">
+                <PromptActionBarLeft
+                  showAttachMenu={showAttachMenu}
+                  setShowAttachMenu={setShowAttachMenu}
+                  showSubUploadMenu={showSubUploadMenu}
+                  setShowSubUploadMenu={setShowSubUploadMenu}
+                  showWorkspaceMenu={showWorkspaceMenu}
+                  setShowWorkspaceMenu={setShowWorkspaceMenu}
+                  workspaceMode={workspaceMode}
+                  setWorkspaceMode={setWorkspaceMode}
+                  workspaces={workspaces}
+                  activeWorkspaceId={activeWorkspaceId}
+                  setActiveWorkspaceId={setActiveWorkspaceId}
+                  workspaceFilesCount={workspaceFiles.length}
+                  onUploadFilesClick={() => fileInputRef.current?.click()}
+                  onCameraClick={() => cameraInputRef.current?.click()}
+                  onInsertLatex={insertLatexTemplate}
+                  onInsertPython={insertPythonCasTemplate}
+                  onInsertExample={insertExampleProblem}
+                  onOpenSmartboard={() => {
+                    setShowRightPane(true);
+                    setRightPaneTab("canvas");
+                  }}
+                  onOpenWorkspaceFiles={() => {
+                    setShowRightPane(true);
+                    setRightPaneTab("files");
+                  }}
+                  attachMenuRef={attachMenuRef}
+                  workspaceMenuRef={workspaceMenuRef}
                 />
 
-                <div className="flex items-center justify-between pt-2">
-                  <PromptActionBarLeft
-                    showAttachMenu={showAttachMenu}
-                    setShowAttachMenu={setShowAttachMenu}
-                    showSubUploadMenu={showSubUploadMenu}
-                    setShowSubUploadMenu={setShowSubUploadMenu}
-                    showWorkspaceMenu={showWorkspaceMenu}
-                    setShowWorkspaceMenu={setShowWorkspaceMenu}
-                    workspaceMode={workspaceMode}
-                    setWorkspaceMode={setWorkspaceMode}
-                    workspaces={workspaces}
-                    activeWorkspaceId={activeWorkspaceId}
-                    setActiveWorkspaceId={setActiveWorkspaceId}
-                    workspaceFilesCount={workspaceFiles.length}
-                    onUploadFilesClick={() => fileInputRef.current?.click()}
-                    onCameraClick={() => cameraInputRef.current?.click()}
-                    onInsertLatex={insertLatexTemplate}
-                    onInsertPython={insertPythonCasTemplate}
-                    onInsertExample={insertExampleProblem}
-                    onOpenSmartboard={() => {
-                      setShowRightPane(true);
-                      setRightPaneTab("canvas");
-                    }}
-                    onOpenWorkspaceFiles={() => {
-                      setShowRightPane(true);
-                      setRightPaneTab("files");
-                    }}
-                    attachMenuRef={attachMenuRef}
-                    workspaceMenuRef={workspaceMenuRef}
+                <div className="flex items-center gap-2">
+                  <ModelPickerWithEffort
+                    variant="chatzap"
+                    dropUp={true}
+                    selectedModelId={selectedModel.id}
+                    onSelectModel={handleSelectModel}
+                    reasoningEffort={reasoningEffort}
+                    onChangeEffort={setReasoningEffort}
                   />
 
-                  <div className="flex items-center gap-2">
-                    <ModelPickerWithEffort
-                      variant="chatzap"
-                      dropUp={true}
-                      selectedModelId={selectedModel.id}
-                      onSelectModel={handleSelectModel}
-                      reasoningEffort={reasoningEffort}
-                      onChangeEffort={setReasoningEffort}
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() => handleSend()}
-                      disabled={loading || !inputText.trim()}
-                      className={`w-7 h-7 rounded-full flex items-center justify-center transition ${
-                        inputText.trim() && !loading
-                          ? "bg-blue-600 text-white hover:bg-blue-500"
-                          : "bg-slate-200 dark:bg-[#282a32] text-slate-400 dark:text-zinc-500 cursor-not-allowed"
-                      }`}
-                    >
-                      <ArrowUp className="w-4 h-4" />
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSend()}
+                    disabled={loading || !inputText.trim()}
+                    className={`w-7 h-7 rounded-full flex items-center justify-center transition ${
+                      inputText.trim() && !loading
+                        ? "bg-blue-600 text-white hover:bg-blue-500"
+                        : "bg-slate-200 dark:bg-[#282a32] text-slate-400 dark:text-zinc-500 cursor-not-allowed"
+                    }`}
+                  >
+                    <ArrowUp className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        </>
+      )}
+    </div>
 
       {/* 3. RIGHT COLUMN ("Start" Workspace / Tools Pane — Persis Screenshot 0 & 2) */}
       {showRightPane && (
