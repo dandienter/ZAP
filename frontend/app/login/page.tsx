@@ -150,9 +150,12 @@ export default function LoginPage() {
                   <div className="text-[10px] text-zinc-400 truncate">
                     {existingUser.email}
                   </div>
-                  <div className="text-[9px] font-mono text-zinc-400 uppercase">
-                    {existingUser.role || "Siswa"} • {existingUser.jenjang || "SMA"}
-                  </div>
+                  {/* Hanya tampilkan peran/jenjang untuk akun tamu non-Google */}
+                  {(existingUser.isGuest === true || (existingUser.provider === "zap" && existingUser.email?.toLowerCase().includes("@student.zap"))) && (
+                    <div className="text-[9px] font-mono text-zinc-400 uppercase">
+                      {existingUser.role || "Tamu"} • {existingUser.jenjang || "Tamu"}
+                    </div>
+                  )}
                 </div>
               </div>
 

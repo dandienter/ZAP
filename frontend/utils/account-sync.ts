@@ -94,14 +94,24 @@ export function collectLocalUserData(user: ZAPUser): UserAccountBackupPayload {
     theme: localStorage.getItem("zap_theme") || undefined,
   };
 
-  // 3. Workspaces & files
+  // 3. Workspaces & files (Filter out any legacy "default" or "Default workspace")
   let workspaces: unknown[] = [];
   let workspaceFiles: unknown[] = [];
   try {
     const wsRaw = localStorage.getItem("zap_workspaces");
-    if (wsRaw) workspaces = JSON.parse(wsRaw);
+    if (wsRaw) {
+      const parsed = JSON.parse(wsRaw);
+      if (Array.isArray(parsed)) {
+        workspaces = parsed.filter((w: any) => w && w.id !== "default" && w.name !== "Default workspace");
+      }
+    }
     const filesRaw = localStorage.getItem("zap_workspace_files");
-    if (filesRaw) workspaceFiles = JSON.parse(filesRaw);
+    if (filesRaw) {
+      const parsed = JSON.parse(filesRaw);
+      if (Array.isArray(parsed)) {
+        workspaceFiles = parsed.filter((f: any) => f && f.workspaceId !== "default");
+      }
+    }
   } catch (e) {
     console.warn("Gagal membaca workspaces lokal:", e);
   }
@@ -308,6 +318,9 @@ export async function restoreAccountData<M = unknown, C = unknown, W = unknown, 
     (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)
   );
 
+  let cleanedWorkspaces: any[] = [];
+  let cleanedFiles: any[] = [];
+
   // 4. Update localStorage secara bersih dan terisolasi untuk user ini
   try {
     localStorage.setItem("zap_last_active_user_email", userEmail);
@@ -337,12 +350,18 @@ export async function restoreAccountData<M = unknown, C = unknown, W = unknown, 
       }
     }
 
-    // Pulihkan workspaces & workspace files jika tersedia
+    // Pulihkan workspaces & workspace files jika tersedia (abaikan "default" atau "Default workspace")
     if (serverBackup?.workspaces && Array.isArray(serverBackup.workspaces)) {
-      localStorage.setItem("zap_workspaces", JSON.stringify(serverBackup.workspaces));
+      cleanedWorkspaces = (serverBackup.workspaces as any[]).filter(
+        (w: any) => w && w.id !== "default" && w.name !== "Default workspace"
+      );
+      localStorage.setItem("zap_workspaces", JSON.stringify(cleanedWorkspaces));
     }
     if (serverBackup?.workspaceFiles && Array.isArray(serverBackup.workspaceFiles)) {
-      localStorage.setItem("zap_workspace_files", JSON.stringify(serverBackup.workspaceFiles));
+      cleanedFiles = (serverBackup.workspaceFiles as any[]).filter(
+        (f: any) => f && f.workspaceId !== "default"
+      );
+      localStorage.setItem("zap_workspace_files", JSON.stringify(cleanedFiles));
     }
   } catch (storageErr) {
     console.warn("Gagal memulihkan data ke localStorage:", storageErr);
@@ -351,7 +370,7 @@ export async function restoreAccountData<M = unknown, C = unknown, W = unknown, 
   return {
     conversations: mergedConversations as unknown as StoredConversation<M, C>[],
     configs: serverBackup?.configs || {},
-    workspaces: (serverBackup?.workspaces || []) as unknown as W[],
-    workspaceFiles: (serverBackup?.workspaceFiles || []) as unknown as F[],
+    workspaces: cleanedWorkspaces as unknown as W[],
+    workspaceFiles: cleanedFiles as unknown as F[],
   };
 }

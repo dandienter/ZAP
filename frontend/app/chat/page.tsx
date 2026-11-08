@@ -1529,10 +1529,12 @@ export default function ZAPApp() {
               }
 
               if (restored.workspaces && restored.workspaces.length > 0) {
-                setWorkspaces(restored.workspaces);
+                const manualOnly = restored.workspaces.filter((w: WorkspaceItem) => w.id !== "default" && w.name !== "Default workspace");
+                setWorkspaces(manualOnly);
               }
               if (restored.workspaceFiles && restored.workspaceFiles.length > 0) {
-                setWorkspaceFiles(restored.workspaceFiles);
+                const customOnly = restored.workspaceFiles.filter((f: UploadedFile) => f.workspaceId !== "default");
+                setWorkspaceFiles(customOnly);
               }
               if (restored.configs?.selectedModelId) {
                 const found = AVAILABLE_MODELS.find((m) => m.id === restored.configs.selectedModelId);
@@ -1571,6 +1573,9 @@ export default function ZAPApp() {
           if (Array.isArray(parsed)) {
             const manualOnly = parsed.filter((w: WorkspaceItem) => w.id !== "default" && w.name !== "Default workspace");
             setWorkspaces(manualOnly);
+            if (parsed.length !== manualOnly.length) {
+              localStorage.setItem("zap_workspaces", JSON.stringify(manualOnly));
+            }
             if (manualOnly.length > 0) {
               setActiveWorkspaceId(manualOnly[0].id);
             } else {
@@ -1584,6 +1589,9 @@ export default function ZAPApp() {
           if (Array.isArray(parsed)) {
             const customOnly = parsed.filter((f: UploadedFile) => f.workspaceId !== "default");
             setWorkspaceFiles(customOnly);
+            if (parsed.length !== customOnly.length) {
+              localStorage.setItem("zap_workspace_files", JSON.stringify(customOnly));
+            }
           }
         }
       } catch (wsErr) {
@@ -3173,7 +3181,7 @@ export default function ZAPApp() {
               <button
                 type="button"
                 onClick={() => setShowRightPane(true)}
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.06] transition"
+                className="p-1.5 rounded-lg text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
                 title="Buka panel tools / start"
               >
                 <SquareSplitHorizontal className="w-4 h-4" />
@@ -3981,7 +3989,7 @@ export default function ZAPApp() {
                 <button
                   type="button"
                   onClick={() => setRightPaneTab("start")}
-                  className="ml-2 text-[10px] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white underline cursor-pointer"
+                  className="ml-2 text-[10px] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white underline cursor-pointer font-medium"
                 >
                   Kembali ke Start
                 </button>
@@ -4224,7 +4232,7 @@ export default function ZAPApp() {
 
             {/* SUB-VIEW 4: SMARTBOARD VIRTUAL (2D / 3D / CHALKBOARD) */}
             {rightPaneTab === "canvas" && (
-              <div className="w-full h-full flex flex-col bg-[#080a0f] relative">
+              <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-[#080a0f] relative">
                 <InteractiveCanvas3D
                   key={`canvas_${active3DModel}_${activeSolidKind}_${activePlaneShapeKind}`}
                   initialModel={active3DModel}

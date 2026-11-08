@@ -11,6 +11,7 @@ interface SyncUser {
   jenjang?: string;
   provider?: string;
   tier?: string;
+  isGuest?: boolean;
 }
 
 interface ConversationItem {
@@ -165,16 +166,20 @@ export async function POST(req: Request) {
       }
     }
 
-    // Merge workspaces & workspace files
-    const mergedWorkspaces =
-      workspaces && Array.isArray(workspaces) && workspaces.length > 0
+    // Merge workspaces & workspace files (Tanpa workspace bawaan "default")
+    const mergedWorkspaces = (
+      workspaces && Array.isArray(workspaces)
         ? workspaces
-        : existingData.workspaces || [];
+        : existingData.workspaces || []
+    ).filter((w: any) => w && w.id !== "default" && w.name !== "Default workspace");
 
-    const mergedFiles =
-      workspaceFiles && Array.isArray(workspaceFiles) && workspaceFiles.length > 0
+    const mergedFiles = (
+      workspaceFiles && Array.isArray(workspaceFiles)
         ? workspaceFiles
-        : existingData.workspaceFiles || [];
+        : existingData.workspaceFiles || []
+    ).filter((f: any) => f && f.workspaceId !== "default");
+
+    const isGuest = user.isGuest === true || (user.provider === "zap" && (user.email?.includes("@student.zap") || user.name?.toLowerCase().includes("tamu")));
 
     const payloadToSave: VaultData = {
       user: {
@@ -182,8 +187,8 @@ export async function POST(req: Request) {
         email: user.email,
         name: user.name || existingData.user?.name || "Pengguna ChatZAP",
         avatar: user.avatar || existingData.user?.avatar,
-        role: user.role || existingData.user?.role || "siswa",
-        jenjang: user.jenjang || existingData.user?.jenjang || "sma",
+        role: isGuest ? (user.role || existingData.user?.role || "Tamu") : undefined,
+        jenjang: isGuest ? (user.jenjang || existingData.user?.jenjang || "Tamu") : undefined,
         provider: user.provider || "google",
         tier: user.tier || "standard",
       },

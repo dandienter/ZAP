@@ -283,9 +283,12 @@ export default function GoogleAuthButton({
             <div className="px-2.5 py-2 border-b border-slate-100 dark:border-white/[0.08] mb-1">
               <div className="font-semibold text-slate-900 dark:text-white truncate">{user.name}</div>
               <div className="text-[10px] text-slate-500 dark:text-zinc-400 truncate">{user.email}</div>
-              <div className="text-[9px] font-mono text-slate-400 dark:text-zinc-400 mt-0.5 uppercase">
-                {user.role || "Siswa"} • {user.jenjang || "SMA"}
-              </div>
+              {/* Hanya tampilkan peran/jenjang untuk akun tamu non-Google */}
+              {(user.isGuest === true || (user.provider === "zap" && user.email?.toLowerCase().includes("@student.zap"))) && (
+                <div className="text-[9px] font-mono text-slate-400 dark:text-zinc-400 mt-0.5 uppercase">
+                  {user.role || "Tamu"} • {user.jenjang || "Tamu"}
+                </div>
+              )}
             </div>
             <Link
               href="/connector"

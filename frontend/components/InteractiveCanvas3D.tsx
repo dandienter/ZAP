@@ -589,7 +589,7 @@ export default function InteractiveCanvas3D({
     ctx.fillRect(0, 0, width, height);
 
     ctx.lineWidth = 1;
-    ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.06)";
+    ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(148, 163, 184, 0.25)";
     const minX = -Math.ceil(originX / scale);
     const maxX = Math.ceil((width - originX) / scale);
     const minY = -Math.ceil((height - originY) / scale);
@@ -611,7 +611,7 @@ export default function InteractiveCanvas3D({
     }
 
     ctx.lineWidth = 1.5;
-    ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.25)" : "rgba(0, 0, 0, 0.35)";
+    ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.25)" : "rgba(100, 116, 139, 0.4)";
     ctx.beginPath();
     ctx.moveTo(0, originY);
     ctx.lineTo(width, originY);
@@ -622,8 +622,8 @@ export default function InteractiveCanvas3D({
     ctx.lineTo(originX, height);
     ctx.stroke();
 
-    ctx.fillStyle = isDark ? "rgba(255, 255, 255, 0.45)" : "rgba(0, 0, 0, 0.55)";
-    ctx.font = "10px monospace";
+    ctx.fillStyle = isDark ? "rgba(255, 255, 255, 0.55)" : "#475569";
+    ctx.font = "11px monospace";
     for (let x = minX; x <= maxX; x += 2) {
       if (x !== 0) ctx.fillText(x.toString(), originX + x * scale - 4, originY + 14);
     }
@@ -636,7 +636,7 @@ export default function InteractiveCanvas3D({
 
     ctx.lineWidth = 2.5;
     if (activeModel === "2d_quadratic") {
-      ctx.strokeStyle = "#38bdf8";
+      ctx.strokeStyle = isDark ? "#38bdf8" : "#0284c7";
       ctx.beginPath();
       let started = false;
       for (let px = 0; px <= width; px += 2) {
@@ -657,16 +657,16 @@ export default function InteractiveCanvas3D({
       const pvx = originX + vertexX * scale;
       const pvy = originY - vertexY * scale;
 
-      ctx.fillStyle = "#f43f5e";
+      ctx.fillStyle = isDark ? "#fb7185" : "#be123c";
       ctx.beginPath();
       ctx.arc(pvx, pvy, 4, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = "#fff";
-      ctx.font = "11px sans-serif";
+      ctx.fillStyle = isDark ? "#ffffff" : "#0f172a";
+      ctx.font = "bold 11px sans-serif";
       ctx.fillText(`Puncak (${fmt(vertexX)}, ${fmt(vertexY)})`, pvx + 8, pvy - 8);
     } else if (activeModel === "2d_trig") {
-      ctx.strokeStyle = "#a855f7";
+      ctx.strokeStyle = isDark ? "#c084fc" : "#7e22ce";
       ctx.beginPath();
       for (let px = 0; px <= width; px += 2) {
         const x = (px - originX) / scale;
@@ -718,13 +718,13 @@ export default function InteractiveCanvas3D({
 
         // 2. Outline stroke
         ctx.lineWidth = 2.5;
-        ctx.strokeStyle = "#38bdf8";
+        ctx.strokeStyle = isDark ? "#38bdf8" : "#0284c7";
         ctx.stroke();
 
         // 3. Dashed height line from D down to base line
         ctx.save();
         ctx.setLineDash([5, 5]);
-        ctx.strokeStyle = "#f43f5e";
+        ctx.strokeStyle = isDark ? "#fb7185" : "#be123c";
         ctx.lineWidth = 1.8;
         ctx.beginPath();
         ctx.moveTo(Dx, Dy);
@@ -734,13 +734,13 @@ export default function InteractiveCanvas3D({
         // Right angle indicator at the foot of height
         const sqSize = 10;
         ctx.setLineDash([]);
-        ctx.strokeStyle = "#f43f5e";
+        ctx.strokeStyle = isDark ? "#fb7185" : "#be123c";
         ctx.lineWidth = 1.2;
         ctx.strokeRect(Dx, Ay - sqSize, sqSize, sqSize);
         ctx.restore();
 
         // 4. Labels
-        ctx.font = "bold 12px sans-serif";
+        ctx.font = "bold 13px sans-serif";
         ctx.fillStyle = isDark ? "#ffffff" : "#0f172a";
 
         // Vertices A, B, C, D
@@ -750,35 +750,36 @@ export default function InteractiveCanvas3D({
         ctx.fillText("D", Dx - 16, Dy - 6);
 
         // Base label: a = ...
-        ctx.fillStyle = "#38bdf8";
+        ctx.font = "bold 12px sans-serif";
+        ctx.fillStyle = isDark ? "#38bdf8" : "#0369a1";
         ctx.textAlign = "center";
         ctx.fillText(`alas (a) = ${a} ${u}`, (Ax + Bx) / 2, Ay + 22);
 
         // Height label: t = ...
-        ctx.fillStyle = "#f43f5e";
+        ctx.fillStyle = isDark ? "#fb7185" : "#be123c";
         ctx.textAlign = "right";
         ctx.fillText(`tinggi (t) = ${t} ${u}`, Dx - 8, (Dy + Ay) / 2);
 
         // Slant side label: s = ...
-        ctx.fillStyle = "#34d399";
+        ctx.fillStyle = isDark ? "#34d399" : "#047857";
         ctx.textAlign = "right";
         ctx.fillText(`sisi miring (s) = ${s} ${u}`, (Ax + Dx) / 2 - 10, (Ay + Dy) / 2);
 
         // Angle indicator at vertex A
-        ctx.strokeStyle = "#f59e0b";
+        ctx.strokeStyle = isDark ? "#fbbf24" : "#b45309";
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.arc(Ax, Ay, 24, -angleRad, 0);
         ctx.stroke();
 
-        ctx.fillStyle = "#f59e0b";
+        ctx.fillStyle = isDark ? "#fbbf24" : "#b45309";
         ctx.textAlign = "left";
-        ctx.font = "10px sans-serif";
+        ctx.font = "bold 11px sans-serif";
         ctx.fillText("θ = 60°", Ax + 28, Ay - 8);
 
         // Vertex Dots
         [[Ax, Ay], [Bx, By], [Cx, Cy], [Dx, Dy]].forEach(([vx, vy]) => {
-          ctx.fillStyle = "#38bdf8";
+          ctx.fillStyle = isDark ? "#38bdf8" : "#0284c7";
           ctx.beginPath();
           ctx.arc(vx, vy, 4.5, 0, Math.PI * 2);
           ctx.fill();
@@ -816,12 +817,12 @@ export default function InteractiveCanvas3D({
         ctx.fill();
 
         ctx.lineWidth = 2.5;
-        ctx.strokeStyle = "#a855f7";
+        ctx.strokeStyle = isDark ? "#c084fc" : "#7e22ce";
         ctx.stroke();
 
         ctx.save();
         ctx.setLineDash([5, 5]);
-        ctx.strokeStyle = "#f43f5e";
+        ctx.strokeStyle = isDark ? "#fb7185" : "#be123c";
         ctx.lineWidth = 1.8;
         ctx.beginPath();
         ctx.moveTo(Dx, Dy);
@@ -830,11 +831,11 @@ export default function InteractiveCanvas3D({
         ctx.restore();
 
         ctx.font = "bold 12px sans-serif";
-        ctx.fillStyle = "#a855f7";
+        ctx.fillStyle = isDark ? "#c084fc" : "#6b21a8";
         ctx.textAlign = "center";
         ctx.fillText(`sisi atas (a) = ${topW} ${u}`, (Dx + Cx) / 2, Dy - 10);
         ctx.fillText(`sisi bawah (b) = ${botW} ${u}`, (Ax + Bx) / 2, Ay + 22);
-        ctx.fillStyle = "#f43f5e";
+        ctx.fillStyle = isDark ? "#fb7185" : "#be123c";
         ctx.textAlign = "right";
         ctx.fillText(`t = ${h} ${u}`, Dx - 6, (Dy + Ay) / 2);
       } else if (planeShapeKind === "segitiga") {
@@ -861,12 +862,12 @@ export default function InteractiveCanvas3D({
         ctx.fill();
 
         ctx.lineWidth = 2.5;
-        ctx.strokeStyle = "#34d399";
+        ctx.strokeStyle = isDark ? "#34d399" : "#047857";
         ctx.stroke();
 
         ctx.save();
         ctx.setLineDash([5, 5]);
-        ctx.strokeStyle = "#f43f5e";
+        ctx.strokeStyle = isDark ? "#fb7185" : "#be123c";
         ctx.lineWidth = 1.8;
         ctx.beginPath();
         ctx.moveTo(Cx, Cy);
@@ -875,10 +876,10 @@ export default function InteractiveCanvas3D({
         ctx.restore();
 
         ctx.font = "bold 12px sans-serif";
-        ctx.fillStyle = "#34d399";
+        ctx.fillStyle = isDark ? "#34d399" : "#047857";
         ctx.textAlign = "center";
         ctx.fillText(`alas (a) = ${a} ${u}`, (Ax + Bx) / 2, Ay + 22);
-        ctx.fillStyle = "#f43f5e";
+        ctx.fillStyle = isDark ? "#fb7185" : "#be123c";
         ctx.textAlign = "right";
         ctx.fillText(`t = ${h} ${u}`, Cx - 6, (Cy + Ay) / 2);
       }
@@ -1917,20 +1918,20 @@ export default function InteractiveCanvas3D({
       </div>
 
       {/* 2. MAIN BOARD WORKSPACE */}
-      <div className="flex-1 relative w-full h-full min-h-0 bg-[#080a0f] overflow-hidden">
+      <div className="flex-1 relative w-full h-full min-h-0 bg-slate-50 dark:bg-[#080a0f] overflow-hidden">
         {/* A. EMPTY STATE */}
         {activeModel === "empty" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-0 select-none">
             <div className="w-full max-w-md space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mx-auto text-zinc-300">
+              <div className="w-12 h-12 rounded-2xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] flex items-center justify-center mx-auto text-slate-700 dark:text-zinc-300 shadow-sm">
                 <Pencil className="w-6 h-6" />
               </div>
 
               <div className="space-y-1.5">
-                <h3 className="text-sm font-semibold text-white">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
                   Papan Tulis Pintar ZAP
                 </h3>
-                <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
+                <p className="text-xs text-slate-600 dark:text-zinc-400 max-w-sm mx-auto leading-relaxed">
                   Papan tulis interaktif untuk simulasi geometri 3D, grafik 2D, dan coretan kapur. Pilih preset di bawah atau ketik perintah di atas.
                 </p>
               </div>
@@ -1951,7 +1952,7 @@ export default function InteractiveCanvas3D({
                       else setShowSlicePlane(false);
                       selectModel(preset.model);
                     }}
-                    className="px-3 py-1.5 rounded-xl bg-[#121520] hover:bg-[#1a1f30] border border-white/[0.08] hover:border-white/20 text-xs text-zinc-200 transition cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 dark:bg-[#121520] dark:hover:bg-[#1a1f30] border border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-white/20 text-xs font-medium text-slate-700 dark:text-zinc-200 transition cursor-pointer shadow-xs"
                   >
                     <span>{preset.label}</span>
                   </button>
@@ -1969,11 +1970,11 @@ export default function InteractiveCanvas3D({
         >
           <canvas ref={graph2DCanvasRef} className="w-full h-full block" />
 
-          {/* 2D Metrics & Sliders Overlay */}
-          {is2DGraphModel && (
-            <div className="absolute bottom-3 inset-x-4 flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-2xl bg-[#0f121d]/90 border border-white/[0.08] backdrop-blur-md shadow-xl z-20 text-xs">
+          {/* 2D Equation & Coefficients Bar (Hanya untuk fungsi kurva aljabar 2D, bukan bangun datar geometri) */}
+          {(activeModel === "2d_quadratic" || activeModel === "2d_trig" || activeModel === "2d_linear" || activeModel === "2d_circle") && (
+            <div className="absolute bottom-3 inset-x-4 flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-2xl bg-white/95 dark:bg-[#0f121d]/90 border border-slate-200 dark:border-white/[0.08] backdrop-blur-md shadow-xl z-20 text-xs text-slate-800 dark:text-zinc-200">
               <div className="flex items-center gap-3">
-                <span className="font-semibold text-white font-mono">
+                <span className="font-semibold text-slate-900 dark:text-white font-mono text-[13px]">
                   {activeModel === "2d_quadratic"
                     ? `y = ${paramA}x² ${paramB >= 0 ? `+ ${paramB}x` : `- ${Math.abs(paramB)}x`} ${paramC >= 0 ? `+ ${paramC}` : `- ${Math.abs(paramC)}`}`
                     : activeModel === "2d_trig"
@@ -1985,7 +1986,7 @@ export default function InteractiveCanvas3D({
               {/* Sliders for Coefficients */}
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-zinc-400 font-mono">A: {paramA}</span>
+                  <span className="text-slate-600 dark:text-zinc-400 font-mono font-medium">A: {paramA}</span>
                   <input
                     type="range"
                     min="-4"
@@ -1993,12 +1994,12 @@ export default function InteractiveCanvas3D({
                     step="0.5"
                     value={paramA}
                     onChange={(e) => setParamA(parseFloat(e.target.value))}
-                    className="w-20 accent-zinc-400"
+                    className="w-20 accent-slate-900 dark:accent-white cursor-pointer"
                   />
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-zinc-400 font-mono">
+                  <span className="text-slate-600 dark:text-zinc-400 font-mono font-medium">
                     {activeModel === "2d_quadratic" ? `C: ${paramC}` : `B: ${paramB}`}
                   </span>
                   <input
@@ -2012,7 +2013,7 @@ export default function InteractiveCanvas3D({
                       if (activeModel === "2d_quadratic") setParamC(val);
                       else setParamB(val);
                     }}
-                    className="w-20 accent-zinc-400"
+                    className="w-20 accent-slate-900 dark:accent-white cursor-pointer"
                   />
                 </div>
               </div>
@@ -2132,7 +2133,7 @@ export default function InteractiveCanvas3D({
 
               {/* Sisi / Radius Slider & Input */}
               <div className="space-y-1">
-                <div className="flex justify-between text-zinc-300">
+                <div className="flex justify-between text-slate-700 dark:text-zinc-300 font-medium">
                   <span>
                     {activeModel === "2d_shape"
                       ? planeShapeKind === "jajar_genjang" || planeShapeKind === "segitiga"
@@ -2150,7 +2151,7 @@ export default function InteractiveCanvas3D({
                       ? "Sisi Alas Persegi (s):"
                       : "Panjang Sisi (s):"}
                   </span>
-                  <span className="font-mono text-white font-semibold">{paramA} {unit}</span>
+                  <span className="font-mono text-slate-900 dark:text-white font-semibold">{paramA} {unit}</span>
                 </div>
                 <input
                   type="range"
@@ -2163,9 +2164,9 @@ export default function InteractiveCanvas3D({
                     setParamA(val);
                     onParamsChange?.(val, paramB, paramC, unit);
                   }}
-                  className="w-full accent-zinc-400 cursor-pointer"
+                  className="w-full accent-slate-900 dark:accent-white cursor-pointer"
                 />
-                <p className="text-[10px] text-zinc-500 italic">
+                <p className="text-[10px] text-slate-500 dark:text-zinc-400 italic">
                   {activeModel === "2d_shape"
                     ? "💡 Tip: Geser slider untuk mengubah dimensi; rumus luas & keliling terhitung otomatis."
                     : "💡 Tip: Arahkan kursor & tarik sudut objek untuk resize langsung."}
@@ -2174,8 +2175,8 @@ export default function InteractiveCanvas3D({
 
               {/* Tinggi / Lebar Slider (Untuk Tabung, Balok, Prisma, Limas, 2D) */}
               {(activeModel === "2d_shape" || activeModel === "cylinder" || solidKind === "balok" || solidKind === "prisma" || solidKind === "limas") && (
-                <div className="space-y-1 pt-1 border-t border-white/[0.06]">
-                  <div className="flex justify-between text-zinc-300">
+                <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-white/[0.06]">
+                  <div className="flex justify-between text-slate-700 dark:text-zinc-300 font-medium">
                     <span>
                       {activeModel === "2d_shape"
                         ? planeShapeKind === "trapesium"
@@ -2185,7 +2186,7 @@ export default function InteractiveCanvas3D({
                         ? "Tinggi (t):"
                         : "Lebar (l):"}
                     </span>
-                    <span className="font-mono text-white font-semibold">{paramB} {unit}</span>
+                    <span className="font-mono text-slate-900 dark:text-white font-semibold">{paramB} {unit}</span>
                   </div>
                   <input
                     type="range"
@@ -2198,19 +2199,19 @@ export default function InteractiveCanvas3D({
                       setParamB(val);
                       onParamsChange?.(paramA, val, paramC, unit);
                     }}
-                    className="w-full accent-zinc-400 cursor-pointer"
+                    className="w-full accent-slate-900 dark:accent-white cursor-pointer"
                   />
                 </div>
               )}
 
               {/* Slider 3 untuk Jajar Genjang (Sisi Miring) atau Trapesium (Tinggi) */}
               {activeModel === "2d_shape" && (planeShapeKind === "jajar_genjang" || planeShapeKind === "trapesium") && (
-                <div className="space-y-1 pt-1 border-t border-white/[0.06]">
-                  <div className="flex justify-between text-zinc-300">
+                <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-white/[0.06]">
+                  <div className="flex justify-between text-slate-700 dark:text-zinc-300 font-medium">
                     <span>
                       {planeShapeKind === "jajar_genjang" ? "Sisi Miring (s):" : "Tinggi Tegak (t):"}
                     </span>
-                    <span className="font-mono text-white font-semibold">{paramC} {unit}</span>
+                    <span className="font-mono text-slate-900 dark:text-white font-semibold">{paramC} {unit}</span>
                   </div>
                   <input
                     type="range"
@@ -2223,23 +2224,23 @@ export default function InteractiveCanvas3D({
                       setParamC(val);
                       onParamsChange?.(paramA, paramB, val, unit);
                     }}
-                    className="w-full accent-zinc-400 cursor-pointer"
+                    className="w-full accent-slate-900 dark:accent-white cursor-pointer"
                   />
                 </div>
               )}
 
-              {/* Toggle & Slider Irisan Bidang (Hanya jika pengguna minta atau klik) */}
-              {(solidKind === "kubus" || solidKind === "balok" || solidKind === "prisma" || solidKind === "limas") && (
+              {/* Toggle & Slider Irisan Bidang (Hanya untuk bangun ruang 3D) */}
+              {activeModel === "solids" && (solidKind === "kubus" || solidKind === "balok" || solidKind === "prisma" || solidKind === "limas") && (
                 showSlicePlane ? (
-                  <div className="space-y-1 pt-1 border-t border-white/[0.06]">
-                    <div className="flex justify-between items-center text-zinc-300">
+                  <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-white/[0.06]">
+                    <div className="flex justify-between items-center text-slate-700 dark:text-zinc-300 font-medium">
                       <span>Bidang Potongan:</span>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-white font-semibold">{Math.round(sliceProgress * 100)}%</span>
+                        <span className="font-mono text-slate-900 dark:text-white font-semibold">{Math.round(sliceProgress * 100)}%</span>
                         <button
                           type="button"
                           onClick={() => setShowSlicePlane(false)}
-                          className="text-[10px] text-zinc-500 hover:text-white px-1 py-0.5 rounded cursor-pointer"
+                          className="text-[10px] text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white px-1 py-0.5 rounded cursor-pointer"
                           title="Hapus bidang irisan"
                         >
                           Tutup
@@ -2253,28 +2254,28 @@ export default function InteractiveCanvas3D({
                       step="0.02"
                       value={sliceProgress}
                       onChange={(e) => setSliceProgress(parseFloat(e.target.value))}
-                      className="w-full accent-zinc-400 cursor-pointer"
+                      className="w-full accent-slate-900 dark:accent-white cursor-pointer"
                     />
                   </div>
                 ) : (
                   <button
                     type="button"
                     onClick={() => setShowSlicePlane(true)}
-                    className="w-full py-1.5 px-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border border-white/[0.08] hover:border-white/20 flex items-center justify-center gap-1.5 transition text-xs font-medium cursor-pointer"
+                    className="w-full py-1.5 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-700 hover:text-slate-900 dark:text-zinc-300 dark:hover:text-white border border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-white/20 flex items-center justify-center gap-1.5 transition text-xs font-medium cursor-pointer"
                     title="Tambahkan bidang irisan penampang 3D"
                   >
-                    <Scissors className="w-3.5 h-3.5 text-zinc-400" />
+                    <Scissors className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
                     <span>+ Tambah Irisan Bidang</span>
                   </button>
                 )
               )}
 
               {/* Dynamic Calculated Metrics */}
-              <div className="pt-1.5 border-t border-white/[0.08] space-y-1 text-zinc-300">
+              <div className="pt-1.5 border-t border-slate-100 dark:border-white/[0.08] space-y-1.5">
                 {solidMetrics().rows.map((row) => (
-                  <div key={row.label} className="flex justify-between">
-                    <span className="text-zinc-400">{row.label}:</span>
-                    <span className="font-mono text-white font-medium">{row.value}</span>
+                  <div key={row.label} className="flex justify-between text-xs">
+                    <span className="text-slate-600 dark:text-zinc-400">{row.label}:</span>
+                    <span className="font-mono text-slate-900 dark:text-white font-semibold">{row.value}</span>
                   </div>
                 ))}
               </div>
@@ -2309,16 +2310,16 @@ export default function InteractiveCanvas3D({
 
         {/* Floating Drawing Tool Palette (Docked when Drawing Active) */}
         {isDrawingToolActive && (
-          <div className="absolute top-3 left-3 flex items-center gap-1.5 p-1.5 rounded-2xl bg-[#0f121d]/90 border border-white/[0.08] backdrop-blur-md shadow-xl z-20">
+          <div className="absolute top-3 left-3 flex items-center gap-1.5 p-1.5 rounded-2xl bg-white/95 dark:bg-[#0f121d]/90 border border-slate-200 dark:border-white/[0.08] backdrop-blur-md shadow-xl z-20 text-slate-800 dark:text-zinc-200">
             {/* Mode Switcher: Pen vs Eraser */}
-            <div className="flex items-center bg-white/[0.04] p-0.5 rounded-xl border border-white/[0.06]">
+            <div className="flex items-center bg-slate-100 dark:bg-white/[0.04] p-0.5 rounded-xl border border-slate-200 dark:border-white/[0.06]">
               <button
                 type="button"
                 onClick={() => setDrawingMode("pen")}
                 className={`px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition cursor-pointer ${
                   drawingMode === "pen"
-                    ? "bg-white text-zinc-950 shadow-sm font-semibold"
-                    : "text-zinc-400 hover:text-white"
+                    ? "bg-slate-900 text-white dark:bg-white dark:text-zinc-950 shadow-sm font-semibold"
+                    : "text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white"
                 }`}
                 title="Pena Kapur (Menulis / Menggambar)"
               >
@@ -2331,8 +2332,8 @@ export default function InteractiveCanvas3D({
                 onClick={() => setDrawingMode("eraser")}
                 className={`px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition cursor-pointer ${
                   drawingMode === "eraser"
-                    ? "bg-slate-700 text-white shadow-sm font-semibold"
-                    : "text-zinc-400 hover:text-white"
+                    ? "bg-slate-900 text-white dark:bg-slate-700 dark:text-white shadow-sm font-semibold"
+                    : "text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white"
                 }`}
                 title="Penghapus Kapur (Hapus Goresan)"
               >
@@ -2341,32 +2342,32 @@ export default function InteractiveCanvas3D({
               </button>
             </div>
 
-            <div className="w-[1px] h-4 bg-white/[0.1] mx-0.5" />
+            <div className="w-[1px] h-4 bg-slate-200 dark:bg-white/[0.1] mx-0.5" />
 
             {/* Tools Specific to Mode */}
             {drawingMode === "pen" ? (
               <>
                 {/* Color Swatches */}
                 {[
-                  { color: "#f8fafc", name: "Kapur Putih" },
-                  { color: "#cbd5e1", name: "Abu-Abu Terang" },
-                  { color: "#94a3b8", name: "Abu-Abu Medium" },
-                  { color: "#64748b", name: "Slate" },
-                  { color: "#38bdf8", name: "Aksen Biru Dingin" },
+                  { color: isDark ? "#f8fafc" : "#0f172a", name: isDark ? "Kapur Putih" : "Tinta Hitam" },
+                  { color: "#3b82f6", name: "Biru" },
+                  { color: "#10b981", name: "Hijau" },
+                  { color: "#f43f5e", name: "Merah" },
+                  { color: "#f59e0b", name: "Kuning / Oranye" },
                 ].map((swatch) => (
                   <button
                     key={swatch.color}
                     type="button"
                     onClick={() => setDrawColor(swatch.color)}
-                    className={`w-5 h-5 rounded-full transition-transform cursor-pointer flex items-center justify-center ${
-                      drawColor === swatch.color ? "scale-110 ring-2 ring-white/60" : "opacity-70 hover:opacity-100"
+                    className={`w-5 h-5 rounded-full transition-transform cursor-pointer flex items-center justify-center border border-black/10 dark:border-white/20 ${
+                      drawColor === swatch.color ? "scale-110 ring-2 ring-slate-400 dark:ring-white/60" : "opacity-80 hover:opacity-100"
                     }`}
                     style={{ backgroundColor: swatch.color }}
                     title={swatch.name}
                   />
                 ))}
 
-                <div className="w-[1px] h-4 bg-white/[0.1] mx-0.5" />
+                <div className="w-[1px] h-4 bg-slate-200 dark:bg-white/[0.1] mx-0.5" />
 
                 {/* Brush Sizes */}
                 {[2, 4, 8].map((size) => (
@@ -2375,7 +2376,9 @@ export default function InteractiveCanvas3D({
                     type="button"
                     onClick={() => setBrushSize(size)}
                     className={`px-1.5 py-0.5 rounded text-xs transition cursor-pointer font-mono ${
-                      brushSize === size ? "bg-white/[0.1] text-white" : "text-zinc-400 hover:text-white"
+                      brushSize === size
+                        ? "bg-slate-900 text-white dark:bg-white/[0.1] dark:text-white font-medium"
+                        : "text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white"
                     }`}
                     title={`Ukuran Pena ${size}px`}
                   >
@@ -2385,7 +2388,7 @@ export default function InteractiveCanvas3D({
               </>
             ) : (
               <div className="flex items-center gap-1 px-1">
-                <span className="text-[11px] text-zinc-400 font-medium">Ukuran:</span>
+                <span className="text-[11px] text-slate-600 dark:text-zinc-400 font-medium">Ukuran:</span>
                 {[
                   { size: 14, label: "Kecil" },
                   { size: 28, label: "Sedang" },
@@ -2397,8 +2400,8 @@ export default function InteractiveCanvas3D({
                     onClick={() => setEraserSize(item.size)}
                     className={`px-2 py-0.5 rounded text-xs transition cursor-pointer font-mono ${
                       eraserSize === item.size
-                        ? "bg-white/[0.12] text-white border border-white/[0.2]"
-                        : "text-zinc-400 hover:text-white hover:bg-white/[0.04]"
+                        ? "bg-slate-900 text-white dark:bg-white/[0.12] dark:text-white font-medium border border-slate-700 dark:border-white/[0.2]"
+                        : "text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.04]"
                     }`}
                     title={`Penghapus ${item.label} (${item.size}px)`}
                   >
