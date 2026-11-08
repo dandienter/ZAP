@@ -321,15 +321,15 @@ export default function ModelPickerWithEffort({
         />
       </button>
 
-      {/* Minimal Context Menu (Exact DeepSeek Harness layout in Image 1) */}
+      {/* Minimal Context Menu (Liquid Glass Drop Blur) */}
       {isOpen && (
         <div
-          className={`absolute right-0 z-50 select-none animate-in fade-in-0 zoom-in-95 duration-150 ease-out origin-bottom-right ${
+          className={`absolute right-0 z-50 select-none animate-liquid-pop origin-bottom-right ${
             dropUp ? "bottom-full mb-2.5" : "top-full mt-2.5"
           }`}
         >
           {/* Main 2-Row Context Menu Card */}
-          <div className="w-68 sm:w-72 bg-white dark:bg-[#13151f] border border-slate-200 dark:border-white/[0.12] rounded-2xl shadow-2xl shadow-slate-900/15 dark:shadow-black/80 p-1.5 relative text-slate-800 dark:text-zinc-200">
+          <div className="w-68 sm:w-72 liquid-glass-popup rounded-2xl p-1.5 relative text-slate-800 dark:text-zinc-200">
             {/* Row 1: Model */}
             <button
               type="button"
@@ -337,8 +337,8 @@ export default function ModelPickerWithEffort({
               onMouseEnter={() => setActiveSubmenu("model")}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] transition cursor-pointer ${
                 activeSubmenu === "model"
-                  ? "bg-slate-100 dark:bg-white/[0.1] text-slate-900 dark:text-white font-medium"
-                  : "text-slate-700 dark:text-zinc-300 hover:bg-slate-100/70 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-white"
+                  ? "bg-slate-900/[0.08] dark:bg-white/[0.12] text-slate-950 dark:text-white font-medium"
+                  : "text-slate-700 dark:text-zinc-300 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-950 dark:hover:text-white"
               }`}
             >
               <span className="font-medium text-slate-800 dark:text-zinc-200">Model</span>
@@ -357,8 +357,8 @@ export default function ModelPickerWithEffort({
               onMouseEnter={() => setActiveSubmenu("effort")}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] transition cursor-pointer ${
                 activeSubmenu === "effort"
-                  ? "bg-slate-100 dark:bg-white/[0.1] text-slate-900 dark:text-white font-medium"
-                  : "text-slate-700 dark:text-zinc-300 hover:bg-slate-100/70 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-white"
+                  ? "bg-slate-900/[0.08] dark:bg-white/[0.12] text-slate-950 dark:text-white font-medium"
+                  : "text-slate-700 dark:text-zinc-300 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-950 dark:hover:text-white"
               }`}
             >
               <span className="font-medium text-slate-800 dark:text-zinc-200">Effort</span>
@@ -373,10 +373,10 @@ export default function ModelPickerWithEffort({
             {/* Submenu 1: Model Selector (Flyout to left on sm:, in-place on xs:) */}
             {activeSubmenu === "model" && (
               <div
-                className="fixed inset-x-3 bottom-24 sm:absolute sm:inset-auto sm:right-full sm:mr-2 sm:bottom-0 sm:w-80 bg-white dark:bg-[#13151f] border border-slate-200 dark:border-white/[0.12] rounded-2xl shadow-2xl shadow-slate-900/20 dark:shadow-black/90 p-1.5 z-50 animate-in fade-in-0 zoom-in-95 duration-150 ease-out origin-bottom-right"
+                className="fixed inset-x-3 bottom-24 sm:absolute sm:inset-auto sm:right-full sm:mr-2 sm:bottom-0 sm:w-80 liquid-glass-popup rounded-2xl p-1.5 z-50 animate-liquid-pop origin-bottom-right"
                 onMouseEnter={() => setActiveSubmenu("model")}
               >
-                <div className="px-3 py-2 text-[11px] font-mono text-slate-500 dark:text-zinc-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-100 dark:border-white/[0.08] mb-1 font-semibold">
+                <div className="px-3 py-2 text-[11px] font-mono text-slate-500 dark:text-zinc-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-200/60 dark:border-white/[0.08] mb-1 font-semibold">
                   <span>PILIH MODEL</span>
                   <button
                     type="button"
@@ -397,8 +397,8 @@ export default function ModelPickerWithEffort({
                         onClick={() => handleSelectModel(model)}
                         className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] transition cursor-pointer text-left ${
                           isSelected
-                            ? "bg-slate-100 dark:bg-white/[0.1] text-slate-950 dark:text-white font-medium"
-                            : "text-slate-800 dark:text-zinc-300 hover:bg-slate-100/70 dark:hover:bg-white/[0.05] hover:text-slate-950 dark:hover:text-white"
+                            ? "bg-slate-900/[0.08] dark:bg-white/[0.12] text-slate-950 dark:text-white font-medium"
+                            : "text-slate-800 dark:text-zinc-300 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-950 dark:hover:text-white"
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
@@ -412,14 +412,14 @@ export default function ModelPickerWithEffort({
                     );
                   })}
                 </div>
-                <div className="my-1 border-t border-slate-100 dark:border-white/[0.08]" />
+                <div className="my-1 border-t border-slate-200/60 dark:border-white/[0.08]" />
                 <Link
                   href="/connector"
                   onClick={() => {
                     setIsOpen(false);
                     setActiveSubmenu(null);
                   }}
-                  className="flex items-center justify-between px-3 py-2 rounded-xl text-[12px] font-medium text-slate-600 dark:text-zinc-400 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-white/[0.05] transition"
+                  className="flex items-center justify-between px-3 py-2 rounded-xl text-[12px] font-medium text-slate-600 dark:text-zinc-400 hover:text-slate-950 dark:hover:text-white hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] transition"
                 >
                   <span>Kelola API Key &amp; Hub...</span>
                   <ExternalLink className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
@@ -430,10 +430,10 @@ export default function ModelPickerWithEffort({
             {/* Submenu 2: Reasoning Effort Selector */}
             {activeSubmenu === "effort" && (
               <div
-                className="fixed inset-x-3 bottom-24 sm:absolute sm:inset-auto sm:right-full sm:mr-2 sm:bottom-0 sm:w-44 bg-white dark:bg-[#13151f] border border-slate-200 dark:border-white/[0.12] rounded-2xl shadow-2xl shadow-slate-900/20 dark:shadow-black/90 p-1.5 z-50 animate-in fade-in-0 zoom-in-95 duration-150 ease-out origin-bottom-right"
+                className="fixed inset-x-3 bottom-24 sm:absolute sm:inset-auto sm:right-full sm:mr-2 sm:bottom-0 sm:w-44 liquid-glass-popup rounded-2xl p-1.5 z-50 animate-liquid-pop origin-bottom-right"
                 onMouseEnter={() => setActiveSubmenu("effort")}
               >
-                <div className="px-3 py-2 text-[11px] font-mono text-slate-500 dark:text-zinc-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-100 dark:border-white/[0.08] mb-1 font-semibold">
+                <div className="px-3 py-2 text-[11px] font-mono text-slate-500 dark:text-zinc-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-200/60 dark:border-white/[0.08] mb-1 font-semibold">
                   <span>Effort</span>
                   <button
                     type="button"

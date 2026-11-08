@@ -2061,8 +2061,8 @@ export default function InteractiveCanvas3D({
               </button>
             </div>
           ) : (
-            <div className="absolute top-3 right-3 p-3.5 rounded-2xl dark:bg-[#0f121d]/90 bg-white/95 border dark:border-white/[0.08] border-slate-200 backdrop-blur-md shadow-2xl z-20 text-xs w-64 space-y-2.5 dark:text-zinc-200 text-slate-800">
-              <div className="flex items-center justify-between border-b dark:border-white/[0.08] border-slate-200 pb-2">
+            <div className="absolute top-3 right-3 p-3.5 rounded-2xl liquid-glass-popup z-20 text-xs w-64 space-y-2.5 text-slate-800 dark:text-zinc-200 animate-liquid-pop origin-top-right">
+              <div className="flex items-center justify-between border-b dark:border-white/[0.08] border-slate-200/80 pb-2">
                 <span className="font-semibold dark:text-white text-slate-900 flex items-center gap-1.5">
                   <Box className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-300" />
                   {activeModel === "2d_shape"
@@ -2310,7 +2310,7 @@ export default function InteractiveCanvas3D({
 
         {/* Floating Drawing Tool Palette (Docked when Drawing Active) */}
         {isDrawingToolActive && (
-          <div className="absolute top-3 left-3 flex items-center gap-1.5 p-1.5 rounded-2xl bg-white/95 dark:bg-[#0f121d]/90 border border-slate-200 dark:border-white/[0.08] backdrop-blur-md shadow-xl z-20 text-slate-800 dark:text-zinc-200">
+          <div className="absolute top-3 left-3 flex items-center gap-1.5 p-1.5 rounded-2xl liquid-glass-popup z-20 text-slate-800 dark:text-zinc-200 animate-liquid-pop origin-top-left">
             {/* Mode Switcher: Pen vs Eraser */}
             <div className="flex items-center bg-slate-100 dark:bg-white/[0.04] p-0.5 rounded-xl border border-slate-200 dark:border-white/[0.06]">
               <button

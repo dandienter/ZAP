@@ -776,11 +776,11 @@ function PromptActionBarLeft({
 }: PromptActionBarLeftProps) {
   return (
     <div className="flex items-center gap-1.5 relative">
-      {/* Menu Popup Lampirkan Berkas (Persis Foto Gemini, Disesuaikan Kebutuhan ChatZAP) */}
+      {/* Menu Popup Lampirkan Berkas (Liquid Glass Drop Blur) */}
       {showAttachMenu && (
         <div
           ref={attachMenuRef}
-          className="absolute left-0 bottom-full mb-2.5 w-72 bg-white/85 dark:bg-[#13151f]/85 backdrop-blur-2xl backdrop-saturate-150 border border-slate-200/80 dark:border-white/[0.12] rounded-2xl shadow-2xl p-1.5 z-50 text-xs text-slate-700 dark:text-zinc-300 animate-in fade-in zoom-in-95 duration-150"
+          className="absolute left-0 bottom-full mb-2.5 w-72 liquid-glass-popup rounded-2xl p-1.5 z-50 text-xs text-slate-700 dark:text-zinc-300 animate-liquid-pop origin-bottom-left"
         >
           <div className="px-3 py-2 flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] text-slate-500 dark:text-zinc-400 font-medium text-[11px]">
             <span className="flex items-center gap-1.5 text-slate-800 dark:text-zinc-200">
@@ -847,7 +847,7 @@ function PromptActionBarLeft({
               </button>
 
               {showSubUploadMenu && (
-                <div className="absolute left-full bottom-0 ml-1.5 w-60 bg-white/85 dark:bg-[#13151f]/85 backdrop-blur-2xl backdrop-saturate-150 border border-slate-200/80 dark:border-white/[0.12] rounded-2xl shadow-2xl p-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
+                <div className="absolute left-full bottom-0 ml-1.5 w-60 liquid-glass-popup rounded-2xl p-1.5 z-50 text-xs animate-liquid-pop origin-bottom-left">
                   <button
                     type="button"
                     onClick={() => {
@@ -941,7 +941,7 @@ function PromptActionBarLeft({
       {showWorkspaceMenu && (
         <div
           ref={workspaceMenuRef}
-          className="absolute left-6 bottom-full mb-2.5 w-72 bg-white/85 dark:bg-[#13151f]/85 backdrop-blur-2xl backdrop-saturate-150 border border-slate-200/80 dark:border-white/[0.12] rounded-2xl shadow-2xl p-2 z-50 text-xs text-slate-700 dark:text-zinc-300 animate-in fade-in zoom-in-95 duration-150"
+          className="absolute left-6 bottom-full mb-2.5 w-72 liquid-glass-popup rounded-2xl p-2 z-50 text-xs text-slate-700 dark:text-zinc-300 animate-liquid-pop origin-bottom-left"
         >
           <div className="px-2.5 py-1.5 flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] text-slate-500 dark:text-zinc-400 font-medium text-[11px]">
             <span className="text-slate-800 dark:text-zinc-200">Mode &amp; Izin Workspace</span>
@@ -2761,7 +2761,7 @@ export default function ZAPApp() {
 
           {/* Chat Filter Popover */}
           {showWorkspaceFilter && (
-            <div className="mx-3 mb-2 p-2.5 rounded-xl bg-white dark:bg-[#191b22] border border-slate-200 dark:border-white/[0.1] text-xs space-y-2 shadow-xl">
+            <div className="mx-3 mb-2 p-2.5 rounded-2xl liquid-glass-popup text-xs space-y-2 animate-liquid-pop">
               <div className="flex items-center justify-between text-[11px] text-slate-700 dark:text-zinc-300 font-medium pb-1.5 border-b border-slate-100 dark:border-white/[0.06]">
                 <span>Filter Percakapan</span>
                 <button
@@ -2995,7 +2995,7 @@ export default function ZAPApp() {
 
           {/* Profile Dropdown Popup (Settings, Appearance, Models, Logout) */}
           {profileDropdownOpen && (
-            <div className="absolute left-2 bottom-full mb-2.5 w-[260px] bg-white/95 dark:bg-[#13151f]/95 backdrop-blur-2xl backdrop-saturate-150 border border-slate-200/90 dark:border-white/[0.12] rounded-2xl shadow-2xl shadow-slate-900/15 dark:shadow-black/80 p-1.5 z-50 text-xs text-slate-800 dark:text-zinc-200 animate-in fade-in-0 zoom-in-95 duration-150 ease-out origin-bottom-left select-none">
+            <div className="absolute left-2 bottom-full mb-2.5 w-[268px] liquid-glass-popup rounded-2xl p-1.5 z-50 text-xs text-slate-800 dark:text-zinc-200 animate-liquid-pop origin-bottom-left select-none">
               {/* User Identity Header */}
               <div className="p-2 border-b border-slate-100 dark:border-white/[0.06] mb-1">
                 <div className="flex items-center gap-2.5">
@@ -3229,7 +3229,7 @@ export default function ZAPApp() {
 
                   {/* Dropdown Popover */}
                   {showPillWorkspaceMenu && (
-                    <div className="absolute left-0 top-full mt-1.5 w-60 bg-white/95 dark:bg-[#13151f]/95 backdrop-blur-2xl backdrop-saturate-150 border border-slate-200/90 dark:border-white/[0.12] rounded-2xl shadow-2xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150 text-left">
+                    <div className="absolute left-0 top-full mt-1.5 w-60 liquid-glass-popup rounded-2xl py-1.5 z-50 text-xs animate-liquid-pop origin-top-left text-left">
                       <div className="px-3 py-1.5 text-[10px] uppercase font-mono tracking-wider text-slate-400 dark:text-zinc-500 border-b border-slate-100 dark:border-white/[0.06] mb-1">
                         Pilih Ruang Kerja
                       </div>
@@ -3320,7 +3320,7 @@ export default function ZAPApp() {
 
                   {/* Mode Dropdown Popover */}
                   {showPillModeMenu && (
-                    <div className="absolute left-0 top-full mt-1.5 w-64 bg-white/85 dark:bg-[#13151f]/85 backdrop-blur-2xl backdrop-saturate-150 border border-slate-200/80 dark:border-white/[0.12] rounded-2xl shadow-xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150 text-left">
+                    <div className="absolute left-0 top-full mt-1.5 w-64 liquid-glass-popup rounded-2xl py-1.5 z-50 text-xs animate-liquid-pop origin-top-left text-left">
                       <div className="px-3 py-1 text-[10px] uppercase font-mono tracking-wider text-slate-400 dark:text-zinc-500 border-b border-slate-100 dark:border-white/[0.06] mb-1">
                         Pilih Moda Pedagogi
                       </div>
@@ -4265,8 +4265,8 @@ export default function ZAPApp() {
 
       {/* MODAL: PLUGINS / CONNECTOR */}
       {showPluginModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#14151a] border border-slate-200 dark:border-white/[0.1] rounded-2xl w-full max-w-lg p-5 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="liquid-glass-popup rounded-3xl w-full max-w-lg p-5 space-y-4 animate-liquid-pop">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/[0.08] pb-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-slate-700 dark:text-zinc-300" />
@@ -4297,8 +4297,8 @@ export default function ZAPApp() {
 
       {/* MODAL: AUTOMATION TASKS (Interaktif, Realtime CAS Audit & Cache Sweeper) */}
       {showTasksModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#14151a] border border-slate-200 dark:border-white/[0.1] rounded-2xl w-full max-w-lg p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="liquid-glass-popup rounded-3xl w-full max-w-lg p-5 space-y-4 animate-liquid-pop">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/[0.08] pb-3">
               <div className="flex items-center gap-2.5">
@@ -4440,8 +4440,8 @@ export default function ZAPApp() {
 
       {/* MODAL: MORE */}
       {showMoreModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#14151a] border border-slate-200 dark:border-white/[0.1] rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="liquid-glass-popup rounded-3xl w-full max-w-md p-5 space-y-4 animate-liquid-pop">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/[0.08] pb-3">
               <div className="flex items-center gap-2">
                 <LayoutGrid className="w-4 h-4 text-slate-700 dark:text-zinc-300" />
@@ -4489,8 +4489,8 @@ export default function ZAPApp() {
 
       {/* MODAL: CREATE NEW WORKSPACE */}
       {showNewWorkspaceModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#14151a] border border-slate-200 dark:border-white/[0.1] rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="liquid-glass-popup rounded-3xl w-full max-w-sm p-5 space-y-4 animate-liquid-pop">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/[0.08] pb-3">
               <div className="flex items-center gap-2">
                 <FolderPlus className="w-4 h-4 text-slate-700 dark:text-zinc-300" />
@@ -4545,8 +4545,8 @@ export default function ZAPApp() {
 
       {/* MODAL: PREVIEW FILE WORKSPACE */}
       {previewFile && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#14151a] border border-slate-200 dark:border-white/[0.1] rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="liquid-glass-popup rounded-3xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-liquid-pop">
             {/* Header */}
             <div className="p-4 border-b border-slate-100 dark:border-white/[0.08] flex items-center justify-between bg-slate-50 dark:bg-[#191b22]">
               <div className="flex items-center gap-2">
@@ -4633,8 +4633,8 @@ export default function ZAPApp() {
 
       {/* MODAL: PENGATURAN & TAMPILAN (SETTINGS & APPEARANCE MODAL) */}
       {showSettingsModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#14151a] border border-slate-200 dark:border-white/[0.1] rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="liquid-glass-popup rounded-3xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-liquid-pop">
             {/* Header */}
             <div className="p-4 border-b border-slate-100 dark:border-white/[0.08] flex items-center justify-between bg-slate-50/80 dark:bg-[#181a20]/80">
               <div className="flex items-center gap-2.5">

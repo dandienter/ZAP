@@ -157,7 +157,7 @@ export default function ShareModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className="w-full max-w-lg rounded-2xl bg-white dark:bg-[#16181d] border border-slate-200 dark:border-zinc-800 shadow-2xl p-6 text-slate-900 dark:text-zinc-100 flex flex-col gap-5 relative animate-in zoom-in-95 duration-150"
+        className="w-full max-w-lg rounded-3xl liquid-glass-popup p-6 text-slate-900 dark:text-zinc-100 flex flex-col gap-5 relative animate-liquid-pop"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
