@@ -3374,17 +3374,18 @@ export default function ZAPApp() {
           /* ACTIVE CHAT LAYOUT: Scrollable Messages Stream + Permanently Fixed Bottom Composer */
           <>
             {/* 1. SCROLLABLE MESSAGES STREAM */}
-            <div className="flex-1 overflow-y-auto px-4 min-h-0">
-              <div className="space-y-6 py-6 w-full max-w-3xl lg:max-w-4xl mx-auto">
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <div className="space-y-6 py-6 w-full max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6">
               {messages.map((msg) => (
                 <div key={msg.id} className="space-y-3">
                   {/* User Message */}
                   {msg.sender === "user" && (
-                    <div className="flex justify-end group py-1">
-                      <div className="max-w-[85%] sm:max-w-[78%] bg-slate-200/60 dark:bg-white/[0.06] backdrop-blur-xl border border-slate-300/60 dark:border-white/[0.09] text-slate-900 dark:text-zinc-100 rounded-[22px] rounded-br-[6px] px-5 py-3.5 shadow-sm relative transition-all">
+                    <div className="flex flex-col items-end group py-1.5 max-w-[85%] sm:max-w-[75%] ml-auto">
+                      {/* Glass Rounded Bubble */}
+                      <div className="w-fit max-w-full rounded-[22px] bg-slate-200/70 dark:bg-white/[0.07] backdrop-blur-xl border border-slate-300/60 dark:border-white/[0.09] px-5 py-3 shadow-sm text-slate-900 dark:text-zinc-100 text-[15px] sm:text-base leading-relaxed transition-all">
                         {/* If this user message is being edited: */}
                         {editingMsgId === msg.id ? (
-                          <div className="space-y-2 pt-1">
+                          <div className="space-y-2 min-w-[260px] sm:min-w-[340px]">
                             <textarea
                               value={editingContent}
                               onChange={(e) => setEditingContent(e.target.value)}
@@ -3446,36 +3447,38 @@ export default function ZAPApp() {
                                 ))}
                               </div>
                             )}
-
-                            {/* Subtle metadata & action icons */}
-                            <div className="flex items-center justify-end gap-2.5 pt-1.5 -mb-0.5 text-slate-400 dark:text-zinc-500 text-[11px] font-mono">
-                              <span>{msg.timestamp}</span>
-                              <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopyUserMessage(msg.rawText || msg.steps?.join("\n") || "", msg.id)}
-                                  className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/[0.08] text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
-                                  title={copiedUserMsgId === msg.id ? "Tersalin!" : "Salin pesan"}
-                                >
-                                  {copiedUserMsgId === msg.id ? (
-                                    <Check className="w-3.5 h-3.5 text-slate-900 dark:text-white" />
-                                  ) : (
-                                    <Copy className="w-3.5 h-3.5" />
-                                  )}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => startEditingMessage(msg.id, msg.rawText || msg.steps?.join("\n") || "")}
-                                  className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/[0.08] text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
-                                  title="Edit & kirim ulang"
-                                >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
                           </>
                         )}
                       </div>
+
+                      {/* Outside Clock Timestamp & Action Icons (DeepSeek style: clean, outside bubble, right-aligned) */}
+                      {editingMsgId !== msg.id && (
+                        <div className="flex items-center gap-2 mt-1 mr-1 text-slate-400 dark:text-zinc-500 text-[11px] font-mono select-none">
+                          <span>{msg.timestamp}</span>
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+                            <button
+                              type="button"
+                              onClick={() => handleCopyUserMessage(msg.rawText || msg.steps?.join("\n") || "", msg.id)}
+                              className="p-1 rounded hover:bg-slate-200/60 dark:hover:bg-white/[0.08] text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
+                              title={copiedUserMsgId === msg.id ? "Tersalin!" : "Salin pesan"}
+                            >
+                              {copiedUserMsgId === msg.id ? (
+                                <Check className="w-3.5 h-3.5 text-slate-900 dark:text-white" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => startEditingMessage(msg.id, msg.rawText || msg.steps?.join("\n") || "")}
+                              className="p-1 rounded hover:bg-slate-200/60 dark:hover:bg-white/[0.08] text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
+                              title="Edit & kirim ulang"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -3494,7 +3497,7 @@ export default function ZAPApp() {
                         </div>
 
                         {msg.replyText && (
-                          <div className="bg-white/80 dark:bg-[#14161e]/70 backdrop-blur-xl border border-slate-200/80 dark:border-white/[0.07] text-slate-800 dark:text-zinc-200 rounded-3xl p-4 sm:p-5 shadow-sm text-[15px] sm:text-base leading-relaxed">
+                          <div className="text-slate-800 dark:text-zinc-100 text-[15.5px] leading-relaxed pt-0.5">
                             <RichChatText content={msg.replyText} />
                           </div>
                         )}
@@ -3754,8 +3757,9 @@ export default function ZAPApp() {
           </div>
 
           {/* 2. FIXED BOTTOM COMPOSER (Stays strictly fixed at bottom when scrolling messages) */}
-          <div className="p-3 w-full max-w-3xl lg:max-w-4xl mx-auto flex-shrink-0 z-10 bg-[#f8fafc]/90 dark:bg-[#0e0f12]/90 backdrop-blur-md">
-            <div className="w-full bg-white/80 dark:bg-[#14161f]/80 backdrop-blur-xl border border-slate-200/80 dark:border-white/[0.09] focus-within:border-slate-400 dark:focus-within:border-white/20 rounded-3xl p-3.5 sm:p-4 shadow-2xl transition-all text-left">
+          <div className="w-full flex-shrink-0 z-10 bg-[#f8fafc]/90 dark:bg-[#0e0f12]/90 backdrop-blur-md">
+            <div className="w-full max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 pb-4 pt-2">
+              <div className="w-full bg-white/80 dark:bg-[#14161f]/80 backdrop-blur-xl border border-slate-200/80 dark:border-white/[0.09] focus-within:border-slate-400 dark:focus-within:border-white/20 rounded-3xl p-3.5 sm:p-4 shadow-2xl transition-all text-left">
               {/* Attached File Chips */}
               {attachedFiles.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 pb-2">
@@ -3847,7 +3851,8 @@ export default function ZAPApp() {
               </div>
             </div>
           </div>
-        </>
+        </div>
+      </>
       )}
     </div>
 

@@ -11,105 +11,111 @@ interface RichChatTextProps {
 export default function RichChatText({ content, className = "" }: RichChatTextProps) {
   if (!content) return null;
 
-  // Helper untuk memformat teks inline (Math KaTeX, Bold, Italic, Code)
-  const formatInlineText = (text: string) => {
-    // 1. Split berdasarkan inline math $...$
-    const mathParts = text.split(/(\$[^$\n]+?\$)/g);
+  // Render KaTeX string safely
+  const renderKatex = (math: string, displayMode: boolean, key: string | number) => {
+    try {
+      const html = katex.renderToString(math.trim(), {
+        displayMode,
+        throwOnError: false,
+      });
+      return (
+        <span
+          key={key}
+          className={displayMode ? "inline-block px-1 font-medium text-slate-900 dark:text-white" : "inline-block px-0.5 font-medium text-slate-900 dark:text-white align-baseline"}
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      );
+    } catch {
+      return (
+        <code key={key} className="font-mono text-sm px-1 py-0.5 rounded bg-black/5 dark:bg-white/10 text-slate-800 dark:text-zinc-200">
+          {math}
+        </code>
+      );
+    }
+  };
 
-    return mathParts.map((mPart, mIdx) => {
-      if (mPart.startsWith("$") && mPart.endsWith("$") && mPart.length > 2) {
-        const mathContent = mPart.slice(1, -1).trim();
-        try {
-          const html = katex.renderToString(mathContent, {
-            displayMode: false,
-            throwOnError: false,
-          });
-          return (
-            <span
-              key={`m_${mIdx}`}
-              className="inline-block px-1 text-slate-900 dark:text-white font-medium align-baseline"
-              dangerouslySetInnerHTML={{ __html: html }}
-            />
-          );
-        } catch {
-          return (
-            <code key={`m_${mIdx}`} className="font-mono text-sm px-1 py-0.5 rounded bg-black/5 dark:bg-white/10 text-slate-800 dark:text-zinc-200">
-              {mathContent}
-            </code>
-          );
-        }
+  // Format text containing inline math $...$, bold **...**, and display math $$...$$
+  const formatSegment = (text: string, baseKey: string | number): React.ReactNode => {
+    if (!text) return null;
+
+    // 1. Split by display math $$...$$ first (in case it appears inside a bullet or line)
+    const dMathParts = text.split(/(\$\$[^$]+?\$\$)/g);
+
+    return dMathParts.map((dmPart, dmIdx) => {
+      const dmKey = `${baseKey}_dm_${dmIdx}`;
+      if (dmPart.startsWith("$$") && dmPart.endsWith("$$") && dmPart.length >= 4) {
+        return renderKatex(dmPart.slice(2, -2), false, dmKey);
       }
 
-      // 2. Split teks tebal **text**
-      const boldParts = mPart.split(/(\*\*.*?\*\*)/g);
-      return (
-        <span key={`b_${mIdx}`}>
-          {boldParts.map((bPart, bIdx) => {
-            if (bPart.startsWith("**") && bPart.endsWith("**") && bPart.length >= 4) {
-              const boldContent = bPart.slice(2, -2);
+      // 2. Split by bold **...**
+      const boldParts = dmPart.split(/(\*\*[^*]+?\*\*)/g);
+
+      return boldParts.map((bPart, bIdx) => {
+        const bKey = `${dmKey}_b_${bIdx}`;
+        if (bPart.startsWith("**") && bPart.endsWith("**") && bPart.length >= 4) {
+          const innerBold = bPart.slice(2, -2);
+          // Inner bold may contain inline math $...$
+          const innerMathParts = innerBold.split(/(\$[^$]+?\$)/g);
+          return (
+            <strong key={bKey} className="font-semibold text-slate-900 dark:text-white">
+              {innerMathParts.map((imPart, imIdx) => {
+                if (imPart.startsWith("$") && imPart.endsWith("$") && imPart.length >= 2) {
+                  return renderKatex(imPart.slice(1, -1), false, `${bKey}_im_${imIdx}`);
+                }
+                return imPart;
+              })}
+            </strong>
+          );
+        }
+
+        // 3. Regular text which may contain inline math $...$
+        const inlineMathParts = bPart.split(/(\$[^$]+?\$)/g);
+        return inlineMathParts.map((imPart, imIdx) => {
+          const imKey = `${bKey}_im_${imIdx}`;
+          if (imPart.startsWith("$") && imPart.endsWith("$") && imPart.length >= 2) {
+            return renderKatex(imPart.slice(1, -1), false, imKey);
+          }
+
+          // 4. Split italic *...*
+          const italicParts = imPart.split(/(\*[^*\n]+?\*)/g);
+          return italicParts.map((itPart, itIdx) => {
+            if (itPart.startsWith("*") && itPart.endsWith("*") && itPart.length >= 2) {
               return (
-                <strong key={`bold_${bIdx}`} className="font-semibold text-slate-900 dark:text-white">
-                  {boldContent}
-                </strong>
+                <em key={`${imKey}_it_${itIdx}`} className="italic text-slate-700 dark:text-zinc-300">
+                  {itPart.slice(1, -1)}
+                </em>
               );
             }
-
-            // 3. Split teks miring *text* (bukan bullet atau math)
-            const italicParts = bPart.split(/(\*[^*\n]+\*)/g);
-            return (
-              <span key={`i_${bIdx}`}>
-                {italicParts.map((iPart, iIdx) => {
-                  if (iPart.startsWith("*") && iPart.endsWith("*") && iPart.length >= 2 && !iPart.startsWith("**")) {
-                    return (
-                      <em key={`em_${iIdx}`} className="italic text-slate-700 dark:text-zinc-300">
-                        {iPart.slice(1, -1)}
-                      </em>
-                    );
-                  }
-                  return iPart;
-                })}
-              </span>
-            );
-          })}
-        </span>
-      );
+            return itPart;
+          });
+        });
+      });
     });
   };
 
   const lines = content.split("\n");
 
   return (
-    <div className={`space-y-2 text-[15px] sm:text-base leading-relaxed text-slate-800 dark:text-zinc-200 ${className}`}>
+    <div className={`space-y-2.5 text-[15.5px] leading-relaxed text-slate-800 dark:text-zinc-200 ${className}`}>
       {lines.map((rawLine, index) => {
         const line = rawLine.trim();
 
-        // Baris kosong
+        // Empty line
         if (!line) {
-          return <div key={index} className="h-2" />;
+          return <div key={index} className="h-1.5" />;
         }
 
-        // Display math block: $$...$$
+        // Display math standalone block: $$...$$
         if (line.startsWith("$$") && line.endsWith("$$")) {
           const mathContent = line.slice(2, -2).trim();
-          try {
-            const html = katex.renderToString(mathContent, {
-              displayMode: true,
-              throwOnError: false,
-            });
-            return (
-              <div
-                key={index}
-                className="my-3 overflow-x-auto py-2 text-center text-slate-900 dark:text-white"
-                dangerouslySetInnerHTML={{ __html: html }}
-              />
-            );
-          } catch {
-            return (
-              <div key={index} className="font-mono text-sm my-2 text-center text-slate-700 dark:text-zinc-300">
-                {mathContent}
-              </div>
-            );
-          }
+          return (
+            <div
+              key={index}
+              className="my-3 overflow-x-auto py-2 text-center text-slate-900 dark:text-white text-base"
+            >
+              {renderKatex(mathContent, true, `block_${index}`)}
+            </div>
+          );
         }
 
         // Heading 3: ### ...
@@ -118,9 +124,9 @@ export default function RichChatText({ content, className = "" }: RichChatTextPr
           return (
             <h3
               key={index}
-              className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white pt-2 pb-0.5 tracking-tight"
+              className="text-base sm:text-[17px] font-semibold text-slate-900 dark:text-white pt-2.5 pb-0.5 tracking-tight"
             >
-              {formatInlineText(headingText)}
+              {formatSegment(headingText, `h3_${index}`)}
             </h3>
           );
         }
@@ -131,9 +137,9 @@ export default function RichChatText({ content, className = "" }: RichChatTextPr
           return (
             <h2
               key={index}
-              className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white pt-2.5 pb-1 tracking-tight"
+              className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white pt-3 pb-1 tracking-tight"
             >
-              {formatInlineText(headingText)}
+              {formatSegment(headingText, `h2_${index}`)}
             </h2>
           );
         }
@@ -144,9 +150,9 @@ export default function RichChatText({ content, className = "" }: RichChatTextPr
           return (
             <h1
               key={index}
-              className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white pt-3 pb-1 tracking-tight"
+              className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white pt-3.5 pb-1 tracking-tight"
             >
-              {formatInlineText(headingText)}
+              {formatSegment(headingText, `h1_${index}`)}
             </h1>
           );
         }
@@ -156,8 +162,8 @@ export default function RichChatText({ content, className = "" }: RichChatTextPr
           const bulletText = line.replace(/^[-*]\s+/, "");
           return (
             <div key={index} className="flex items-start gap-2.5 pl-1 my-1">
-              <span className="text-slate-400 dark:text-zinc-500 select-none text-base leading-relaxed">•</span>
-              <div className="flex-1 min-w-0">{formatInlineText(bulletText)}</div>
+              <span className="text-slate-400 dark:text-zinc-500 select-none text-base leading-relaxed shrink-0">•</span>
+              <div className="flex-1 min-w-0">{formatSegment(bulletText, `li_${index}`)}</div>
             </div>
           );
         }
@@ -172,7 +178,7 @@ export default function RichChatText({ content, className = "" }: RichChatTextPr
               <span className="font-mono text-sm text-slate-500 dark:text-zinc-400 select-none w-5 pt-0.5 shrink-0">
                 {num}.
               </span>
-              <div className="flex-1 min-w-0">{formatInlineText(itemText)}</div>
+              <div className="flex-1 min-w-0">{formatSegment(itemText, `ol_${index}`)}</div>
             </div>
           );
         }
@@ -182,9 +188,9 @@ export default function RichChatText({ content, className = "" }: RichChatTextPr
           return (
             <div
               key={index}
-              className="my-3 p-3.5 rounded-2xl bg-slate-100/70 dark:bg-white/[0.04] backdrop-blur-md border border-slate-200/70 dark:border-white/[0.08] text-slate-800 dark:text-zinc-200 text-[14.5px] leading-relaxed shadow-sm"
+              className="my-3 p-3.5 sm:p-4 rounded-2xl bg-slate-100/70 dark:bg-white/[0.04] backdrop-blur-md border border-slate-200/70 dark:border-white/[0.08] text-slate-800 dark:text-zinc-200 text-[15px] leading-relaxed shadow-sm"
             >
-              {formatInlineText(line)}
+              {formatSegment(line, `callout_${index}`)}
             </div>
           );
         }
@@ -192,7 +198,7 @@ export default function RichChatText({ content, className = "" }: RichChatTextPr
         // Regular paragraph line
         return (
           <p key={index} className="leading-relaxed">
-            {formatInlineText(line)}
+            {formatSegment(line, `p_${index}`)}
           </p>
         );
       })}
