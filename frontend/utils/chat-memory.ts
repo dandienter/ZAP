@@ -60,17 +60,33 @@ export function loadConversations<M, C>(userEmailOrId?: string | null): StoredCo
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
 
+    const cleanUser = (userEmailOrId || "guest").trim().toLowerCase().replace(/[^a-z0-9._-]/g, "_");
+    const delRaw = window.localStorage.getItem(`zap_deleted_convs_${cleanUser}`);
+    let deletedSet = new Set<string>();
+    if (delRaw) {
+      try {
+        const arr = JSON.parse(delRaw);
+        if (Array.isArray(arr)) deletedSet = new Set<string>(arr);
+      } catch {}
+    }
+
     const targetEmail = userEmailOrId?.toLowerCase().trim();
     if (!targetEmail) {
       // Guest: hanya item yang tidak memiliki userEmail spesifik
       return parsed.filter(
-        (c) => c && typeof c.id === "string" && Array.isArray(c.messages) && !c.userEmail
+        (c) =>
+          c &&
+          typeof c.id === "string" &&
+          !deletedSet.has(c.id) &&
+          Array.isArray(c.messages) &&
+          !c.userEmail
       ) as StoredConversation<M, C>[];
     }
 
-    // Filter ketat: HANYA percakapan yang eksplisit memiliki userEmail sama persis
+    // Filter ketat: HANYA percakapan yang eksplisit memiliki userEmail sama persis dan belum dihapus
     return parsed.filter((c) => {
       if (!c || typeof c.id !== "string" || !Array.isArray(c.messages)) return false;
+      if (deletedSet.has(c.id)) return false;
       return c.userEmail && c.userEmail.toLowerCase().trim() === targetEmail;
     }) as StoredConversation<M, C>[];
   } catch {

@@ -25,7 +25,12 @@ import {
   type StoredConversation,
 } from "@/utils/chat-memory";
 import ShareModal from "@/components/ShareModal";
-import { syncAccountBackup, restoreAccountData, clearLocalWorkingSession } from "@/utils/account-sync";
+import {
+  syncAccountBackup,
+  restoreAccountData,
+  clearLocalWorkingSession,
+  recordDeletedConversation,
+} from "@/utils/account-sync";
 import { useTheme } from "@/utils/theme";
 import {
   Plus,
@@ -1564,13 +1569,30 @@ export default function ZAPApp() {
 
   const deleteConversation = (convId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    const userKey = (currentUser?.email || currentUser?.id || "").toLowerCase().trim();
+
+    // 1. Catat ID percakapan ke daftar penolakan lokal (Tombstone) agar tidak dibangkitkan lagi saat restore
+    recordDeletedConversation(userKey || "guest", convId);
+
+    // 2. Perbarui state lokal & simpan ke localStorage
     const next = conversations.filter((c) => c.id !== convId);
     setConversations(next);
-    const userKey = (currentUser?.email || currentUser?.id || "").toLowerCase().trim();
     saveConversations(next, userKey);
+
+    // 3. Hapus permanen di server cloud vault
     if (currentUser) {
-      syncAccountBackup(currentUser, { conversations: next });
+      fetch(
+        `/api/user/sync?email=${encodeURIComponent(currentUser.email || "")}&userId=${encodeURIComponent(currentUser.id || "")}&convId=${encodeURIComponent(convId)}`,
+        { method: "DELETE" }
+      ).catch((err) => console.warn("Gagal menghapus percakapan di server vault:", err));
+
+      syncAccountBackup(currentUser, {
+        conversations: next,
+        deletedConversationId: convId,
+        replaceConversations: true,
+      });
     }
+
     if (activeConversationId === convId) {
       startNewChat();
     }

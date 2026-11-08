@@ -116,12 +116,51 @@ export function collectLocalUserData(user: ZAPUser): UserAccountBackupPayload {
   };
 }
 
+export interface SyncBackupOverrides extends Partial<UserAccountBackupPayload> {
+  deletedConversationId?: string;
+  replaceConversations?: boolean;
+}
+
+/**
+ * Mencatat ID percakapan yang dihapus ke dalam daftar penolakan lokal (Tombstone),
+ * agar tidak pernah dibangkitkan kembali (anti-resurrection) saat sinkronisasi cloud.
+ */
+export function recordDeletedConversation(userEmailOrId: string, convId: string): void {
+  if (typeof window === "undefined" || !userEmailOrId || !convId) return;
+  try {
+    const cleanKey = userEmailOrId.trim().toLowerCase().replace(/[^a-z0-9._-]/g, "_");
+    const key = `zap_deleted_convs_${cleanKey}`;
+    const raw = localStorage.getItem(key);
+    const list: string[] = raw ? JSON.parse(raw) : [];
+    if (!list.includes(convId)) {
+      list.push(convId);
+      localStorage.setItem(key, JSON.stringify(list.slice(-100)));
+    }
+  } catch {}
+}
+
+/**
+ * Mengambil daftar ID percakapan yang telah dihapus untuk akun pengguna
+ */
+export function getDeletedConversations(userEmailOrId: string): Set<string> {
+  if (typeof window === "undefined" || !userEmailOrId) return new Set();
+  try {
+    const cleanKey = userEmailOrId.trim().toLowerCase().replace(/[^a-z0-9._-]/g, "_");
+    const key = `zap_deleted_convs_${cleanKey}`;
+    const raw = localStorage.getItem(key);
+    const list = raw ? JSON.parse(raw) : [];
+    return new Set<string>(Array.isArray(list) ? list : []);
+  } catch {
+    return new Set();
+  }
+}
+
 /**
  * Menyimpan data backup akun ke penyimpanan lokal browser dan sinkronisasi ke server
  */
 export async function syncAccountBackup(
   user: ZAPUser,
-  overrides?: Partial<UserAccountBackupPayload>
+  overrides?: SyncBackupOverrides
 ): Promise<boolean> {
   if (typeof window === "undefined" || !user) return false;
 
@@ -135,7 +174,10 @@ export async function syncAccountBackup(
     userEmail,
   }));
 
-  const payload: UserAccountBackupPayload = {
+  const payload: UserAccountBackupPayload & {
+    deletedConversationId?: string;
+    replaceConversations?: boolean;
+  } = {
     user,
     updatedAt: Date.now(),
     configs: {
@@ -145,6 +187,8 @@ export async function syncAccountBackup(
     conversations: taggedConvs,
     workspaces: overrides?.workspaces !== undefined ? overrides.workspaces : current.workspaces,
     workspaceFiles: overrides?.workspaceFiles !== undefined ? overrides.workspaceFiles : current.workspaceFiles,
+    deletedConversationId: overrides?.deletedConversationId,
+    replaceConversations: overrides?.replaceConversations,
   };
 
   // 1. Simpan salinan lokal terisolasi per akun pengguna
@@ -232,16 +276,26 @@ export async function restoreAccountData<M = unknown, C = unknown, W = unknown, 
     }
   } catch {}
 
-  // Kumpulkan HANYA percakapan milik akun ini
+  const deletedSet = getDeletedConversations(userEmail);
+
+  // Kumpulkan HANYA percakapan milik akun ini yang BELUM dihapus
   const convMap = new Map<string, StoredConversation<unknown, unknown>>();
   if (serverBackup?.conversations && Array.isArray(serverBackup.conversations)) {
     for (const c of serverBackup.conversations) {
-      if (c && c.id) convMap.set(c.id, { ...c, userEmail });
+      if (c && c.id && !deletedSet.has(c.id)) {
+        convMap.set(c.id, { ...c, userEmail });
+      }
     }
   }
   if (localUserConvs && Array.isArray(localUserConvs)) {
     for (const c of localUserConvs) {
-      if (c && c.id && c.userEmail && c.userEmail.toLowerCase().trim() === userEmail) {
+      if (
+        c &&
+        c.id &&
+        !deletedSet.has(c.id) &&
+        c.userEmail &&
+        c.userEmail.toLowerCase().trim() === userEmail
+      ) {
         const existing = convMap.get(c.id);
         if (!existing || (c.updatedAt || 0) >= (existing.updatedAt || 0)) {
           convMap.set(c.id, { ...c, userEmail });

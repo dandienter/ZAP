@@ -39,6 +39,8 @@ interface SyncRequestBody {
   conversations?: ConversationItem[];
   workspaces?: unknown[];
   workspaceFiles?: unknown[];
+  deletedConversationId?: string;
+  replaceConversations?: boolean;
 }
 
 function getVaultDir(): string {
@@ -87,7 +89,15 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body: SyncRequestBody = await req.json();
-    const { user, configs, conversations, workspaces, workspaceFiles } = body;
+    const {
+      user,
+      configs,
+      conversations,
+      workspaces,
+      workspaceFiles,
+      deletedConversationId,
+      replaceConversations,
+    } = body;
 
     if (!user || (!user.email && !user.id)) {
       return NextResponse.json({ error: "Data pengguna tidak valid" }, { status: 400 });
@@ -105,28 +115,43 @@ export async function POST(req: Request) {
       }
     }
 
-    // Merge conversations: gabungkan berdasarkan ID, pertahankan versi terbaru
-    const existingConvs: ConversationItem[] = Array.isArray(existingData.conversations)
+    // Bersihkan sesi percakapan yang dihapus jika ada
+    let existingConvs: ConversationItem[] = Array.isArray(existingData.conversations)
       ? existingData.conversations
       : [];
-    const incomingConvs: ConversationItem[] = Array.isArray(conversations) ? conversations : [];
-
-    const convMap = new Map<string, ConversationItem>();
-    for (const c of existingConvs) {
-      if (c && c.id) convMap.set(c.id, c);
+    if (deletedConversationId) {
+      existingConvs = existingConvs.filter((c) => c.id !== deletedConversationId);
     }
-    for (const c of incomingConvs) {
-      if (c && c.id) {
-        const prev = convMap.get(c.id);
-        if (!prev || (c.updatedAt || 0) >= (prev.updatedAt || 0)) {
-          convMap.set(c.id, c);
+
+    const incomingConvs: ConversationItem[] = Array.isArray(conversations)
+      ? conversations.filter((c) => c.id !== deletedConversationId)
+      : [];
+
+    let mergedConversations: ConversationItem[];
+
+    if (replaceConversations || deletedConversationId) {
+      // Jika instruksi replaceConversations atau setelah delete:
+      // Gunakan incomingConvs secara persis tanpa membangkitkan kembali obrolan yang dihapus
+      mergedConversations = incomingConvs
+        .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+        .slice(0, 50);
+    } else {
+      const convMap = new Map<string, ConversationItem>();
+      for (const c of existingConvs) {
+        if (c && c.id) convMap.set(c.id, c);
+      }
+      for (const c of incomingConvs) {
+        if (c && c.id) {
+          const prev = convMap.get(c.id);
+          if (!prev || (c.updatedAt || 0) >= (prev.updatedAt || 0)) {
+            convMap.set(c.id, c);
+          }
         }
       }
+      mergedConversations = Array.from(convMap.values())
+        .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+        .slice(0, 50);
     }
-
-    const mergedConversations = Array.from(convMap.values())
-      .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
-      .slice(0, 50); // Simpan hingga 50 sesi percakapan terbaru per akun
 
     // Merge configs (API keys & model preferences)
     const existingConfigs: Record<string, string> = existingData.configs || {};
@@ -185,6 +210,68 @@ export async function POST(req: Request) {
     console.error("Gagal menyimpan backup akun:", err);
     return NextResponse.json(
       { error: "Gagal menyimpan pencadangan akun ke server" },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE: Hapus percakapan tertentu secara permanen dari cloud vault
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const email = searchParams.get("email") || "";
+    const userId = searchParams.get("userId") || "";
+    const convId = searchParams.get("convId") || "";
+
+    if ((!email && !userId) || !convId) {
+      return NextResponse.json(
+        { error: "Email/userId dan convId diperlukan untuk penghapusan" },
+        { status: 400 }
+      );
+    }
+
+    const filePath = getVaultFilePath(email, userId);
+    if (fs.existsSync(filePath)) {
+      try {
+        const raw = fs.readFileSync(filePath, "utf-8");
+        const data: VaultData = JSON.parse(raw);
+        if (Array.isArray(data.conversations)) {
+          data.conversations = data.conversations.filter((c) => c.id !== convId);
+          data.updatedAt = Date.now();
+          fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
+        }
+      } catch (fileErr) {
+        console.warn("Gagal memperbarui file vault saat delete:", fileErr);
+      }
+    }
+
+    // Bersihkan juga jika percakapan ini pernah dibagikan publik
+    try {
+      const sharesDir = path.join(process.cwd(), ".zap_vault", "shares");
+      if (fs.existsSync(sharesDir)) {
+        const shareFiles = fs.readdirSync(sharesDir);
+        for (const sf of shareFiles) {
+          if (!sf.endsWith(".json")) continue;
+          try {
+            const sPath = path.join(sharesDir, sf);
+            const sRaw = fs.readFileSync(sPath, "utf-8");
+            const sData = JSON.parse(sRaw);
+            if (sData.conversationId === convId) {
+              fs.unlinkSync(sPath);
+            }
+          } catch {}
+        }
+      }
+    } catch {}
+
+    return NextResponse.json({
+      success: true,
+      message: `Percakapan ${convId} berhasil dihapus permanen`,
+    });
+  } catch (err) {
+    console.error("Gagal menghapus percakapan dari vault:", err);
+    return NextResponse.json(
+      { error: "Gagal memproses penghapusan percakapan dari server" },
       { status: 500 }
     );
   }
