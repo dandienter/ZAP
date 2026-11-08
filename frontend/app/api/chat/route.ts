@@ -19,12 +19,15 @@ interface ChatRequestBody {
   message: string;
   conversationHistory?: { role: "user" | "assistant"; content: string }[];
   activeProblem?: ActiveProblemContext | null;
+  attachedFiles?: Array<{ name: string; content?: string }>;
+  workspaceMode?: "write" | "read";
   modelId?: string;
   apiKey?: string;
   mistralApiKey?: string;
   bazaarlinkApiKey?: string;
   claudeApiKey?: string;
   openaiApiKey?: string;
+  nvidiaApiKey?: string;
   customBaseUrl?: string;
   customModelName?: string;
   customApiKey?: string;
@@ -57,6 +60,159 @@ function sanitizeZeroAnswer(text: string): string {
   return result;
 }
 
+/**
+ * Mendeteksi bahasa acuan sesi berdasarkan 2 sampai 3 pesan awal percakapan (Anchor Language).
+ * Menjamin AI konsisten menjawab dalam bahasa awal sesi (misal: Bahasa Indonesia),
+ * meskipun pengguna sesekali memberi perintah/istilah dalam bahasa Inggris atau bahasa lain.
+ */
+function detectSessionLanguage(
+  conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
+  currentMessage?: string
+): "Bahasa Indonesia" | "English" {
+  const userMessages: string[] = [];
+  if (conversationHistory && conversationHistory.length > 0) {
+    for (const turn of conversationHistory) {
+      if (turn.role === "user" && turn.content?.trim()) {
+        userMessages.push(turn.content.trim());
+        if (userMessages.length >= 3) break;
+      }
+    }
+  }
+  if (userMessages.length === 0 && currentMessage?.trim()) {
+    userMessages.push(currentMessage.trim());
+  }
+
+  const combinedText = userMessages.join(" ").toLowerCase();
+
+  const idMatches = (
+    combinedText.match(
+      /\b(dan|yang|di|ke|dari|ini|itu|dengan|untuk|pada|adalah|sebagai|saya|aku|kamu|kita|bisa|buatkan|bikin|tampilkan|gambarkan|rumus|bagaimana|apa|kenapa|mengapa|hitung|tuliskan|hai|halo|pagi|siang|malam|makasih|tolong|coba|kubus|balok|tabung|lingkaran|persamaan)\b/gi
+    ) || []
+  ).length;
+
+  const enMatches = (
+    combinedText.match(
+      /\b(the|is|are|am|was|were|and|in|on|at|to|from|for|with|of|this|that|you|me|we|my|can|could|how|what|why|where|calculate|make|show|draw|solve|hello|hi|please|cube|cuboid|cylinder|equation)\b/gi
+    ) || []
+  ).length;
+
+  if (enMatches > idMatches && idMatches === 0) {
+    return "English";
+  }
+  return "Bahasa Indonesia";
+}
+
+/**
+ * Membersihkan respon model dari kebocoran tag pemikiran internal (<think>...</think>)
+ * atau monolog draf perencanaan internal ("Let me structure...", "Let's draft:").
+ */
+function cleanModelResponse(text: string): string {
+  if (!text) return "";
+  let clean = text;
+
+  // 1. Bersihkan tag <think>...</think> dan <thought>...</thought>
+  clean = clean.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+  clean = clean.replace(/<thought>[\s\S]*?<\/thought>/gi, "").trim();
+
+  // 2. Bersihkan monolog perencanaan bahasa Inggris jika bocor dari model reasoning
+  const draftSplitters = [
+    /\n(?:Halo|Hai|Hello|Hi)\s+[^\n]+!/i,
+    /\n\*\*Balok\*\*/i,
+    /\n\*\*Kubus\*\*/i,
+    /\n###?\s+1\.\s+Volume/i,
+    /Let's draft:?\s*\n*/i,
+  ];
+
+  for (const splitter of draftSplitters) {
+    const match = clean.match(splitter);
+    if (match && match.index !== undefined && match.index > 0) {
+      const prefix = clean.slice(0, match.index);
+      if (
+        /providing the formulas|the system instruction|let me structure|so i should|let's write it in/i.test(
+          prefix
+        )
+      ) {
+        if (splitter.source.includes("Let's draft")) {
+          clean = clean.slice(match.index + match[0].length).trim();
+        } else {
+          clean = clean.slice(match.index).trim();
+        }
+        break;
+      }
+    }
+  }
+
+  return clean;
+}
+
+function buildZAPSystemPrompt(
+  studentName: string,
+  activeProblem?: ActiveProblemContext | null,
+  modelName?: string,
+  sessionLanguage: string = "Bahasa Indonesia",
+  workspaceMode: "write" | "read" = "write"
+): string {
+  let prompt = `Anda adalah ChatZAP, asisten cerdas matematika interaktif dan tutor aljabar yang ditenagai oleh model AI (${modelName || "ChatZAP Cognitive Engine"}).
+
+IDENTITAS SISWA:
+- Nama siswa: ${studentName}.
+- Bersikaplah ramah, suportif, antusias, dan menyemangati. Panggil nama siswa secara akrab.
+
+KONSISTENSI BAHASA SESI PERCAKAPAN (SESSION LANGUAGE ANCHOR):
+- Bahasa percakapan utama untuk sesi ini adalah: **${sessionLanguage}** (ditetapkan berdasarkan interaksi awal percakapan).
+- WAJIB KONSISTEN: Anda HARUS SELALU menjawab, menjelaskan materi, memaparkan rumus, dan membimbing dalam **${sessionLanguage}**.
+- Meskipun di tengah sesi siswa tiba-tiba memberikan perintah atau istilah dalam bahasa lain (misalnya bahasa Inggris seperti "make a 3D cube", "draw cylinder", "solve for x", "formula", dll.), Anda TETAP WAJIB MENJAWAB DALAM **${sessionLanguage}** sesuai bahasa awal sesi!
+- JANGAN PERNAH berganti bahasa secara tiba-tiba di tengah sesi kecuali siswa secara eksplisit meminta beralih bahasa (contoh: "tolong jawab dalam bahasa Inggris").
+
+ATURAN RESPON BERSIH & LANGSUNG (ANTI-LEAK):
+- Langsung berikan jawaban dan penjelasan kepada siswa secara bersih, ramah, dan terstruktur.
+- JANGAN PERNAH menampilkan catatan perencanaan internal, monolog pemikiran, atau rancangan draf (seperti "providing the formulas is definitely appropriate", "Let me structure the response", "Let's draft:", "Structure: ...", dsb.).
+
+PANDUAN MODE KERJA (WAJIB DIIKUTI DENGAN SANGAT DISIPLIN):
+
+MODE 1: VISUALISASI GEOMETRI 3D, GRAFIK 2D & SMARTBOARD (PENGECUALIAN PENUH DARI ZERO-ANSWER)
+- Jika siswa meminta membuatkan, menampilkan, atau memvisualisasikan objek geometri ruang 3D atau grafik 2D (contoh: "buatkan 3D cube 10cm", "buatkan kubus", "gambarkan tabung r=7 t=12", "tampilkan bola", "gambarkan grafik parabola y = x^2 - 3"):
+  * SELALU SAMBUT DENGAN SANGAT ANTUSIAS DAN GEMBIRA!
+  * JANGAN PERNAH MENOLAK dengan dalih "kebijakan zero answer policy", "tidak bisa membuatkan objek jadi", atau "hanya bisa membimbing". Visualisasi 3D di Papan Tulis Pintar adalah FITUR RESMI & UNGGULAN platform ChatZAP, BUKAN kecurangan ujian!
+  * Konfirmasikan dengan jelas bahwa objek geometri 3D telah AKTIF dan ditampilkan di Papan Tulis Pintar (Smartboard) di panel sebelah kanan layar.
+  * Uraikan sifat-sifat matematis objek tersebut secara lengkap dan rapi menggunakan KaTeX:
+    - Kubus ($s = 10\\text{ cm}$): $s = 10\\text{ cm}$, Luas Permukaan $L = 6s^2 = 600\\text{ cm}^2$, Volume $V = s^3 = 1000\\text{ cm}^3$, Diagonal Ruang $d = s\\sqrt{3} \\approx 17{,}32\\text{ cm}$.
+    - Balok ($p \\times l \\times t$): Volume $V = p \\cdot l \\cdot t$, Luas Permukaan $L = 2(pl + pt + lt)$.
+    - Tabung ($r, t$): Volume $V = \\pi r^2 t$, Luas Selimut $L_s = 2\\pi r t$.
+  * Ajak siswa mencoba fitur interaktif kanvas 3D di sebelah kanan: memutar 360°, mengaktifkan wireframe (rangka kawat), atau menambahkan bidang irisan penampang.
+
+MODE 2: SOAL LATIHAN & PENURUNAN PERSAMAAN ALJABAR (ZERO-ANSWER POLICY HANYA DI SINI)
+- Kebijakan Zero Answer Policy HANYA BERLAKU saat siswa memberikan soal pekerjaan rumah aljabar (contoh: "selesaikan persamaan 2x + 6 = 14", "apa nilai x?").
+- Di mode ini, jangan langsung membocorkan nilai akhir $x$. Bimbing siswa menggunakan pertanyaan Sokrates terarah dan kontra-contoh aritmetika jika ada langkah logika yang keliru.
+
+MODE 3: SALAM, CHIT-CHAT & APRESIASI SANTAI
+- Jika siswa hanya menyapa ("halo", "hai", "pagi") atau memberikan pujian/apresiasi ("wah keren yaa", "kamu canggih banget"):
+  * Jawablah dengan hangat dan penuh keramahan.
+  * Ajak siswa berdiskusi atau menanyakan konsep matematika yang ingin dieksplorasi.
+  * JANGAN mengklaim model 3D baru telah dibuat jika siswa tidak memintanya.
+
+FORMAT PENULISAN:
+- Gunakan Markdown yang rapi dan KaTeX ($...$ untuk formula sebaris, $$...$$ untuk formula blok terpisah).`;
+
+  if (activeProblem && activeProblem.steps && activeProblem.steps.length > 0) {
+    prompt += `\n\nKONTEKS CORETAN SISWA SAAT INI:
+- Langkah coretan siswa: ${activeProblem.steps.map((s, i) => `#${i + 1}: ${s}`).join(" -> ")}
+${activeProblem.faultLine ? `- Titik patah kesalahan logika terdeteksi di baris #${activeProblem.faultLine}` : ""}
+${activeProblem.misconceptionType ? `- Tipe miskonsepsi: ${activeProblem.misconceptionType}` : ""}
+${activeProblem.explanation ? `- Penjelasan galat: ${activeProblem.explanation}` : ""}
+${activeProblem.counterExample?.contradiction_statement ? `- Kontra-contoh aritmetika: ${activeProblem.counterExample.contradiction_statement}` : ""}
+Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentang perbaikan langkahnya.`;
+  }
+
+  if (workspaceMode === "read") {
+    prompt += `\n\nMODE WORKSPACE: READ-ONLY (Hanya lakukan bimbingan Sokratik dan verifikasi matematis tanpa menulis atau memodifikasi berkas workspace).`;
+  } else {
+    prompt += `\n\nMODE WORKSPACE: WRITE (Anda berwenang mendraf berkas rumus, membuat skrip aljabar, dan memodifikasi catatan di workspace).`;
+  }
+
+  return prompt;
+}
+
 export async function POST(req: Request) {
   try {
     let body: ChatRequestBody;
@@ -71,7 +227,8 @@ export async function POST(req: Request) {
     }
 
     const {
-      message,
+      message: rawMessage,
+      attachedFiles,
       conversationHistory,
       activeProblem,
       apiKey,
@@ -79,6 +236,7 @@ export async function POST(req: Request) {
       bazaarlinkApiKey,
       claudeApiKey,
       openaiApiKey,
+      nvidiaApiKey,
       customBaseUrl,
       customModelName,
       customApiKey,
@@ -86,8 +244,148 @@ export async function POST(req: Request) {
       userName,
     } = body;
 
-    if (!message || typeof message !== "string") {
+    if (!rawMessage || typeof rawMessage !== "string") {
       return NextResponse.json({ error: "Pesan tidak boleh kosong" }, { status: 400 });
+    }
+
+    let message = rawMessage;
+    if (attachedFiles && Array.isArray(attachedFiles) && attachedFiles.length > 0) {
+      const fileContext = attachedFiles
+        .filter((f) => f && f.name)
+        .map((f) => `--- BERKAS TERLAMPIR: ${f.name} ---\n${(f.content || "").slice(0, 4000)}`)
+        .join("\n\n");
+      if (fileContext) {
+        message = `${fileContext}\n\n--- PERINTAH PENGGUNA ---\n${rawMessage}`;
+      }
+    }
+
+    // Deteksi Bahasa Acuan Sesi Percakapan (Anchor Language) dari 2 sampai 3 pesan awal
+    const sessionLanguage = detectSessionLanguage(conversationHistory, message);
+
+    // 0. Panggil NVIDIA NIM API jika Auto-Agent atau model NVIDIA dipilih
+    if (
+      !modelId ||
+      modelId === "auto-agent" ||
+      modelId?.startsWith("nvidia") ||
+      modelId === "deepseek-v4.1-flash" ||
+      modelId === "poolside-laguna" ||
+      modelId === "gpt-oss-20b" ||
+      modelId === "gemma-4-31b-it"
+    ) {
+      const DEFAULT_NVIDIA_API_KEY =
+        "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";
+      const targetBase = "https://integrate.api.nvidia.com/v1";
+      let targetModel = "nvidia/nemotron-3.5-bolt-e4b";
+      let targetFriendlyName = "Auto-Agent (Nemotron-3.5 Bolt Tutor)";
+
+      if (!modelId || modelId === "auto-agent") {
+        // Nemotron-3.5 Bolt Tutor adalah tutor matematika percakapan resmi ChatZAP:
+        // Sangat responsif (< 2 detik), konsisten bahasa, KaTeX rapi, dan bebas dari kebocoran draf CoT
+        targetModel = "nvidia/nemotron-3.5-bolt-e4b";
+        targetFriendlyName = "Auto-Agent (Nemotron-3.5 Bolt Tutor)";
+      } else if (modelId === "nvidia-bolt" || modelId === "nvidia-nemotron-bolt") {
+        targetModel = "nvidia/nemotron-3.5-bolt-e4b";
+        targetFriendlyName = "Nemotron-3.5 Bolt Tutor";
+      } else if (modelId === "nvidia-math-reasoning" || modelId === "nvidia-nemotron-reasoning") {
+        targetModel = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning";
+        targetFriendlyName = "Nemotron-3 Omni Math";
+      } else if (modelId === "nvidia-spatial-vl" || modelId === "nvidia-geometry-3d") {
+        targetModel = "nvidia/nemotron-3.5-super-vl-120b-a12b";
+        targetFriendlyName = "Nemotron-3.5 Super-VL 120B 3D";
+      } else if (modelId === "nvidia-ultra-550b" || modelId === "nvidia-deep-proof") {
+        targetModel = "nvidia/nemotron-3-ultra-550b-a55b";
+        targetFriendlyName = "Nemotron-3 Ultra 550B";
+      } else if (modelId === "poolside-laguna" || modelId === "nvidia-code") {
+        targetModel = "poolside/laguna-xs-2.1";
+        targetFriendlyName = "Poolside Laguna Code";
+      } else if (modelId === "nvidia-diffusiongemma") {
+        targetModel = "google/diffusiongemma-26b-a4b-it";
+        targetFriendlyName = "DiffusionGemma 26B";
+      } else if (modelId === "nvidia-deepseek-v4" || modelId === "deepseek-v4.1-flash") {
+        targetModel = "deepseek-ai/deepseek-v4.1-flash";
+        targetFriendlyName = "DeepSeek V4.1";
+      } else if (modelId === "nvidia-gpt-oss" || modelId === "gpt-oss-20b") {
+        targetModel = "openai/gpt-oss-20b";
+        targetFriendlyName = "GPT-OSS 20B";
+      }
+
+      // Pastikan hanya menggunakan kunci valid berformat 'nvapi-', fallback ke sistem jika kosong/salah
+      let effectiveKey = "";
+      if (nvidiaApiKey && typeof nvidiaApiKey === "string" && nvidiaApiKey.trim().startsWith("nvapi-")) {
+        effectiveKey = nvidiaApiKey.trim();
+      } else if (process.env.NVIDIA_API_KEY && process.env.NVIDIA_API_KEY.trim().startsWith("nvapi-")) {
+        effectiveKey = process.env.NVIDIA_API_KEY.trim();
+      } else {
+        effectiveKey = DEFAULT_NVIDIA_API_KEY;
+      }
+
+      try {
+        let nvidiaRes = await callCustomOpenAIAPI(
+          message,
+          targetBase,
+          targetModel,
+          effectiveKey,
+          conversationHistory,
+          activeProblem,
+          userName,
+          22000,
+          sessionLanguage
+        );
+
+        // Jika kunci pengguna menghasilkan 401 atau gagal, otomatis coba dengan kunci sistem terverifikasi
+        if ((!nvidiaRes.text || nvidiaRes.status === 401) && effectiveKey !== DEFAULT_NVIDIA_API_KEY) {
+          console.warn("Kunci kustom NVIDIA tidak valid atau 401, mencoba dengan kunci sistem terverifikasi...");
+          effectiveKey = DEFAULT_NVIDIA_API_KEY;
+          nvidiaRes = await callCustomOpenAIAPI(
+            message,
+            targetBase,
+            targetModel,
+            effectiveKey,
+            conversationHistory,
+            activeProblem,
+            userName,
+            22000,
+            sessionLanguage
+          );
+        }
+
+        // Jika model besar mengalami timeout atau error, coba fallback cepat ke nemotron-3.5-bolt-e4b
+        if (!nvidiaRes.text && targetModel !== "nvidia/nemotron-3.5-bolt-e4b") {
+          console.warn(`Model ${targetModel} tidak merespon, mencoba fallback cepat ke nemotron-3.5-bolt-e4b...`);
+          nvidiaRes = await callCustomOpenAIAPI(
+            message,
+            targetBase,
+            "nvidia/nemotron-3.5-bolt-e4b",
+            effectiveKey,
+            conversationHistory,
+            activeProblem,
+            userName,
+            12000,
+            sessionLanguage
+          );
+          if (nvidiaRes.text) {
+            targetFriendlyName = "Nemotron-3.5 Bolt (Fast Fallback)";
+          }
+        }
+
+        if (nvidiaRes.text) {
+          return NextResponse.json({
+            reply: sanitizeZeroAnswer(nvidiaRes.text),
+            model: `${targetFriendlyName} (NVIDIA NIM)`,
+            source: "nvidia-nim",
+          });
+        }
+        if (nvidiaRes.error) {
+          const socraticFallback = generateSocraticFallbackResponse(message, activeProblem);
+          return NextResponse.json({
+            reply: `⚠️ **Catatan NVIDIA NIM API:**\n${nvidiaRes.error}\n\n*Periksa kembali NVIDIA API Key kamu di menu Connector.*\n\n---\n\n${socraticFallback}`,
+            model: "Local Socratic (NVIDIA Warning)",
+            source: "fallback-with-warning",
+          });
+        }
+      } catch (err) {
+        console.warn("NVIDIA NIM call failed:", err);
+      }
     }
 
     // 1. Panggil Custom Model API (Ollama / vLLM / LMStudio / Proxy)
@@ -102,7 +400,9 @@ export async function POST(req: Request) {
           customApiKey || apiKey,
           conversationHistory,
           activeProblem,
-          userName
+          userName,
+          12000,
+          sessionLanguage
         );
 
         if (customRes.text) {
@@ -141,7 +441,8 @@ export async function POST(req: Request) {
             conversationHistory,
             activeProblem,
             modelId,
-            userName
+            userName,
+            sessionLanguage
           );
           if (claudeRes.text) {
             return NextResponse.json({
@@ -215,7 +516,8 @@ export async function POST(req: Request) {
             conversationHistory,
             activeProblem,
             modelId,
-            userName
+            userName,
+            sessionLanguage
           );
           if (openaiRes.text) {
             return NextResponse.json({
@@ -306,7 +608,8 @@ export async function POST(req: Request) {
             conversationHistory,
             activeProblem,
             modelId,
-            userName
+            userName,
+            sessionLanguage
           );
 
           if (mistralResult.text) {
@@ -357,7 +660,8 @@ export async function POST(req: Request) {
           conversationHistory,
           activeProblem,
           modelId,
-          userName
+          userName,
+          sessionLanguage
         );
         
         if (geminiResult.text) {
@@ -411,7 +715,8 @@ export async function POST(req: Request) {
           conversationHistory,
           activeProblem,
           userName,
-          90000
+          90000,
+          sessionLanguage
         );
         if (platformRes.text) {
           return NextResponse.json({
@@ -458,32 +763,16 @@ async function callGeminiAPI(
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
   activeProblem?: ActiveProblemContext | null,
   modelId?: string,
-  userName?: string
+  userName?: string,
+  sessionLanguage: string = "Bahasa Indonesia"
 ): Promise<GeminiCallResult> {
-  const studentName = userName?.trim() || "Wakhid Pangestu";
-
-  let systemInstructionText = `Anda adalah ZAP (Zero Answer Policy), asisten kognitif dan tutor aljabar cerdas yang ditenagai langsung oleh model AI resmi Google Gemini (Google DeepMind).
-IDENTITAS SISWA:
-- Siswa yang sedang berbicara dengan Anda bernama: ${studentName}.
-- Jika siswa bertanya "aku siapa?" atau tentang identitasnya, sebutkan dengan ramah dan yakin bahwa dia adalah ${studentName}.
-IDENTITAS MODEL AI:
-- Anda adalah model nyata Google Gemini (Gemini 2.0 Flash / 1.5 Flash).
-- Jika siswa bertanya apakah Anda model real Gemini, konfirmasikan secara transparan bahwa ya, Anda adalah model resmi Google Gemini yang terhubung langsung via Google Cloud AI API ke platform ZAP.
-PRINSIP UTAMA (RUBRIK LOGICODIX 2026):
-1. ZERO-ANSWER POLICY: JANGAN PERNAH memberikan jawaban akhir langsung atau membocorkan hasil hitungan akhir kepada siswa. Bimbing siswa untuk menemukan solusinya sendiri.
-2. METODE SOKRATES & PEDAGOGIS: Bimbing siswa dengan pertanyaan reflektif, analogi intuitif (misal: model luas geometri untuk kuadrat suku dua), dan uji angka nyata (kontra-contoh).
-3. MEMORI PERCAKAPAN: Jaga konteks percakapan secara utuh. Ingat pertanyaan sebelumnya dan topik yang telah dibahas dalam sesi ini.
-4. FORMAT: Gunakan Markdown bersih dan notasi KaTeX ($...$ untuk inline, $$...$$ untuk baris formula).`;
-
-  if (activeProblem && activeProblem.steps && activeProblem.steps.length > 0) {
-    systemInstructionText += `\n\nKONTEKS CORETAN SISWA SAAT INI:
-- Langkah coretan siswa: ${activeProblem.steps.map((s, i) => `#${i + 1}: ${s}`).join(" -> ")}
-${activeProblem.faultLine ? `- Titik patah kesalahan logika terdeteksi di baris #${activeProblem.faultLine}` : ""}
-${activeProblem.misconceptionType ? `- Tipe miskonsepsi: ${activeProblem.misconceptionType}` : ""}
-${activeProblem.explanation ? `- Penjelasan galat: ${activeProblem.explanation}` : ""}
-${activeProblem.counterExample?.contradiction_statement ? `- Kontra-contoh aritmetika: ${activeProblem.counterExample.contradiction_statement}` : ""}
-Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentang kesalahannya atau bingung cara memperbaikinya.`;
-  }
+  const studentName = userName?.trim() || "Siswa";
+  const systemInstructionText = buildZAPSystemPrompt(
+    studentName,
+    activeProblem,
+    "Google Gemini 2.0 Flash",
+    sessionLanguage
+  );
 
   // 1. Konstruksi Riwayat Percakapan (Memory) Sesuai Spesifikasi Google Gemini API
   const contents: Array<{ role: "user" | "model"; parts: [{ text: string }] }> = [];
@@ -650,36 +939,21 @@ async function callMistralAPI(
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
   activeProblem?: ActiveProblemContext | null,
   modelId?: string,
-  userName?: string
+  userName?: string,
+  sessionLanguage: string = "Bahasa Indonesia"
 ): Promise<MistralCallResult> {
-  const studentName = userName?.trim() || "Wakhid Pangestu";
+  const studentName = userName?.trim() || "Siswa";
   const targetModel =
     modelId === "mistral-large-latest" || modelId === "mistral-large"
       ? "mistral-large-latest"
       : "codestral-latest";
 
-  let systemInstructionText = `Anda adalah ZAP (Zero Answer Policy), asisten kognitif dan tutor aljabar cerdas yang ditenagai langsung oleh model AI resmi Mistral AI (${targetModel.includes("codestral") ? "Codestral 22B" : "Mistral Large"}).
-IDENTITAS SISWA:
-- Siswa yang sedang berbicara dengan Anda bernama: ${studentName}.
-- Jika siswa bertanya "aku siapa?" atau tentang identitasnya, sebutkan dengan ramah dan yakin bahwa dia adalah ${studentName}.
-IDENTITAS MODEL AI:
-- Anda adalah model AI Mistral AI (${targetModel.includes("codestral") ? "Codestral 22B - Model Spesialis Kode & Logika Matematika 22B token" : "Mistral Large 2"}).
-- Jika siswa bertanya model apa ini, sebutkan secara transparan dan jelas bahwa Anda adalah ${targetModel.includes("codestral") ? "Codestral 22B" : "Mistral Large"} dari Mistral AI yang terhubung via Mistral Cloud API ke ZAP.
-PRINSIP UTAMA (RUBRIK LOGICODIX 2026):
-1. ZERO-ANSWER POLICY: JANGAN PERNAH memberikan jawaban akhir langsung atau membocorkan hasil hitungan akhir kepada siswa. Bimbing siswa untuk menemukan solusinya sendiri.
-2. METODE SOKRATES & PEDAGOGIS: Bimbing siswa dengan pertanyaan reflektif, analogi intuitif (misal: model luas geometri untuk kuadrat suku dua), dan uji angka nyata (kontra-contoh).
-3. MEMORI PERCAKAPAN: Jaga konteks percakapan secara utuh. Ingat pertanyaan sebelumnya dan topik yang telah dibahas dalam sesi ini.
-4. FORMAT: Gunakan Markdown bersih dan notasi KaTeX ($...$ untuk inline, $$...$$ untuk baris formula).`;
-
-  if (activeProblem && activeProblem.steps && activeProblem.steps.length > 0) {
-    systemInstructionText += `\n\nKONTEKS CORETAN SISWA SAAT INI:
-- Langkah coretan siswa: ${activeProblem.steps.map((s, i) => `#${i + 1}: ${s}`).join(" -> ")}
-${activeProblem.faultLine ? `- Titik patah kesalahan logika terdeteksi di baris #${activeProblem.faultLine}` : ""}
-${activeProblem.misconceptionType ? `- Tipe miskonsepsi: ${activeProblem.misconceptionType}` : ""}
-${activeProblem.explanation ? `- Penjelasan galat: ${activeProblem.explanation}` : ""}
-${activeProblem.counterExample?.contradiction_statement ? `- Kontra-contoh aritmetika: ${activeProblem.counterExample.contradiction_statement}` : ""}
-Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentang kesalahannya atau bingung cara memperbaikinya.`;
-  }
+  const systemInstructionText = buildZAPSystemPrompt(
+    studentName,
+    activeProblem,
+    targetModel.includes("codestral") ? "Mistral Codestral 22B" : "Mistral Large",
+    sessionLanguage
+  );
 
   const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
     { role: "system", content: systemInstructionText },
@@ -773,7 +1047,7 @@ async function callBazaarLinkAPI(
   modelId?: string,
   userName?: string
 ): Promise<BazaarLinkCallResult> {
-  const studentName = userName?.trim() || "Wakhid Pangestu";
+  const studentName = userName?.trim() || "Siswa";
 
   let targetModel = "auto:free";
   if (modelId === "bazaarlink-deepseek") {
@@ -784,28 +1058,11 @@ async function callBazaarLinkAPI(
     targetModel = "auto:free";
   }
 
-  let systemInstructionText = `Anda adalah ZAP (Zero Answer Policy), asisten kognitif dan tutor aljabar cerdas yang terhubung via BazaarLink AI Gateway (${targetModel}).
-IDENTITAS SISWA:
-- Siswa yang sedang berbicara dengan Anda bernama: ${studentName}.
-- Jika siswa bertanya "aku siapa?" atau tentang identitasnya, sebutkan dengan ramah dan yakin bahwa dia adalah ${studentName}.
-IDENTITAS MODEL AI:
-- Anda adalah model AI cerdas berkecepatan tinggi yang disediakan melalui gateway BazaarLink.
-- Berikan bimbingan ramah, cepat, dan berbasis pemahaman konseptual.
-PRINSIP UTAMA (RUBRIK LOGICODIX 2026):
-1. ZERO-ANSWER POLICY: JANGAN PERNAH memberikan jawaban akhir langsung atau membocorkan hasil hitungan akhir kepada siswa. Bimbing siswa untuk menemukan solusinya sendiri.
-2. METODE SOKRATES & PEDAGOGIS: Bimbing siswa dengan pertanyaan reflektif, analogi intuitif (misal: model luas geometri untuk kuadrat suku dua), dan uji angka nyata (kontra-contoh).
-3. MEMORI PERCAKAPAN: Jaga konteks percakapan secara utuh. Ingat pertanyaan sebelumnya dan topik yang telah dibahas dalam sesi ini.
-4. FORMAT: Gunakan Markdown bersih dan notasi KaTeX ($...$ untuk inline, $$...$$ untuk baris formula).`;
-
-  if (activeProblem && activeProblem.steps && activeProblem.steps.length > 0) {
-    systemInstructionText += `\n\nKONTEKS CORETAN SISWA SAAT INI:
-- Langkah coretan siswa: ${activeProblem.steps.map((s, i) => `#${i + 1}: ${s}`).join(" -> ")}
-${activeProblem.faultLine ? `- Titik patah kesalahan logika terdeteksi di baris #${activeProblem.faultLine}` : ""}
-${activeProblem.misconceptionType ? `- Tipe miskonsepsi: ${activeProblem.misconceptionType}` : ""}
-${activeProblem.explanation ? `- Penjelasan galat: ${activeProblem.explanation}` : ""}
-${activeProblem.counterExample?.contradiction_statement ? `- Kontra-contoh aritmetika: ${activeProblem.counterExample.contradiction_statement}` : ""}
-Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentang kesalahannya atau bingung cara memperbaikinya.`;
-  }
+  const systemInstructionText = buildZAPSystemPrompt(
+    studentName,
+    activeProblem,
+    `BazaarLink (${targetModel})`
+  );
 
   const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
     { role: "system", content: systemInstructionText },
@@ -890,34 +1147,21 @@ async function callClaudeAPI(
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
   activeProblem?: ActiveProblemContext | null,
   modelId?: string,
-  userName?: string
+  userName?: string,
+  sessionLanguage: string = "Bahasa Indonesia"
 ): Promise<UniversalCallResult> {
-  const studentName = userName?.trim() || "Wakhid Pangestu";
+  const studentName = userName?.trim() || "Siswa";
   const targetModel =
     modelId === "claude-3-7-sonnet"
       ? "claude-3-7-sonnet-20250219"
       : "claude-3-5-sonnet-20241022";
 
-  let systemInstructionText = `Anda adalah ZAP (Zero Answer Policy), asisten kognitif dan tutor aljabar cerdas yang ditenagai oleh model Anthropic Claude (${targetModel}).
-IDENTITAS SISWA:
-- Siswa yang sedang berbicara dengan Anda bernama: ${studentName}.
-- Jika siswa bertanya "aku siapa?" atau tentang identitasnya, sebutkan dengan ramah dan yakin bahwa dia adalah ${studentName}.
-IDENTITAS MODEL AI:
-- Anda adalah model resmi Anthropic Claude (${targetModel}).
-PRINSIP UTAMA (RUBRIK LOGICODIX 2026):
-1. ZERO-ANSWER POLICY: JANGAN PERNAH memberikan jawaban akhir langsung atau membocorkan hasil hitungan akhir kepada siswa. Bimbing siswa untuk menemukan solusinya sendiri.
-2. METODE SOKRATES & PEDAGOGIS: Bimbing siswa dengan pertanyaan reflektif, analogi intuitif, dan uji angka nyata (kontra-contoh).
-3. MEMORI PERCAKAPAN: Jaga konteks percakapan secara utuh.
-4. FORMAT: Gunakan Markdown bersih dan notasi KaTeX ($...$ untuk inline, $$...$$ untuk baris formula).`;
-
-  if (activeProblem && activeProblem.steps && activeProblem.steps.length > 0) {
-    systemInstructionText += `\n\nKONTEKS CORETAN SISWA SAAT INI:
-- Langkah coretan siswa: ${activeProblem.steps.map((s, i) => `#${i + 1}: ${s}`).join(" -> ")}
-${activeProblem.faultLine ? `- Titik patah kesalahan logika terdeteksi di baris #${activeProblem.faultLine}` : ""}
-${activeProblem.misconceptionType ? `- Tipe miskonsepsi: ${activeProblem.misconceptionType}` : ""}
-${activeProblem.explanation ? `- Penjelasan galat: ${activeProblem.explanation}` : ""}
-${activeProblem.counterExample?.contradiction_statement ? `- Kontra-contoh aritmetika: ${activeProblem.counterExample.contradiction_statement}` : ""}`;
-  }
+  const systemInstructionText = buildZAPSystemPrompt(
+    studentName,
+    activeProblem,
+    `Anthropic Claude (${targetModel})`,
+    sessionLanguage
+  );
 
   const messages: Array<{ role: "user" | "assistant"; content: string }> = [];
   if (conversationHistory && conversationHistory.length > 0) {
@@ -975,21 +1219,18 @@ async function callOpenAIAPI(
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
   activeProblem?: ActiveProblemContext | null,
   modelId?: string,
-  userName?: string
+  userName?: string,
+  sessionLanguage: string = "Bahasa Indonesia"
 ): Promise<UniversalCallResult> {
-  const studentName = userName?.trim() || "Wakhid Pangestu";
+  const studentName = userName?.trim() || "Siswa";
   const targetModel = modelId === "gpt-4o-mini" ? "gpt-4o-mini" : "gpt-4o";
 
-  let systemInstructionText = `Anda adalah ZAP (Zero Answer Policy), asisten kognitif dan tutor aljabar cerdas yang ditenagai oleh model OpenAI (${targetModel}).
-IDENTITAS SISWA:
-- Siswa yang sedang berbicara dengan Anda bernama: ${studentName}.
-PRINSIP UTAMA:
-1. ZERO-ANSWER POLICY: JANGAN PERNAH memberikan jawaban akhir langsung atau hasil kalkulasi akhir kepada siswa.
-2. Bimbing dengan pertanyaan Sokrates dan format Markdown KaTeX ($...$).`;
-
-  if (activeProblem && activeProblem.steps && activeProblem.steps.length > 0) {
-    systemInstructionText += `\n\nKONTEKS CORETAN SISWA: ${activeProblem.steps.join(" -> ")}`;
-  }
+  const systemInstructionText = buildZAPSystemPrompt(
+    studentName,
+    activeProblem,
+    `OpenAI (${targetModel})`,
+    sessionLanguage
+  );
 
   const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
     { role: "system", content: systemInstructionText },
@@ -1049,14 +1290,20 @@ async function callCustomOpenAIAPI(
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
   activeProblem?: ActiveProblemContext | null,
   userName?: string,
-  timeoutMs: number = 12000
+  timeoutMs: number = 12000,
+  sessionLanguage: string = "Bahasa Indonesia"
 ): Promise<UniversalCallResult> {
-  const studentName = userName?.trim() || "Wakhid Pangestu";
+  const studentName = userName?.trim() || "Siswa";
   const cleanBase = (baseUrl || "http://localhost:11434/v1").replace(/\/+$/, "");
   const targetUrl = cleanBase.endsWith("/chat/completions") ? cleanBase : `${cleanBase}/chat/completions`;
   const targetModel = modelName?.trim() || "default";
 
-  const systemInstructionText = `Anda adalah ZAP (Zero Answer Policy), asisten kognitif aljabar untuk siswa ${studentName}. JANGAN berikan jawaban akhir aljabar secara langsung. Bimbing dengan pertanyaan Sokrates.`;
+  const systemInstructionText = buildZAPSystemPrompt(
+    studentName,
+    activeProblem,
+    targetModel,
+    sessionLanguage
+  );
 
   const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
     { role: "system", content: systemInstructionText },
@@ -1082,17 +1329,24 @@ async function callCustomOpenAIAPI(
       body: JSON.stringify({
         model: targetModel,
         messages,
-        temperature: 0.7,
-        max_tokens: 800,
+        temperature: 0.6,
+        max_tokens: 3000,
       }),
       signal: AbortSignal.timeout(timeoutMs),
     });
 
     if (res.ok) {
       const data = await res.json();
-      const text = data?.choices?.[0]?.message?.content;
-      if (text) {
-        return { text, modelUsed: `Custom (${targetModel})` };
+      const choice = data?.choices?.[0];
+      const msg = choice?.message;
+      let text = msg?.content;
+      if (!text && msg?.reasoning_content) {
+        text = cleanModelResponse(msg.reasoning_content);
+      } else if (text) {
+        text = cleanModelResponse(text);
+      }
+      if (text && !text.endsWith("Let's draft:") && text.length > 20) {
+        return { text, modelUsed: targetModel };
       }
     }
 
@@ -1116,6 +1370,62 @@ function generateSocraticFallbackResponse(
   activeProblem?: ActiveProblemContext | null
 ): string {
   const lower = message.toLowerCase().trim();
+
+  // 0. PERMINTAAN VISUALISASI / RUMUS GEOMETRI (BALOK, KUBUS, TABUNG)
+  if (lower.includes("balok")) {
+    return `Halo! Berikut adalah rumus-rumus penting untuk bangun ruang **Balok** (prisma segiempat):
+
+Misalkan ukuran rusuk balok adalah:
+- Panjang = $p$
+- Lebar = $l$
+- Tinggi = $t$
+
+---
+
+### 1. Volume Balok ($V$)
+Menghitung seberapa banyak ruang isi di dalam balok:
+$$ V = p \\times l \\times t $$
+
+### 2. Luas Permukaan Balok ($L$)
+Jumlah total luas dari ke-6 bidang sisi persegi panjangnya:
+$$ L = 2(pl + pt + lt) $$
+
+### 3. Panjang Diagonal Ruang ($d$)
+Garis lurus terjauh yang menghubungkan dua sudut berlawanan melintasi ruang balok:
+$$ d = \\sqrt{p^2 + l^2 + t^2} $$
+
+### 4. Keliling Rangka / Total Panjang Rusuk ($K$)
+Panjang total kawat yang dibutuhkan untuk membentuk kerangka balok:
+$$ K = 4(p + l + t) $$
+
+---
+Apakah kamu ingin memvisualisasikan model Balok 3D di Papan Tulis Pintar, atau ada soal latihan balok yang ingin kamu selesaikan bersama?`;
+  }
+
+  const isGeometryRequest =
+    /\b(kubus|cube|balok|tabung|cylinder|silinder|kerucut|cone|bola|sphere|prisma|limas|parabola|pelana)\b/i.test(lower) &&
+    /\b(buatkan|buat|bikin|tampilkan|gambarkan|gambar|visualisasikan|render|3d|ukuran|sisi|rusuk|panjang|jari-jari|rumus)\b/i.test(lower);
+
+  if (isGeometryRequest) {
+    if (lower.includes("kubus") || lower.includes("cube")) {
+      const numMatch = lower.match(/(\d+(?:[.,]\d+)?)\s*(?:cm|m|mm)?/);
+      const s = numMatch ? parseFloat(numMatch[1].replace(",", ".")) : 10;
+      const vol = Math.pow(s, 3);
+      const lp = 6 * Math.pow(s, 2);
+      const dr = (s * Math.sqrt(3)).toFixed(2);
+      return `Halo! Berikut adalah sifat matematis dan rumus geometri ruang untuk **Kubus** (panjang sisi $s = ${s}\\text{ cm}$):
+
+- **Panjang Sisi ($s$):** $${s}\\text{ cm}$
+- **Luas Permukaan ($L$):** $6 \\times s^2 = 6 \\times (${s})^2 = ${lp}\\text{ cm}^2$
+- **Volume ($V$):** $s^3 = (${s})^3 = ${vol}\\text{ cm}^3$
+- **Diagonal Ruang ($d_r$):** $s\\sqrt{3} \\approx ${dr}\\text{ cm}$
+
+Silakan berinteraksi dengan kanvas 3D di samping atau ketik *"buatkan 3d cube"* jika ingin melihat visualisasi ruangnya!`;
+    }
+    if (lower.includes("tabung") || lower.includes("cylinder") || lower.includes("silinder")) {
+      return `Tentu! Model **Tabung Silinder 3D** memiliki rumus volume $V = \\pi r^2 t$ dan luas selimut $L_s = 2\\pi r t$. Ketik *"buatkan tabung r=7 t=12"* untuk melihat simulasi 3D di Papan Tulis Pintar!`;
+    }
+  }
 
   // 1. DEFINISI & KONSEP ALJABAR
   const isAskingAlgebraDefinition =

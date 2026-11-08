@@ -1,151 +1,271 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import GoogleAuthButton, { type ZAPUser } from "@/components/GoogleAuthButton";
+import ZapLogo from "@/components/ZapLogo";
 import {
-  Zap,
   ArrowRight,
-  Lock,
   ChevronLeft,
   CheckCircle2,
+  GraduationCap,
+  LogOut,
+  Sparkles,
+  ShieldCheck,
+  User as UserIcon,
 } from "lucide-react";
-
-// Minimalist Z Logo
-function ZLogo({ className = "w-6 h-6" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-      <rect width="24" height="24" rx="6" fill="url(#z-login-grad)" />
-      <path
-        d="M6.5 7.5H17.5L8.5 16.5H17.5"
-        stroke="white"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <defs>
-        <linearGradient id="z-login-grad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#2563eb" />
-          <stop offset="50%" stopColor="#4f46e5" />
-          <stop offset="100%" stopColor="#7c3aed" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
 
 export default function LoginPage() {
   const router = useRouter();
-  const [, setUser] = useState<ZAPUser | null>(null);
+
+  const [existingUser, setExistingUser] = useState<ZAPUser | null>(null);
+  const [studentName, setStudentName] = useState("");
+  const [studentRole, setStudentRole] = useState<"siswa" | "mahasiswa" | "pendidik">("siswa");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Periksa apakah user sudah login di localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("zap_authenticated_user");
+      if (saved) {
+        try {
+          const parsed: ZAPUser = JSON.parse(saved);
+          if (parsed && parsed.name) {
+            setExistingUser(parsed);
+          }
+        } catch (e) {
+          console.warn("User parse error:", e);
+        }
+      }
+    }
+  }, []);
 
   const handleUserChange = (u: ZAPUser | null) => {
-    setUser(u);
     if (u) {
-      // Auto redirect ke studio chat setelah login berhasil
-      setTimeout(() => {
+      setExistingUser(u);
+      if (typeof window !== "undefined") {
+        window.location.href = "/chat";
+      } else {
         router.push("/chat");
-      }, 1000);
+      }
+    }
+  };
+
+  const handleSwitchAccount = () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("zap_authenticated_user");
+    }
+    setExistingUser(null);
+  };
+
+  const handleDirectStudentLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    const finalName = studentName.trim() || "Siswa Tamu";
+    const newUser: ZAPUser = {
+      id: "usr_" + Date.now().toString(36),
+      name: finalName,
+      email: `${finalName.toLowerCase().replace(/[^a-z0-9]/g, ".")}@student.zap`,
+      provider: "zap",
+      tier: "standard",
+      role: studentRole,
+      jenjang: "sma",
+    };
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("zap_authenticated_user", JSON.stringify(newUser));
+      window.location.href = "/chat";
+    } else {
+      router.push("/chat");
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#080a0f] text-slate-100 flex flex-col justify-between font-sans selection:bg-blue-600 selection:text-white relative overflow-hidden">
-      {/* Ambient background glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-blue-600/10 blur-[130px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-10 left-10 w-[300px] h-[300px] bg-indigo-600/10 blur-[100px] rounded-full pointer-events-none" />
+    <div className="h-[100dvh] max-h-[100dvh] flex flex-col justify-between bg-[#090a0f] text-zinc-100 font-sans selection:bg-blue-600 selection:text-white relative overflow-hidden">
+      {/* Background radial atmosphere */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[260px] bg-blue-500/[0.04] blur-[120px] pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(#ffffff05_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
 
-      {/* Top Navigation */}
-      <header className="h-16 px-6 sm:px-12 flex items-center justify-between border-b border-white/[0.06] relative z-10">
-        <Link href="/" className="flex items-center gap-2.5 hover:opacity-90 transition group">
-          <ZLogo className="w-8 h-8 group-hover:scale-105 transition-transform" />
-          <span className="font-bold text-base tracking-wider text-white">ZAP</span>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30 font-mono">
-            chatzap.xyz
+      {/* Top Header (Compact & Crisp) */}
+      <header className="h-12 sm:h-14 px-4 sm:px-8 flex items-center justify-between border-b border-white/[0.06] relative z-10 backdrop-blur-md flex-shrink-0">
+        <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition group">
+          <ZapLogo className="w-4 h-4 sm:w-5 sm:h-5 text-white transition-transform group-hover:scale-105" />
+          <span className="font-bold text-xs sm:text-sm tracking-tight text-white">ChatZAP</span>
+          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded-full bg-white/[0.06] text-zinc-400 border border-white/[0.08] hidden sm:inline-block">
+            Socratic CAS
           </span>
         </Link>
 
         <Link
           href="/"
-          className="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition"
+          className="text-[11px] sm:text-xs text-zinc-400 hover:text-white flex items-center gap-1 transition py-1 px-2.5 rounded-lg hover:bg-white/[0.05]"
         >
-          <ChevronLeft className="w-4 h-4" />
-          <span>Kembali ke Beranda</span>
+          <ChevronLeft className="w-3.5 h-3.5" />
+          <span>Kembali</span>
         </Link>
       </header>
 
-      {/* Main Login Card */}
-      <main className="flex-1 flex items-center justify-center p-4 relative z-10">
-        <div className="w-full max-w-md bg-[#0f121a]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
-          {/* Header */}
-          <div className="text-center space-y-2">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-blue-600/10 border border-blue-500/20 mb-2">
-              <ZLogo className="w-7 h-7" />
+      {/* Main Login Area (Zero-Scroll Single Viewport) */}
+      <main className="flex-1 flex items-center justify-center p-3 sm:p-4 min-h-0 relative z-10">
+        <div className="w-full max-w-[360px] sm:max-w-[390px] bg-[#121317] border border-white/[0.08] rounded-2xl p-4 sm:p-6 shadow-2xl relative space-y-4">
+          {/* Header Card (Compact) */}
+          <div className="text-center space-y-1">
+            <div className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mx-auto shadow-inner mb-2">
+              <ZapLogo className="w-5 h-5 text-white" />
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-              Masuk ke ZAP
+            <h1 className="text-base sm:text-lg font-semibold tracking-tight text-white">
+              Masuk ke ChatZAP
             </h1>
-            <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
-              Platform penalaran matematika Sokratik tanpa pembocoran jawaban akhir untuk siswa, guru, dan dosen.
+            <p className="text-[11px] text-zinc-400 max-w-[280px] mx-auto leading-tight text-pretty">
+              Bimbingan aljabar Sokratik bertenaga SymPy CAS tanpa membocorkan kunci jawaban.
             </p>
           </div>
 
-          {/* Auto-Provisioning Notification Banner */}
-          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-950/60 to-indigo-950/40 border border-blue-500/20 space-y-1.5 text-xs">
-            <div className="flex items-center gap-1.5 text-blue-300 font-semibold text-[11px]">
-              <Zap className="w-3.5 h-3.5 text-blue-400" />
-              <span>Gemini Platform (Tanpa Ribet API Key)</span>
-            </div>
-            <p className="text-[10px] text-slate-300 leading-normal">
-              Saat kamu login via Google, backend ZAP otomatis mengaktifkan integrasi <strong>Google Gemini AI</strong> dari server pool. Kamu tidak perlu menyalin atau membuat API key manual.
-            </p>
-          </div>
+          {/* KONDISI 1: User Sudah Memiliki Sesi Aktif */}
+          {existingUser ? (
+            <div className="space-y-3 pt-1">
+              <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.08] flex items-center gap-3">
+                {existingUser.avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={existingUser.avatar}
+                    alt={existingUser.name}
+                    className="w-9 h-9 rounded-full object-cover ring-2 ring-emerald-500/40 flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center flex-shrink-0">
+                    {existingUser.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1 text-left">
+                  <div className="flex items-center gap-1">
+                    <span className="font-semibold text-xs text-white truncate">
+                      {existingUser.name}
+                    </span>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                  </div>
+                  <div className="text-[10px] text-zinc-400 truncate">
+                    {existingUser.email}
+                  </div>
+                  <div className="text-[9px] font-mono text-zinc-300 uppercase">
+                    {existingUser.role || "Siswa"} • {existingUser.jenjang || "SMA"}
+                  </div>
+                </div>
+              </div>
 
-          {/* Google Login Action */}
-          <div className="space-y-3 pt-1">
-            <div className="flex justify-center">
-              <GoogleAuthButton onUserChange={handleUserChange} />
-            </div>
+              <div className="space-y-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.location.href = "/chat";
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs flex items-center justify-center gap-1.5 transition active:scale-[0.98] shadow-sm shadow-blue-900/30 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Lanjutkan ke ChatZAP Studio</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
 
-            <div className="relative flex py-2 items-center">
-              <div className="flex-grow border-t border-white/[0.06]"></div>
-              <span className="flex-shrink mx-3 text-[10px] uppercase font-mono tracking-widest text-slate-500">
-                Atau
-              </span>
-              <div className="flex-grow border-t border-white/[0.06]"></div>
+                <button
+                  type="button"
+                  onClick={handleSwitchAccount}
+                  className="w-full py-1.5 px-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] text-zinc-400 hover:text-zinc-200 text-xs font-medium flex items-center justify-center gap-1 transition cursor-pointer"
+                >
+                  <LogOut className="w-3 h-3" />
+                  <span>Ganti Akun</span>
+                </button>
+              </div>
             </div>
+          ) : (
+            /* KONDISI 2: Form Login Normal (1 Tombol Google + Opsi Tamu Cepat) */
+            <div className="space-y-3.5">
+              {/* Opsi Utama: Google Sign-In (1 Single Button dengan Popup Akun Resmi) */}
+              <div className="space-y-1.5">
+                <div className="text-[9px] font-mono uppercase tracking-wider text-zinc-300 text-center font-medium">
+                  Masuk dengan Akun Google
+                </div>
+                {/* 
+                  GoogleAuthButton secara eksklusif merender 1 tombol resmi 
+                  yang memicu popup Google Account Chooser.
+                */}
+                <GoogleAuthButton onUserChange={handleUserChange} />
+              </div>
 
-            {/* Guest / Direct Student Access */}
-            <Link
-              href="/chat"
-              className="w-full py-2.5 px-4 rounded-xl bg-[#171b26] hover:bg-[#202534] border border-white/[0.08] text-slate-200 hover:text-white font-medium text-xs flex items-center justify-center gap-2 transition"
-            >
-              <span>Lanjut Mode Tamu / Siswa Bebas</span>
-              <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-            </Link>
-          </div>
+              {/* Divider Pemisah Halus */}
+              <div className="relative flex py-0.5 items-center">
+                <div className="flex-grow border-t border-white/[0.08]" />
+                <span className="flex-shrink mx-2.5 text-[9px] uppercase font-mono tracking-widest text-zinc-300">
+                  atau coba mode tamu
+                </span>
+                <div className="flex-grow border-t border-white/[0.08]" />
+              </div>
 
-          {/* Invariants / Security Highlights */}
-          <div className="pt-4 border-t border-white/[0.06] space-y-2 text-[11px] text-slate-400">
-            <div className="flex items-start gap-2">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />
-              <span><strong>Zero-Answer Policy:</strong> AI membantu logika nalar, manusia yang menghitung.</span>
+              {/* Form Masuk Cepat / Tamu Mandiri */}
+              <form onSubmit={handleDirectStudentLogin} className="space-y-2.5">
+                <div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={studentName}
+                      onChange={(e) => setStudentName(e.target.value)}
+                      placeholder="Nama kamu (misal: Budi / Siti)"
+                      className="w-full bg-[#17181d] border border-white/[0.08] focus:border-blue-500/80 focus:ring-1 focus:ring-blue-500/30 rounded-xl px-3 py-2 text-xs text-zinc-100 placeholder-zinc-400 transition outline-none"
+                    />
+                    <UserIcon className="w-3.5 h-3.5 text-zinc-400 absolute right-3 top-2.5 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Peran Segmented Toggle */}
+                <div className="grid grid-cols-3 gap-1 p-0.5 bg-[#17181d] border border-white/[0.06] rounded-xl">
+                  {[
+                    { id: "siswa", label: "Siswa" },
+                    { id: "mahasiswa", label: "Mahasiswa" },
+                    { id: "pendidik", label: "Pendidik" },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setStudentRole(item.id as "siswa" | "mahasiswa" | "pendidik")}
+                      className={`py-1 text-[11px] font-medium rounded-lg transition-all text-center select-none ${
+                        studentRole === item.id
+                          ? "bg-white/10 text-white shadow-sm border border-white/15"
+                          : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.02]"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Tombol Submit Tamu */}
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs flex items-center justify-center gap-1.5 transition active:scale-[0.98] cursor-pointer shadow-sm shadow-blue-900/30 disabled:opacity-60"
+                >
+                  <GraduationCap className="w-3.5 h-3.5" />
+                  <span>{isSubmitting ? "Menyiapkan Sesi..." : "Mulai Sesi Tamu"}</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </form>
             </div>
-            <div className="flex items-start gap-2">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />
-              <span><strong>Papan Tulis 3D:</strong> Kanvas spasial interaktif untuk aljabar dan irisan kerucut.</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <Lock className="w-3.5 h-3.5 text-blue-400 flex-shrink-0 mt-0.5" />
-              <span><strong>Privasi Terenkripsi:</strong> Chat terenkripsi AES-256-GCM saat tersimpan, dengan integritas SHA-256.</span>
-            </div>
+          )}
+
+          {/* Jaminan Sistem & Kebijakan Nol Jawaban (Trust Footer) */}
+          <div className="pt-2 border-t border-white/[0.06] flex items-center justify-center gap-1.5 text-[10px] text-zinc-400">
+            <ShieldCheck className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+            <span className="truncate">
+              Zero-Answer Policy • CAS SymPy • Privasi Lokal
+            </span>
           </div>
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="h-14 px-6 text-center flex items-center justify-center text-[10px] text-slate-500 border-t border-white/[0.06] relative z-10">
-        <span>© 2026 ZAP (Zero Answer Policy) • Logicodix 2026 Hackathon • chatzap.xyz</span>
+      {/* Footer Minimalis */}
+      <footer className="h-9 sm:h-10 px-4 text-center flex items-center justify-center text-[10px] text-zinc-400 border-t border-white/[0.06] relative z-10 backdrop-blur-md flex-shrink-0">
+        <span>© 2026 ChatZAP • Logicodix 2026 Hackathon • Zero Answer Policy</span>
       </footer>
     </div>
   );

@@ -2,531 +2,606 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import ZapLogo from "@/components/ZapLogo";
 import {
-  ShieldCheck,
-  Zap,
-  Sparkles,
-  ArrowRight,
-  Lock,
-  Box,
-  Cpu,
-  CheckCircle2,
-  Code2,
-  Globe,
-  ChevronRight,
-  Database,
-  Server,
-} from "lucide-react";
-
-// Minimalist Z Logo
-function ZLogo({ className = "w-6 h-6" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-      <rect width="24" height="24" rx="6" fill="url(#z-hero-grad)" />
-      <path
-        d="M6.5 7.5H17.5L8.5 16.5H17.5"
-        stroke="white"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <defs>
-        <linearGradient id="z-hero-grad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#2563eb" />
-          <stop offset="50%" stopColor="#4f46e5" />
-          <stop offset="100%" stopColor="#7c3aed" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
+  GeminiLogo,
+  OpenAILogo,
+  ClaudeLogo,
+  DeepSeekLogo,
+  NvidiaLogo,
+  SymPyLogo,
+} from "@/components/CompanyLogos";
+import { ArrowRight } from "lucide-react";
+import {
+  ZeroAnswerEmblem,
+  SymPyCasEmblem,
+  SmartboardSpatialEmblem,
+  ScratchpadPenEmblem,
+  SocraticDialogueEmblem,
+  LocalEnclaveEmblem,
+  SovereignAuditEmblem,
+} from "@/components/PlatformIcons";
 
 export default function LandingPage() {
-  const [activeAudienceTab, setActiveAudienceTab] = useState<"siswa" | "mahasiswa" | "pendidik">("siswa");
+  const [activeTab, setActiveTab] = useState<"siswa" | "mahasiswa" | "pendidik">("siswa");
 
   return (
-    <div className="min-h-screen bg-[#07090e] text-slate-100 font-sans selection:bg-blue-600 selection:text-white relative overflow-x-hidden">
-      {/* Ambient background glows */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[450px] bg-blue-600/12 blur-[140px] rounded-full pointer-events-none" />
-      <div className="absolute top-[800px] right-0 w-[500px] h-[500px] bg-indigo-600/10 blur-[130px] rounded-full pointer-events-none" />
-      <div className="absolute top-[1800px] left-0 w-[500px] h-[500px] bg-cyan-600/10 blur-[140px] rounded-full pointer-events-none" />
-
-      {/* 1. TOP NAVBAR */}
-      <nav className="h-16 px-6 sm:px-12 flex items-center justify-between border-b border-white/[0.07] bg-[#07090e]/80 backdrop-blur-xl sticky top-0 z-50">
+    <div className="min-h-screen bg-[#030305] text-zinc-100 font-sans selection:bg-blue-600 selection:text-white relative overflow-x-hidden">
+      {/* 1. MINIMALIST TOP NAVBAR */}
+      <nav className="h-16 px-6 sm:px-12 flex items-center justify-between border-b border-white/[0.06] bg-[#030305]/80 backdrop-blur-md sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-2.5 hover:opacity-90 transition group">
-            <ZLogo className="w-8 h-8 group-hover:scale-105 transition-transform" />
-            <div className="flex items-center gap-1.5">
-              <span className="font-bold text-base tracking-wider text-white">ZAP</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30 font-mono">
-                chatzap.xyz
+          <Link href="/" className="flex items-center gap-2.5 transition group">
+            <ZapLogo className="w-7 h-7 text-white group-hover:scale-105 transition-transform" />
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm tracking-wide text-white">ChatZAP</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.06] text-zinc-400 border border-white/[0.08]">
+                v2.4
               </span>
             </div>
           </Link>
         </div>
 
         {/* Center Nav Links */}
-        <div className="hidden md:flex items-center gap-6 text-xs text-slate-400 font-medium">
-          <a href="#visi" className="hover:text-white transition">Visi Zero-Answer</a>
-          <a href="#fitur" className="hover:text-white transition">Fitur 3D & CAS</a>
-          <a href="#jenjang" className="hover:text-white transition">SD hingga S3</a>
-          <Link href="/connector" className="hover:text-white transition text-blue-300 font-semibold">Plugin Connector Hub</Link>
-          <a href="#privasi" className="hover:text-white transition">Keamanan & Privasi</a>
+        <div className="hidden md:flex items-center gap-7 text-xs text-zinc-400 font-medium">
+          <a href="#arsitektur" className="hover:text-white transition">Arsitektur</a>
+          <a href="#metrik" className="hover:text-white transition">Metrik CAS</a>
+          <a href="#fitur" className="hover:text-white transition">Pilar ZAP</a>
+          <a href="#jenjang" className="hover:text-white transition">Jenjang</a>
+          <Link href="/connector" className="hover:text-white transition text-zinc-300">
+            Connector Hub
+          </Link>
         </div>
 
         {/* Action CTAs */}
         <div className="flex items-center gap-3">
           <Link
             href="/login"
-            className="text-xs text-slate-300 hover:text-white px-3.5 py-1.5 rounded-xl border border-white/[0.1] hover:bg-white/[0.05] transition"
+            className="text-xs text-zinc-400 hover:text-white px-3.5 py-1.5 transition"
           >
-            Login Google
+            Masuk Akun
           </Link>
           <Link
             href="/chat"
-            className="text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl shadow-lg shadow-blue-600/20 transition flex items-center gap-1.5 active:scale-95"
+            className="text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
           >
-            <span>Buka Studio ZAP</span>
+            <span>Buka Studio</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
       </nav>
 
       {/* 2. HERO SECTION */}
-      <section className="pt-20 pb-20 px-6 sm:px-12 max-w-6xl mx-auto text-center space-y-8 relative z-10">
-        {/* Pill Badge */}
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-950/60 border border-blue-500/30 text-blue-300 text-xs font-mono shadow-sm">
-          <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          <span>Logicodix 2026 Hackathon • Zero Answer Policy Certified</span>
-        </div>
-
-        {/* Title */}
-        <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white max-w-4xl mx-auto leading-[1.15]">
-          Bukan AI Pemberi Jawaban. <br />
-          <span className="bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
-            Mesin Pengasah Nalar Matematika.
-          </span>
+      <section className="pt-24 pb-20 px-6 sm:px-12 max-w-5xl mx-auto text-center space-y-7 relative z-10">
+        {/* Main Headline */}
+        <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight text-white max-w-4xl mx-auto leading-[1.08]">
+          Bukan AI pemberi kunci. <br />
+          Mesin pengasah nalar sejati.
         </h1>
 
         {/* Subtitle */}
-        <p className="text-sm sm:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
-          ZAP menghentikan budaya <em>copy-paste</em> contekan AI. Siswa dituntun menemukan logikanya sendiri melalui dialog Sokrates, verifikasi aljabar deterministik <strong>SymPy CAS</strong>, dan visualisasi spasial <strong>Kanvas 3D interaktif</strong>.
+        <p className="text-sm sm:text-base text-zinc-400 max-w-xl mx-auto leading-relaxed text-pretty">
+          ZAP menghentikan ketergantungan contek instan. Setiap baris aljabar siswa diverifikasi secara deterministik oleh SymPy CAS, lalu dibimbing menemukan logikanya sendiri melalui dialog Sokrates.
         </p>
 
-        {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-2">
+        {/* Hero CTA Buttons */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
           <Link
             href="/chat"
-            className="w-full sm:w-auto px-7 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm shadow-xl shadow-blue-600/25 flex items-center justify-center gap-2 transition active:scale-95"
+            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs shadow-sm flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer"
           >
-            <Sparkles className="w-4 h-4" />
-            <span>Mulai Sesi Belajar Bebas</span>
-            <ArrowRight className="w-4 h-4" />
+            <span>Mulai Sesi Pembuktian</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </Link>
-
-          <Link
-            href="/login"
-            className="w-full sm:w-auto px-7 py-3 rounded-2xl bg-[#121622] hover:bg-[#1a2030] border border-white/[0.1] text-slate-200 hover:text-white font-medium text-sm flex items-center justify-center gap-2 transition"
+          <a
+            href="#arsitektur"
+            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.1] text-zinc-300 hover:text-white font-medium text-xs flex items-center justify-center gap-1.5 transition"
           >
-            <Zap className="w-4 h-4 text-blue-400" />
-            <span>Login Google (Langsung Pakai)</span>
-          </Link>
+            <span>Pelajari Zero-Answer</span>
+          </a>
         </div>
 
-        {/* Live Interactive Simulation Preview Card */}
-        <div className="pt-10 max-w-5xl mx-auto">
-          <div className="rounded-3xl bg-[#0f121a]/90 border border-white/[0.1] p-4 sm:p-6 shadow-2xl backdrop-blur-xl text-left grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-            {/* Left: Chat & Reasoning Flow */}
-            <div className="lg:col-span-7 space-y-3.5">
-              <div className="flex items-center justify-between pb-2 border-b border-white/[0.08] text-[11px] font-mono text-slate-400">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>STUDIO ZAP LIVE INTERFACE</span>
-                </span>
-                <span className="text-blue-400">Zero Answer Enforced</span>
+        {/* 3. PRODUCT PREVIEW FLOATING UI MOCKUP (Centaur Inspired) */}
+        <div className="pt-10 max-w-3xl mx-auto">
+          <div className="rounded-2xl bg-[#0a0c12] border border-white/[0.08] p-5 sm:p-6 shadow-2xl text-left space-y-4">
+            {/* Top Mockup Header Bar */}
+            <div className="flex items-center justify-between pb-3 border-b border-white/[0.06] text-xs font-mono text-zinc-400">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span className="text-zinc-300 font-medium">ZAP Socratic Scratchpad</span>
               </div>
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                Zero-Answer Policy Enforced
+              </span>
+            </div>
 
-              {/* Student Step */}
-              <div className="p-3 rounded-xl bg-[#171b26] border border-white/[0.06] space-y-1">
-                <span className="text-[10px] font-mono text-slate-400">LANGKAH CORETAN SISWA:</span>
-                <div className="text-xs font-mono text-slate-200">
-                  #1 (x + 3)^2 - 4 <br />
-                  #2 x^2 + 9 - 4
+            {/* Split Content: Scratchpad Steps & Verification Result */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+              {/* Left Column: Derivation Steps */}
+              <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-2">
+                <div className="text-[11px] text-zinc-500 uppercase tracking-wider font-semibold">
+                  Coretan Baris Siswa:
+                </div>
+                <div className="space-y-1.5 text-zinc-300">
+                  <div className="flex items-center justify-between">
+                    <span>#1 (x + 3)² - 4 = 0</span>
+                    <span className="text-[10px] text-emerald-400 font-sans">✓ Basis</span>
+                  </div>
+                  <div className="flex items-center justify-between text-amber-300">
+                    <span>#2 x² + 9 - 4 = 0</span>
+                    <span className="text-[10px] text-amber-400 font-sans font-medium">⚠️ Galat Baris</span>
+                  </div>
+                  <div className="flex items-center justify-between text-zinc-500">
+                    <span>#3 x² + 5 = 0</span>
+                    <span className="text-[10px] text-zinc-600 font-sans">Tertahan</span>
+                  </div>
                 </div>
               </div>
 
-              {/* ZAP Diagnostic Socratic Bubble */}
-              <div className="p-3.5 rounded-xl bg-blue-950/40 border border-blue-500/30 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold text-blue-300 flex items-center gap-1.5">
-                    <ZLogo className="w-4 h-4" />
-                    <span>ZAP Socratic Diagnostic</span>
-                  </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono border border-amber-500/30">
-                    Galat di Baris #2
-                  </span>
+              {/* Right Column: Deterministic CAS & Socratic Counter-Example */}
+              <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-2">
+                <div className="text-[11px] text-zinc-500 uppercase tracking-wider font-semibold">
+                  Diagnostik SymPy CAS (0ms):
                 </div>
-                <p className="text-xs text-slate-200 leading-relaxed">
-                  Perhatikan ekspansi kuadrat suku dua $(x+3)^2$ pada barismu. Apakah $(a+b)^2$ sama dengan $a^2 + b^2$?
-                </p>
-                <div className="p-2 rounded-lg bg-black/40 border border-white/[0.06] text-[11px] font-mono text-slate-300">
-                  <span className="text-amber-400">Uji Angka Nyata:</span> Jika $x = 1$, ruas kiri bernilai $(1+3)^2 - 4 = 12$, namun ruas kananmu bernilai $1^2 + 9 - 4 = 6$. Di manakah suku silang $2ab$ berada?
+                <div className="text-zinc-300 space-y-1.5 font-sans leading-relaxed text-xs">
+                  <div className="text-amber-300 font-medium flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                    <span>Miskonsepsi Polinomial Kuadrat</span>
+                  </div>
+                  <p className="text-zinc-400 text-[11px]">
+                    Jika x = 1, ruas kiri bernilai (1+3)² - 4 = 12. Namun ruas kanan baris #2 bernilai 1² + 9 - 4 = 6.
+                  </p>
+                  <p className="text-blue-300 text-[11px] font-medium pt-0.5">
+                    💬 &quot;Apakah (a + b)² sama dengan a² + b²? Ke mana suku silang 2ab?&quot;
+                  </p>
                 </div>
               </div>
             </div>
+          </div>
+        </div>
 
-            {/* Right: 3D Virtual Whiteboard Preview */}
-            <div className="lg:col-span-5 rounded-2xl bg-[#090b10] border border-white/[0.08] p-4 text-center space-y-3 flex flex-col justify-center items-center min-h-[260px]">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600/30 to-purple-600/30 border border-blue-400/30 flex items-center justify-center shadow-lg">
-                <Box className="w-8 h-8 text-blue-400 animate-bounce" />
-              </div>
-              <div className="space-y-1">
-                <h4 className="text-xs font-semibold text-white">Kanvas 3D Interaktif Kanan</h4>
-                <p className="text-[11px] text-slate-400 max-w-xs">
-                  Memodelkan pergeseran parabola $y = (x+3)^2 - 4$ vs grafik keliru $y = x^2 + 5$ sebagai papan tulis visual ruang.
-                </p>
-              </div>
-              <Link
-                href="/chat"
-                className="text-[11px] text-blue-400 hover:text-blue-300 inline-flex items-center gap-1 font-medium pt-1"
-              >
-                <span>Buka Kanvas 3D Sekarang</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Link>
+        {/* Brand Logos Strip */}
+        <div className="pt-12 text-center space-y-4">
+          <span className="text-[11px] font-mono uppercase tracking-widest text-zinc-500 block">
+            Diverifikasi oleh SymPy CAS • Kompatibel dengan Model Terkemuka Dunia:
+          </span>
+          <div className="flex flex-wrap items-center justify-center gap-7 opacity-70 hover:opacity-100 transition">
+            <div className="flex items-center gap-1.5 text-xs text-zinc-300">
+              <SymPyLogo className="w-4 h-4" />
+              <span>SymPy CAS</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-zinc-300">
+              <GeminiLogo className="w-4 h-4" />
+              <span>Google DeepMind</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-zinc-300">
+              <OpenAILogo className="w-4 h-4 text-emerald-400" />
+              <span>OpenAI</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-zinc-300">
+              <ClaudeLogo className="w-4 h-4 text-amber-500" />
+              <span>Anthropic</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-zinc-300">
+              <DeepSeekLogo className="w-4 h-4" />
+              <span>DeepSeek</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-zinc-300">
+              <NvidiaLogo className="w-4 h-4" />
+              <span>NVIDIA NIM</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 3. UNIVERSAL ACADEMIC SCOPE (SD HINGGA S3) */}
-      <section id="jenjang" className="py-20 px-6 sm:px-12 border-t border-white/[0.07] bg-[#090c13]/50">
-        <div className="max-w-5xl mx-auto space-y-10">
-          <div className="text-center space-y-3">
-            <span className="text-xs font-mono text-blue-400 uppercase tracking-widest">
-              Universal Academic Curriculum
-            </span>
-            <h2 className="text-2xl sm:text-4xl font-bold text-white">
-              Satu Mesin untuk Semua Jenjang Pendidikan
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-400 max-w-xl mx-auto">
-              ZAP menyesuaikan kedalaman penalaran kognitif dari konsep aritmetika dasar hingga kalkulus tensor tingkat lanjut.
+      {/* 4. PLATFORM METRICS (Exact Centaur Style) */}
+      <section id="metrik" className="py-20 px-6 sm:px-12 border-t border-white/[0.06] bg-[#050608]">
+        <div className="max-w-5xl mx-auto space-y-12">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div className="space-y-1.5">
+              <span className="text-xs font-mono text-blue-400 uppercase tracking-widest block">
+                Platform Metrics
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                Kebenaran aljabar deterministik, <br className="hidden sm:inline" />
+                bukan tebakan probabilitas.
+              </h2>
+            </div>
+            <p className="text-xs text-zinc-500 max-w-xs leading-relaxed">
+              Setiap langkah derivasi dibuktikan oleh Computer Algebra System sebelum dialog Sokrates diaktifkan.
             </p>
           </div>
 
-          {/* Tab Filter */}
-          <div className="flex justify-center">
-            <div className="p-1 rounded-2xl bg-[#111520] border border-white/[0.08] inline-flex gap-1 text-xs">
-              <button
-                onClick={() => setActiveAudienceTab("siswa")}
-                className={`px-4 py-2 rounded-xl transition font-medium ${
-                  activeAudienceTab === "siswa"
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                Murid SD & SMP
-              </button>
-              <button
-                onClick={() => setActiveAudienceTab("mahasiswa")}
-                className={`px-4 py-2 rounded-xl transition font-medium ${
-                  activeAudienceTab === "mahasiswa"
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                Siswa SMA & Mahasiswa S1–S3
-              </button>
-              <button
-                onClick={() => setActiveAudienceTab("pendidik")}
-                className={`px-4 py-2 rounded-xl transition font-medium ${
-                  activeAudienceTab === "pendidik"
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                Guru & Dosen
-              </button>
+          {/* Metric Numbers Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-8 pt-4 border-t border-white/[0.06]">
+            <div className="space-y-1">
+              <div className="text-3xl sm:text-4xl font-extrabold text-emerald-400 font-mono tracking-tight">
+                0 ms
+              </div>
+              <div className="text-xs font-semibold text-white">Latensi CAS Simbolik</div>
+              <div className="text-[11px] text-zinc-500">Evaluasi instan tanpa overhead LLM</div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-tight">
+                100%
+              </div>
+              <div className="text-xs font-semibold text-white">Zero-Answer Compliance</div>
+              <div className="text-[11px] text-zinc-500">Sensor mutlak kunci solusi akhir</div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-tight">
+                22 / 22
+              </div>
+              <div className="text-xs font-semibold text-white">Keamanan Parser Lulus</div>
+              <div className="text-[11px] text-zinc-500">Anti-RCE &amp; anti-DoS terverifikasi</div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-tight">
+                64
+              </div>
+              <div className="text-xs font-semibold text-white">Automated Test Suites</div>
+              <div className="text-[11px] text-zinc-500">Audit regresi berkelanjutan</div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-tight">
+                1M+
+              </div>
+              <div className="text-xs font-semibold text-white">Kapasitas Token Konteks</div>
+              <div className="text-[11px] text-zinc-500">Dukungan penurunan matematika panjang</div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-tight">
+                0 Byt
+              </div>
+              <div className="text-xs font-semibold text-white">Data Log Dijual / Iklan</div>
+              <div className="text-[11px] text-zinc-500">Kepatuhan privasi UU PDP Indonesia</div>
             </div>
           </div>
+        </div>
+      </section>
 
-          {/* Dynamic Content Grid */}
+      {/* 5. FLOW DIAGRAM: FROM SCRATCHPAD TO REASONING (Centaur "From signal to position" style) */}
+      <section id="arsitektur" className="py-20 px-6 sm:px-12 border-t border-white/[0.06] bg-[#030305]">
+        <div className="max-w-4xl mx-auto text-center space-y-10">
+          <div className="space-y-2">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+              Dari goresan ke pembuktian logika
+            </h2>
+            <p className="text-xs sm:text-sm text-zinc-400 max-w-md mx-auto leading-relaxed">
+              Alur pemisahan arsitektur antara kepastian matematika SymPy dan empati pedagogis Sokrates.
+            </p>
+          </div>
+
+          {/* Connected Flow Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-left">
+            {/* Step 1 */}
+            <div className="p-4 rounded-xl bg-[#0a0c12] border border-white/[0.08] space-y-2.5 hover:border-white/[0.14] transition">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Tahap 1</span>
+                <ScratchpadPenEmblem className="w-4 h-4 text-zinc-400" />
+              </div>
+              <div className="font-semibold text-xs text-white">Scratchpad Siswa</div>
+              <p className="text-[11px] text-zinc-400 leading-relaxed">
+                Siswa menuliskan baris langkah aljabar di editor teks atau papan tulis.
+              </p>
+            </div>
+
+            {/* Step 2 */}
+            <div className="p-4 rounded-xl bg-[#0a0c12] border border-blue-500/30 space-y-2.5 hover:border-blue-500/50 transition">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono text-blue-400 uppercase tracking-wider">Tahap 2 • Truth Tier</span>
+                <SymPyCasEmblem className="w-4 h-4 text-blue-400" />
+              </div>
+              <div className="font-semibold text-xs text-white">SymPy CAS Engine</div>
+              <p className="text-[11px] text-zinc-400 leading-relaxed">
+                Membuktikan ekuivalensi, konservasi akar, dan mendeteksi baris pertama yang patah.
+              </p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="p-4 rounded-xl bg-[#0a0c12] border border-white/[0.08] space-y-2.5 hover:border-white/[0.14] transition">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Tahap 3 • Shield</span>
+                <ZeroAnswerEmblem className="w-4 h-4 text-zinc-400" />
+              </div>
+              <div className="font-semibold text-xs text-white">Zero-Answer Guardrail</div>
+              <p className="text-[11px] text-zinc-400 leading-relaxed">
+                Menyaring solusi eksplisit dan menghitung kontra-contoh aritmetika.
+              </p>
+            </div>
+
+            {/* Step 4 */}
+            <div className="p-4 rounded-xl bg-[#0a0c12] border border-emerald-500/30 space-y-2.5 hover:border-emerald-500/50 transition">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-wider">Tahap 4 • Voice</span>
+                <SocraticDialogueEmblem className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="font-semibold text-xs text-white">Tutor Sokrates</div>
+              <p className="text-[11px] text-zinc-400 leading-relaxed">
+                Mengajukan pertanyaan reflektif untuk memantik pemahaman mandiri siswa.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 6. THREE CORE FOUNDATIONS (Centaur 3 Cards Style) */}
+      <section id="fitur" className="py-20 px-6 sm:px-12 border-t border-white/[0.06] bg-[#050608]">
+        <div className="max-w-5xl mx-auto space-y-12">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div className="space-y-1.5">
+              <span className="text-xs font-mono text-blue-400 uppercase tracking-widest block">
+                Fondasi ZAP
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                Tiga pilar di balik penalaran ChatZAP
+              </h2>
+            </div>
+            <p className="text-xs text-zinc-500 max-w-xs leading-relaxed">
+              Dirancang untuk mengatasi problem contek otomatis AI dalam dunia pendidikan.
+            </p>
+          </div>
+
+          {/* 3 Equal Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {activeAudienceTab === "siswa" && (
-              <>
-                <div className="p-5 rounded-2xl bg-[#0f131c] border border-white/[0.06] space-y-2">
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center font-bold">1</div>
-                  <h4 className="text-sm font-semibold text-white">Konsep CPA (Konkret-Gambar-Abstrak)</h4>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Membantu siswa memahami pecahan, penjumlahan aljabar suku sejenis, dan model visual balok sebelum masuk ke simbol abstrak.
-                  </p>
-                </div>
-                <div className="p-5 rounded-2xl bg-[#0f131c] border border-white/[0.06] space-y-2">
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center font-bold">2</div>
-                  <h4 className="text-sm font-semibold text-white">Aljabar Linear Suku Tunggal</h4>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Memastikan prinsip kesetaraan neraca ruas kiri dan kanan ($ax + b = c$) dipahami tanpa lompatan langkah mistis.
-                  </p>
-                </div>
-                <div className="p-5 rounded-2xl bg-[#0f131c] border border-white/[0.06] space-y-2">
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center font-bold">3</div>
-                  <h4 className="text-sm font-semibold text-white">Bebas Rasa Takut Salah</h4>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    AI ZAP tidak pernah memarahi siswa. Setiap kesalahan disambut sebagai bahan refleksi logika yang membangun rasa percaya diri.
-                  </p>
-                </div>
-              </>
-            )}
+            {/* Card 1 */}
+            <div className="p-6 rounded-2xl bg-[#0a0c12] border border-white/[0.08] space-y-4 hover:border-white/[0.15] transition">
+              <div className="w-9 h-9 flex items-center justify-start text-blue-400">
+                <ZeroAnswerEmblem className="w-8 h-8" />
+              </div>
+              <h3 className="text-sm font-semibold text-white">
+                Zero-Answer Policy
+              </h3>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                ZAP tidak pernah memberikan jawaban akhir instan. Siswa dibimbing dengan pertanyaan bertahap agar proses kognitif tetap berjalan mandiri.
+              </p>
+            </div>
 
-            {activeAudienceTab === "mahasiswa" && (
-              <>
-                <div className="p-5 rounded-2xl bg-[#0f131c] border border-white/[0.06] space-y-2">
-                  <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center font-bold">1</div>
-                  <h4 className="text-sm font-semibold text-white">Irisan Kerucut & Geometri 3D</h4>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Siswa SMA dapat mengiris kerucut untuk melihat bagaimana parabola, elips, dan hiperbola terbentuk secara spasial.
-                  </p>
-                </div>
-                <div className="p-5 rounded-2xl bg-[#0f131c] border border-white/[0.06] space-y-2">
-                  <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center font-bold">2</div>
-                  <h4 className="text-sm font-semibold text-white">Kalkulus Multivariabel S1–S2</h4>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Menganalisis integral lipat dua, volume benda putar, dan bidang singgung kurva ruang berdimensi tiga secara interaktif.
-                  </p>
-                </div>
-                <div className="p-5 rounded-2xl bg-[#0f131c] border border-white/[0.06] space-y-2">
-                  <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center font-bold">3</div>
-                  <h4 className="text-sm font-semibold text-white">Penalaran Formal Mahasiswa S3</h4>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Verifikasi kekakuan bukti formal (proof rigor), pelacakan syarat singularitas, dan pencegahan kehilangan domain akar (*root loss*).
-                  </p>
-                </div>
-              </>
-            )}
+            {/* Card 2 */}
+            <div className="p-6 rounded-2xl bg-[#0a0c12] border border-white/[0.08] space-y-4 hover:border-white/[0.15] transition">
+              <div className="w-9 h-9 flex items-center justify-start text-emerald-400">
+                <SymPyCasEmblem className="w-8 h-8" />
+              </div>
+              <h3 className="text-sm font-semibold text-white">
+                Deterministic SymPy CAS
+              </h3>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Kebenaran rumus tidak diserahkan pada LLM yang rentan halusinasi. SymPy CAS bertindak sebagai hakim tunggal pembuktian aljabar matematis.
+              </p>
+            </div>
 
-            {activeAudienceTab === "pendidik" && (
-              <>
-                <div className="p-5 rounded-2xl bg-[#0f131c] border border-white/[0.06] space-y-2">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold">1</div>
-                  <h4 className="text-sm font-semibold text-white">Solusi Anti-Kecurangan Kelas</h4>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Guru tidak perlu khawatir siswa mencontek jawaban instan. ZAP memaksa siswa berpikir dan menuliskan jalan pikirannya sendiri.
-                  </p>
-                </div>
-                <div className="p-5 rounded-2xl bg-[#0f131c] border border-white/[0.06] space-y-2">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold">2</div>
-                  <h4 className="text-sm font-semibold text-white">Mode Proyektor Papan Tulis</h4>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Dosen dapat memproyeksikan visualisasi matematika 3D ZAP langsung ke layar proyektor ruang kuliah untuk demonstrasi visual.
-                  </p>
-                </div>
-                <div className="p-5 rounded-2xl bg-[#0f131c] border border-white/[0.06] space-y-2">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold">3</div>
-                  <h4 className="text-sm font-semibold text-white">Diagnostik Presisi per Siswa</h4>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Mengetahui secara tepat letak kesalahan konsepsi siswa: apakah pada tanda minus, hukum distributif, atau faktorisasi.
-                  </p>
-                </div>
-              </>
-            )}
+            {/* Card 3 */}
+            <div className="p-6 rounded-2xl bg-[#0a0c12] border border-white/[0.08] space-y-4 hover:border-white/[0.15] transition">
+              <div className="w-9 h-9 flex items-center justify-start text-purple-400">
+                <SmartboardSpatialEmblem className="w-8 h-8" />
+              </div>
+              <h3 className="text-sm font-semibold text-white">
+                Papan Tulis Pintar 2D &amp; 3D
+              </h3>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Mendukung coret-coret kapur, penghapus real-time, plotting fungsi otomatis (seperti y = x² - 3), dan irisan penampang geometri 3D.
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* 4. CORE FEATURES SHOWCASE */}
-      <section id="fitur" className="py-20 px-6 sm:px-12 max-w-6xl mx-auto space-y-12">
-        <div className="text-center space-y-3">
-          <span className="text-xs font-mono text-blue-400 uppercase tracking-widest">
-            Core Engine Features
-          </span>
-          <h2 className="text-2xl sm:text-4xl font-bold text-white">
-            Arsitektur Dua Pilar: CAS Deterministik & AI Sokratik
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Feature 1: Zero-Answer Socratic CAS */}
-          <div className="p-6 sm:p-8 rounded-3xl bg-[#0e1119] border border-white/[0.08] space-y-4 hover:border-blue-500/40 transition">
-            <div className="w-12 h-12 rounded-2xl bg-blue-600/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-bold text-white">Pilar 1: Zero-Answer Policy Engine</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              ZAP tidak menggunakan LLM generatif untuk menentukan kebenaran matematika. SymPy Computer Algebra System (CAS) bertindak sebagai hakim tunggal kebenaran rumus. LLM hanya menerjemahkan temuan logika menjadi bimbingan empati tanpa pernah membocorkan hasil akhir.
-            </p>
-            <ul className="text-xs text-slate-300 space-y-1.5 pt-2">
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>Sensor otomatis hasil akhir numerik ($x = \dots$)</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>Pelacakan titik patah baris kesalahan secara presisi</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>Uji kontra-contoh aritmetika instan</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* Feature 2: 3D Spatial Canvas */}
-          <div className="p-6 sm:p-8 rounded-3xl bg-[#0e1119] border border-white/[0.08] space-y-4 hover:border-purple-500/40 transition">
-            <div className="w-12 h-12 rounded-2xl bg-purple-600/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
-              <Box className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-bold text-white">Pilar 2: Kanvas 3D & Papan Tulis Spasial</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Matematika sering terasa rumit karena hanya diajarkan di atas kertas 2D yang datar. Kanvas 3D ZAP di sisi kanan bertindak sebagai papan tulis visual interaktif untuk membedah geometri ruang, irisan kerucut, dan ekspansi polinomial.
-            </p>
-            <ul className="text-xs text-slate-300 space-y-1.5 pt-2">
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-purple-400" />
-                <span>Irisan Kerucut & Pemotongan Bidang Miring Elips</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-purple-400" />
-                <span>Visualisasi Pergeseran Paraboloid Kuadrat</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-purple-400" />
-                <span>Mode Proyektor Fullscreen untuk Ruang Kelas</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* 5. UNIVERSAL MODEL CONNECTOR HUB */}
-      <section id="konektor" className="py-20 px-6 sm:px-12 border-t border-white/[0.07] bg-[#080b12]">
-        <div className="max-w-5xl mx-auto space-y-8 text-center">
-          <div className="space-y-3">
-            <span className="text-xs font-mono text-blue-400 uppercase tracking-widest">
-              Extensible Plugin Architecture
-            </span>
-            <h2 className="text-2xl sm:text-4xl font-bold text-white">
-              Universal Model Connector Hub
+      {/* 7. JENJANG PENDIDIKAN (SD HINGGA S3) */}
+      <section id="jenjang" className="py-20 px-6 sm:px-12 border-t border-white/[0.06] bg-[#030305]">
+        <div className="max-w-4xl mx-auto space-y-8 text-center">
+          <div className="space-y-2">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+              Satu mesin untuk semua jenjang pendidikan
             </h2>
-            <p className="text-xs sm:text-sm text-slate-400 max-w-xl mx-auto">
-              Gemini dari server platform aktif secara default, namun kamu bebas menghubungkan model AI favoritmu dengan API key kustom milikmu sendiri.
+            <p className="text-xs sm:text-sm text-zinc-400 max-w-md mx-auto leading-relaxed">
+              Kedalaman pertanyaan beradaptasi dari pemahaman konkret sekolah dasar hingga bukti formal perguruan tinggi.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-4">
-            <div className="p-4 rounded-2xl bg-[#0f131c] border border-blue-500/30 text-center space-y-2">
-              <Zap className="w-6 h-6 text-blue-400 mx-auto" />
-              <div className="text-xs font-semibold text-white">Google Gemini</div>
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-mono">Platform</span>
+          {/* Simple Tab Switcher */}
+          <div className="flex justify-center">
+            <div className="p-1 rounded-xl bg-[#0e1017] border border-white/[0.08] inline-flex gap-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setActiveTab("siswa")}
+                className={`px-3.5 py-1.5 rounded-lg transition font-medium cursor-pointer ${
+                  activeTab === "siswa"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                SD &amp; SMP
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("mahasiswa")}
+                className={`px-3.5 py-1.5 rounded-lg transition font-medium cursor-pointer ${
+                  activeTab === "mahasiswa"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                SMA &amp; Kuliah (S1–S3)
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("pendidik")}
+                className={`px-3.5 py-1.5 rounded-lg transition font-medium cursor-pointer ${
+                  activeTab === "pendidik"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                Guru &amp; Dosen
+              </button>
+            </div>
+          </div>
+
+          {/* Dynamic Details Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left pt-2">
+            {activeTab === "siswa" && (
+              <>
+                <div className="p-4 rounded-xl bg-[#0a0c12] border border-white/[0.06] space-y-1.5">
+                  <div className="text-xs font-semibold text-white">Konsep CPA (Konkret-Gambar)</div>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    Membimbing pecahan dan aljabar dasar melalui balok visual sebelum masuk ke lambang abstrak.
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-[#0a0c12] border border-white/[0.06] space-y-1.5">
+                  <div className="text-xs font-semibold text-white">Neraca Kesetaraan Aljabar</div>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    Menjelaskan mengapa memindahkan suku memerlukan perlakuan yang sama pada kedua ruas.
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-[#0a0c12] border border-white/[0.06] space-y-1.5">
+                  <div className="text-xs font-semibold text-white">Bebas Takut Salah</div>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    Kesalahan disambut sebagai titik awal diskusi logis, bukan sebagai kegagalan.
+                  </p>
+                </div>
+              </>
+            )}
+
+            {activeTab === "mahasiswa" && (
+              <>
+                <div className="p-4 rounded-xl bg-[#0a0c12] border border-white/[0.06] space-y-1.5">
+                  <div className="text-xs font-semibold text-white">Geometri Irisan Kerucut</div>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    Membedah perpotongan bidang miring pada kerucut untuk memahami elips, parabola, dan hiperbola.
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-[#0a0c12] border border-white/[0.06] space-y-1.5">
+                  <div className="text-xs font-semibold text-white">Kalkulus Multivariabel</div>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    Visualisasi permukaan kuadrik 3D dan analisis turunan parsial secara interaktif.
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-[#0a0c12] border border-white/[0.06] space-y-1.5">
+                  <div className="text-xs font-semibold text-white">Kekakuan Bukti Formal</div>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    Pencegahan kehilangan domain akar dan pelacakan syarat singularitas pembagian dengan nol.
+                  </p>
+                </div>
+              </>
+            )}
+
+            {activeTab === "pendidik" && (
+              <>
+                <div className="p-4 rounded-xl bg-[#0a0c12] border border-white/[0.06] space-y-1.5">
+                  <div className="text-xs font-semibold text-white">Solusi Anti-Contek Kelas</div>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    Guru yakin siswa tidak menyalin hasil instan karena ZAP memandu proses nalar bertahap.
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-[#0a0c12] border border-white/[0.06] space-y-1.5">
+                  <div className="text-xs font-semibold text-white">Mode Proyektor Papan Tulis</div>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    Tampilan kanvas matematika dapat diproyeksikan langsung ke layar kelas untuk demonstrasi visual.
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-[#0a0c12] border border-white/[0.06] space-y-1.5">
+                  <div className="text-xs font-semibold text-white">Diagnostik Miskonsepsi Presisi</div>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    Laporan titik patah aljabar membantu guru mengetahui kelemahan konseptual spesifik setiap murid.
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* 8. PRIVASI & UU PDP */}
+      <section className="py-20 px-6 sm:px-12 border-t border-white/[0.06] bg-[#050608]">
+        <div className="max-w-4xl mx-auto space-y-6 text-center">
+          <div className="space-y-2">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+              Kerahasiaan dan kedaulatan data siswa
+            </h2>
+            <p className="text-xs sm:text-sm text-zinc-400 max-w-md mx-auto leading-relaxed">
+              Kunci API disimpan secara lokal di browser Anda. Sesi bimbingan dilindungi enkripsi AES-256.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
+            <div className="p-4 rounded-xl bg-[#0a0c12] border border-white/[0.06] space-y-1.5 hover:border-white/[0.12] transition">
+              <div className="flex items-center gap-2 text-xs font-semibold text-white">
+                <LocalEnclaveEmblem className="w-4 h-4 text-emerald-400" />
+                <span>Penyimpanan Kunci Lokal (BYOK)</span>
+              </div>
+              <p className="text-[11px] text-zinc-400 leading-relaxed">
+                Kunci API OpenAI, Claude, atau DeepSeek Anda disimpan pada peramban lokal (LocalStorage) tanpa disimpan di database publik pihak ketiga.
+              </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-[#0f131c] border border-white/[0.06] text-center space-y-2">
-              <Sparkles className="w-6 h-6 text-amber-400 mx-auto" />
-              <div className="text-xs font-semibold text-white">Claude 3.7</div>
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">Anthropic API</span>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-[#0f131c] border border-white/[0.06] text-center space-y-2">
-              <Globe className="w-6 h-6 text-emerald-400 mx-auto" />
-              <div className="text-xs font-semibold text-white">GPT-4o Omni</div>
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">OpenAI API</span>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-[#0f131c] border border-white/[0.06] text-center space-y-2">
-              <Cpu className="w-6 h-6 text-cyan-400 mx-auto" />
-              <div className="text-xs font-semibold text-white">DeepSeek V4</div>
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono">BazaarLink Free</span>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-[#0f131c] border border-white/[0.06] text-center space-y-2">
-              <Code2 className="w-6 h-6 text-orange-400 mx-auto" />
-              <div className="text-xs font-semibold text-white">Codestral 22B</div>
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">Mistral AI</span>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-[#0f131c] border border-white/[0.06] text-center space-y-2">
-              <Server className="w-6 h-6 text-purple-400 mx-auto" />
-              <div className="text-xs font-semibold text-white">Custom API</div>
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-mono">Ollama/Proxy</span>
+            <div className="p-4 rounded-xl bg-[#0a0c12] border border-white/[0.06] space-y-1.5 hover:border-white/[0.12] transition">
+              <div className="flex items-center gap-2 text-xs font-semibold text-white">
+                <SovereignAuditEmblem className="w-4 h-4 text-blue-400" />
+                <span>Kepatuhan UU PDP Indonesia</span>
+              </div>
+              <p className="text-[11px] text-zinc-400 leading-relaxed">
+                Hak penghapusan data instan (Right to Erasure) dan ekspor riwayat penalaran mandiri tersedia kapan saja.
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 6. DATA FLYWHEEL & SECURITY (APAKAH CHAT BISA DIBACA?) */}
-      <section id="privasi" className="py-20 px-6 sm:px-12 max-w-5xl mx-auto space-y-12">
-        <div className="text-center space-y-3">
-          <span className="text-xs font-mono text-emerald-400 uppercase tracking-widest">
-            Privacy & Learning Loop
-          </span>
-          <h2 className="text-2xl sm:text-4xl font-bold text-white">
-            Apakah Chat Siswa di /chat Bisa Diintip?
+      {/* 9. BOTTOM FINAL HERO CALL TO ACTION (Centaur style) */}
+      <section className="py-28 px-6 sm:px-12 text-center border-t border-white/[0.06] bg-[#030305] relative overflow-hidden">
+        {/* Subtle Perspective Grid Pattern */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.06]"
+          style={{
+            backgroundImage:
+              "linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)",
+            backgroundSize: "40px 40px",
+            maskImage: "radial-gradient(ellipse at center, black 40%, transparent 80%)",
+          }}
+        />
+
+        <div className="max-w-2xl mx-auto space-y-6 relative z-10">
+          <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white leading-tight">
+            Mereka memberi contekan. <br />
+            Kami membuktikan logikanya.
           </h2>
-          <p className="text-sm font-semibold text-emerald-400">
-            Jawabannya: TIDAK BISA.
+          <p className="text-xs sm:text-sm text-zinc-400 max-w-md mx-auto leading-relaxed">
+            Hentikan kebiasaan menyalin tanpa paham. Mulai sesi bimbingan Sokrates pertama Anda sekarang.
           </p>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Privacy Box */}
-          <div className="p-6 rounded-3xl bg-[#0d1017] border border-white/[0.08] space-y-3">
-            <div className="flex items-center gap-2 text-sm font-bold text-white">
-              <Lock className="w-5 h-5 text-emerald-400" />
-              <span>Enkripsi AES-256 & Integritas SHA-256</span>
-            </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Percakapan di `/chat` tersimpan terenkripsi <strong>AES-256-GCM</strong> di server platform, terkirim lewat koneksi TLS, dan dijaga sidik jari integritas <strong>SHA-256</strong>. Kunci API connector milikmu terenkripsi dan tidak dibagikan ke siapa pun.
-            </p>
-          </div>
-
-          {/* Self-Training Loop Box */}
-          <div className="p-6 rounded-3xl bg-[#0d1017] border border-white/[0.08] space-y-3">
-            <div className="flex items-center gap-2 text-sm font-bold text-white">
-              <Database className="w-5 h-5 text-blue-400" />
-              <span>Basis Pengetahuan yang Tumbuh</span>
-            </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Materi yang kamu bagikan secara sukarela (opt-in) disaring dari data pribadi, diverifikasi dengan SymPy, lalu dikelompokkan otomatis per topik dan jenjang menjadi basis pengetahuan tutor. Chat privatmu tidak pernah dipakai tanpa izin eksplisit, dan identitasmu tidak disertakan.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* 7. FINAL CALL TO ACTION */}
-      <section className="py-24 px-6 sm:px-12 text-center border-t border-white/[0.07] bg-gradient-to-b from-[#07090e] to-[#0d121f]">
-        <div className="max-w-3xl mx-auto space-y-6">
-          <ZLogo className="w-12 h-12 mx-auto" />
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white">
-            Siap Mengasah Nalar Matematika?
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-400 max-w-lg mx-auto">
-            Hentikan ketergantungan pada contekan AI. Buka ZAP sekarang dan biarkan logika berpikirmu bekerja dengan bimbingan terbaik.
-          </p>
-          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <Link
               href="/chat"
-              className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm shadow-xl shadow-blue-600/30 flex items-center justify-center gap-2 transition"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs shadow-sm flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer"
             >
-              <span>Masuk ke Studio ZAP</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>Buka Studio ChatZAP</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </Link>
             <Link
-              href="/login"
-              className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-[#141824] hover:bg-[#1e2333] border border-white/[0.1] text-slate-200 text-sm font-medium flex items-center justify-center transition"
+              href="/connector"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.1] text-zinc-300 hover:text-white font-medium text-xs flex items-center justify-center transition cursor-pointer"
             >
-              <span>Login Google (Langsung Pakai)</span>
+              <span>Atur Model &amp; Kunci API</span>
             </Link>
           </div>
         </div>
       </section>
 
-      {/* 8. FOOTER */}
-      <footer className="py-8 px-6 sm:px-12 border-t border-white/[0.06] text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-4">
+      {/* 10. MINIMALIST FOOTER */}
+      <footer className="py-8 px-6 sm:px-12 border-t border-white/[0.06] text-xs text-zinc-500 flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#030305]">
         <div className="flex items-center gap-2">
-          <ZLogo className="w-5 h-5" />
-          <span className="font-bold text-slate-300">ZAP</span>
-          <span>• Zero Answer Policy • chatzap.xyz</span>
+          <ZapLogo className="w-4 h-4 text-white" />
+          <span className="font-semibold text-zinc-300">ChatZAP</span>
+          <span>• Zero Answer Policy • Logicodix 2026 Hackathon</span>
         </div>
-        <div>
-          <span>Logicodix 2026 Hackathon • Hak Cipta Dilindungi</span>
+        <div className="flex items-center gap-4 text-[11px] text-zinc-400">
+          <Link href="/chat" className="hover:text-white transition">Studio</Link>
+          <Link href="/connector" className="hover:text-white transition">Connectors</Link>
+          <Link href="/login" className="hover:text-white transition">Masuk</Link>
         </div>
       </footer>
     </div>

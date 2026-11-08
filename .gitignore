@@ -39,6 +39,15 @@ out/
 .DS_Store
 Thumbs.db
 
+# Local user backups & vault
+.zap_vault/
+.data/
+
+# Agent local skills & codex
+.codex/
+.agents/skills/impeccable/
+.agents/skills/ui-taste/
+
 # Temporary local verification scripts
 test_bazaarlink.py
 test_mistral.py
