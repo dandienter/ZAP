@@ -1356,9 +1356,14 @@ async function callCustomOpenAIAPI(
       } else if (text) {
         text = cleanModelResponse(text);
       }
-      if (text && !text.endsWith("Let's draft:") && text.length > 20) {
+      if (text && !text.endsWith("Let's draft:") && text.trim().length > 0) {
         return { text, modelUsed: targetModel };
       }
+      return {
+        error: "Respons model kosong",
+        status: 200,
+        modelUsed: targetModel,
+      };
     }
 
     const errJson = await res.json().catch(() => null);
@@ -1373,19 +1378,19 @@ async function callCustomOpenAIAPI(
 }
 
 /**
- * Built-in Spatial 3D Engine Response Generator
+ * Built-in Spatial 3D & 2D Geometry Engine Response Generator
  * Memberikan respons matematis instan (<5ms), formula KaTeX presisi,
- * dan konfirmasi aktifnya model 3D di Papan Tulis Pintar (Smartboard).
+ * dan konfirmasi aktifnya model 2D/3D di Papan Tulis Pintar (Smartboard).
  */
 function generateGeometry3DResponse(message: string): { reply: string; model: string } | null {
   const lower = message.toLowerCase().trim();
   if (!lower) return null;
 
-  const has3D = /\b(3d|3-d|tiga dimensi|bangun ruang)\b/i.test(lower);
-  const hasCommand = /\b(buatkan|buatin|buat|bikinin|bikin|tampilkan|gambarkan|gambar|visualisasikan|render|modelkan|lihat|buka|simulasikan|create|generate|show)\b/i.test(lower);
-  const hasShape = /\b(tabung|cylinder|silinder|kubus|cube|balok|bola|sphere|kerucut|cone|prisma|limas|parabola|pelana|jajar genjang|jajargenjang|parallelogram|trapesium|trapezoid|segitiga|triangle)\b/i.test(lower);
+  const has3D = /\b(3d|3-d|tiga dimensi|bangun ruang|2d|2-d|dua dimensi|bangun datar)\b/i.test(lower);
+  const hasCommand = /\b(buatkan|buatin|buat|bikinin|bikin|tampilkan|gambarkan|gambar|visualisasikan|render|modelkan|lihat|buka|simulasikan|create|generate|show|plot|sketsa)\b/i.test(lower);
+  const hasShape = /\b(tabung|cylinder|silinder|kubus|cube|balok|bola|sphere|kerucut|cone|prisma|limas|parabola|pelana|jajar genjang|jajargenjang|parallelogram|trapesium|trapezoid|segitiga|triangle|persegi panjang|persegipanjang|rectangle|persegi|bujur sangkar|square|lingkaran|circle)\b/i.test(lower);
 
-  // Jika bukan permintaan geometri atau 3D, lewati
+  // Jika bukan permintaan geometri atau 2D/3D, lewati
   if (!hasShape && !has3D) return null;
   if (!hasCommand && !has3D) return null;
   // Jika hanya pertanyaan konseptual murni ("apa itu aljabar?"), lewati
@@ -1393,7 +1398,8 @@ function generateGeometry3DResponse(message: string): { reply: string; model: st
 
   const cleanText = lower
     .replace(/\b3\s*-?\s*d\b/g, " ")
-    .replace(/\b(dimensi\s*3|3\s*dimensi)\b/g, " ");
+    .replace(/\b2\s*-?\s*d\b/g, " ")
+    .replace(/\b(dimensi\s*[23]|[23]\s*dimensi)\b/g, " ");
 
   // 1. TABUNG / CYLINDER
   if (lower.includes("tabung") || lower.includes("cylinder") || lower.includes("silinder")) {
@@ -1490,7 +1496,39 @@ function generateGeometry3DResponse(message: string): { reply: string; model: st
     };
   }
 
-  // 8. JAJAR GENJANG (PARALLELOGRAM)
+  // 8. PERSEGI PANJANG (RECTANGLE 2D)
+  if (lower.includes("persegi panjang") || lower.includes("persegipanjang") || lower.includes("rectangle")) {
+    const pMatch = cleanText.match(/(?:p|panjang)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const lMatch = cleanText.match(/(?:l|lebar)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const nums = (cleanText.match(/\d+(?:[.,]\d+)?/g) || []).map((m) => parseFloat(m.replace(",", ".")));
+    const p = pMatch ? parseFloat(pMatch[1].replace(",", ".")) : nums[0] || 14;
+    const l = lMatch ? parseFloat(lMatch[1].replace(",", ".")) : nums[1] || 8;
+    const luas = p * l;
+    const keliling = 2 * (p + l);
+    const diagonal = Math.sqrt(p * p + l * l).toFixed(2);
+
+    return {
+      reply: `Bangun datar **Persegi Panjang** telah **AKTIF** dan ditampilkan di Papan Tulis Pintar (Smartboard) di panel sebelah kanan layarmu! 🎉\n\n### Parameter & Sifat Matematis Persegi Panjang ($p = ${p}\\text{ cm},\\ l = ${l}\\text{ cm}$):\n\n- **Panjang ($p$):** $${p}\\text{ cm}$\n- **Lebar ($l$):** $${l}\\text{ cm}$\n- **Luas ($L$):** $$L = p \\times l = (${p})(${l}) = ${luas}\\text{ cm}^2$$\n- **Keliling ($K$):** $$K = 2(p + l) = 2(${p} + ${l}) = ${keliling}\\text{ cm}$$\n- **Panjang Diagonal ($d$):** $$d = \\sqrt{p^2 + l^2} = \\sqrt{${p}^2 + ${l}^2} \\approx ${diagonal}\\text{ cm}$$\n\n💡 **Eksplorasi Interaktif di Kanvas 2D:**\nDi panel kanan, kamu bisa mengamati visualisasi 2D persegi panjang lengkap dengan dimensi panjang, lebar, dan sudut siku-siku $90^\\circ$. Geser slider $p$ atau $l$ di panel metrik untuk melihat perubahan luas dan keliling secara *real-time*!`,
+      model: "ChatZAP Geometry Engine",
+    };
+  }
+
+  // 9. PERSEGI / BUJUR SANGKAR (SQUARE 2D)
+  if (lower.includes("persegi") || lower.includes("bujur sangkar") || lower.includes("square")) {
+    const sMatch = cleanText.match(/(?:s|sisi|rusuk|panjang)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const nums = (cleanText.match(/\d+(?:[.,]\d+)?/g) || []).map((m) => parseFloat(m.replace(",", ".")));
+    const s = sMatch ? parseFloat(sMatch[1].replace(",", ".")) : nums[0] || 10;
+    const luas = s * s;
+    const keliling = 4 * s;
+    const diagonal = (s * Math.sqrt(2)).toFixed(2);
+
+    return {
+      reply: `Bangun datar **Persegi** telah **AKTIF** dan ditampilkan di Papan Tulis Pintar (Smartboard) di panel sebelah kanan layarmu! 🎉\n\n### Parameter & Sifat Matematis Persegi ($s = ${s}\\text{ cm}$):\n\n- **Panjang Sisi ($s$):** $${s}\\text{ cm}$\n- **Luas ($L$):** $$L = s^2 = (${s})^2 = ${luas}\\text{ cm}^2$$\n- **Keliling ($K$):** $$K = 4s = 4(${s}) = ${keliling}\\text{ cm}$$\n- **Panjang Diagonal ($d$):** $$d = s\\sqrt{2} = ${s}\\sqrt{2} \\approx ${diagonal}\\text{ cm}$$\n\n💡 **Eksplorasi Interaktif di Kanvas 2D:**\nDi panel kanan, kamu bisa mengamati bidang persegi beraturan dengan 4 sisi sama panjang dan 4 sudut siku-siku. Geser slider sisi ($s$) di panel metrik untuk mengeksplorasi hubungan kuadrat luasnya ($L = s^2$)!`,
+      model: "ChatZAP Geometry Engine",
+    };
+  }
+
+  // 10. JAJAR GENJANG (PARALLELOGRAM)
   if (lower.includes("jajar genjang") || lower.includes("jajargenjang") || lower.includes("parallelogram")) {
     const aMatch = cleanText.match(/(?:a|alas|panjang)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
     const tMatch = cleanText.match(/(?:t|tinggi)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);

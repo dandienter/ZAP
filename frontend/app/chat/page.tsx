@@ -139,7 +139,9 @@ interface DetectedShapeInfo {
     | "counting_blocks"
     | "jajar_genjang"
     | "trapesium"
-    | "segitiga";
+    | "segitiga"
+    | "persegi_panjang"
+    | "persegi";
   paramA?: number;
   paramB?: number;
   paramC?: number;
@@ -150,7 +152,37 @@ interface DetectedShapeInfo {
 function detectShapeKind(str: string): DetectedShapeInfo | null {
   const s = str.toLowerCase();
 
-  // 0. Bangun Datar 2D (Jajar Genjang, Trapesium, Segitiga)
+  // 0. Bangun Datar 2D (Persegi Panjang, Persegi, Jajar Genjang, Trapesium, Segitiga)
+  if (
+    (s.includes("persegi panjang") || s.includes("persegipanjang") || s.includes("rectangle")) &&
+    !s.includes("3d") && !s.includes("tiga dimensi") && !s.includes("ruang") && !s.includes("balok")
+  ) {
+    const pMatch = s.match(/(?:p|panjang)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const lMatch = s.match(/(?:l|lebar)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const nums = (s.match(/\d+(?:[.,]\d+)?/g) || []).map((m) => parseFloat(m.replace(",", ".")));
+    return {
+      kind: "persegi_panjang",
+      paramA: pMatch ? parseFloat(pMatch[1].replace(",", ".")) : nums[0] || 14,
+      paramB: lMatch ? parseFloat(lMatch[1].replace(",", ".")) : nums[1] || 8,
+      unit: "cm",
+      planeShapeKind: "persegi_panjang",
+    };
+  }
+
+  if (
+    (s.includes("persegi") || s.includes("bujur sangkar") || s.includes("square")) &&
+    !s.includes("3d") && !s.includes("tiga dimensi") && !s.includes("ruang") && !s.includes("kubus")
+  ) {
+    const sMatch = s.match(/(?:s|sisi|rusuk|panjang)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const nums = (s.match(/\d+(?:[.,]\d+)?/g) || []).map((m) => parseFloat(m.replace(",", ".")));
+    return {
+      kind: "persegi",
+      paramA: sMatch ? parseFloat(sMatch[1].replace(",", ".")) : nums[0] || 10,
+      unit: "cm",
+      planeShapeKind: "persegi",
+    };
+  }
+
   if (s.includes("jajar genjang") || s.includes("jajargenjang") || s.includes("parallelogram")) {
     const aMatch = s.match(/(?:a|alas|panjang)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
     const tMatch = s.match(/(?:t|tinggi)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
@@ -323,7 +355,7 @@ function detectSmartboardItem(
     hasExplicitCommand ||
     has3DIntent ||
     has3DWord ||
-    /\b(cube|kubus|balok|tabung|cylinder|silinder|kerucut|cone|bola|sphere|prisma|limas|parabola|pelana|jajar genjang|jajargenjang|parallelogram|trapesium|trapezoid|segitiga|triangle|lingkaran|circle)\b/i.test(
+    /\b(cube|kubus|balok|tabung|cylinder|silinder|kerucut|cone|bola|sphere|prisma|limas|parabola|pelana|jajar genjang|jajargenjang|parallelogram|trapesium|trapezoid|segitiga|triangle|persegi panjang|persegipanjang|rectangle|persegi|bujur sangkar|square|lingkaran|circle)\b/i.test(
       t
     );
 
@@ -583,6 +615,30 @@ function detectSmartboardItem(
         desc: `Bangun datar segitiga alas ${a} ${parsedUnit}, tinggi ${t} ${parsedUnit}`,
         paramA: a,
         paramB: t,
+        unit: parsedUnit,
+      };
+    }
+    case "persegi_panjang": {
+      const p = shape.paramA || 14;
+      const l = shape.paramB || 8;
+      return {
+        model: "2d_shape",
+        planeShapeKind: "persegi_panjang",
+        label: `Persegi Panjang 2D (p=${p}, l=${l})`,
+        desc: `Bangun datar persegi panjang (${p} × ${l} ${parsedUnit})`,
+        paramA: p,
+        paramB: l,
+        unit: parsedUnit,
+      };
+    }
+    case "persegi": {
+      const s = shape.paramA || 10;
+      return {
+        model: "2d_shape",
+        planeShapeKind: "persegi",
+        label: `Persegi 2D (s=${s})`,
+        desc: `Bangun datar persegi dengan panjang sisi ${s} ${parsedUnit}`,
+        paramA: s,
         unit: parsedUnit,
       };
     }
@@ -1302,11 +1358,21 @@ export default function ZAPApp() {
   const createdAtRef = useRef<number>(Date.now());
   const conversationsRef = useRef<StoredConv[]>([]);
   const activeConversationUpdatedAtRef = useRef<number>(0);
+  const messagesRef = useRef<Message[]>(messages);
+  const activeConversationIdRef = useRef<string>(activeConversationId);
 
   // Sinkronkan ref percakapan setiap kali state conversations berubah
   useEffect(() => {
     conversationsRef.current = conversations;
   }, [conversations]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    activeConversationIdRef.current = activeConversationId;
+  }, [activeConversationId]);
 
   const startNewChat = useCallback(() => {
     const newId =
@@ -1384,7 +1450,7 @@ export default function ZAPApp() {
             const userKey = (parsed.email || parsed.id || "").toLowerCase().trim();
             const lastActiveUser = localStorage.getItem("zap_last_active_user_email")?.toLowerCase().trim();
             const isAccountSwitched = !lastActiveUser || lastActiveUser !== userKey;
-            const targetId = getPathConversationId();
+            const initialTargetId = getPathConversationId();
 
             // Jika akun berganti dari sesi sebelumnya:
             // Segera reset state percakapan agar sesi akun lama tidak bocor ke akun baru
@@ -1405,8 +1471,8 @@ export default function ZAPApp() {
                 setConversations(userStored);
                 conversationsRef.current = userStored;
                 // Kritis: Jika halaman direfresh pada URL percakapan spesifik (/c/<id>), segera pulihkan obrolan dari cache lokal
-                if (targetId) {
-                  const initialMatch = userStored.find((c) => c.id === targetId);
+                if (initialTargetId) {
+                  const initialMatch = userStored.find((c) => c.id === initialTargetId);
                   if (initialMatch) {
                     activateConversation(initialMatch);
                   }
@@ -1439,7 +1505,6 @@ export default function ZAPApp() {
 
               const searchParams = new URLSearchParams(window.location.search);
               const importId = searchParams.get("import");
-              const currentTargetId = getPathConversationId();
 
               if (importId) {
                 fetch(`/api/chat/share?id=${encodeURIComponent(importId)}`)
@@ -1469,21 +1534,22 @@ export default function ZAPApp() {
                         return updated;
                       });
                       activateConversation(importedConv);
-                    } else if (userConvs.length === 0) {
+                    } else if (userConvs.length === 0 && messagesRef.current.length === 0) {
                       startNewChat();
                     }
                   })
                   .catch(() => {
-                    if (userConvs.length === 0) startNewChat();
+                    if (userConvs.length === 0 && messagesRef.current.length === 0) startNewChat();
                   });
-              } else if (currentTargetId) {
+              } else if (initialTargetId) {
+                // HANYA pulihkan jika URL saat halaman pertama kali dibuka secara eksplisit menunjuk ke percakapan tertentu
                 const found =
-                  conversationsRef.current.find((c) => c.id === currentTargetId) ||
-                  userConvs.find((c) => c.id === currentTargetId);
+                  conversationsRef.current.find((c) => c.id === initialTargetId) ||
+                  userConvs.find((c) => c.id === initialTargetId);
 
                 if (found) {
                   // Jangan reset jika percakapan ini sudah aktif dan sedang memiliki pesan di memori
-                  if (activeConversationId !== currentTargetId || messages.length === 0) {
+                  if (activeConversationIdRef.current !== initialTargetId || messagesRef.current.length === 0) {
                     activateConversation(found);
                   }
                 } else {
@@ -1494,7 +1560,8 @@ export default function ZAPApp() {
                     "Akses Ditolak: Anda tidak memiliki izin untuk melihat sesi percakapan privat akun lain. Percakapan hanya dapat diakses jika pemilik telah mengaktifkan Tautan Publik (Public Share)."
                   );
                 }
-              } else if (userConvs.length === 0) {
+              } else if (userConvs.length === 0 && messagesRef.current.length === 0) {
+                // Sesi awal baru: hanya buat chat baru jika belum ada pesan aktif yang diketik pengguna
                 startNewChat();
               }
 
@@ -1966,7 +2033,29 @@ export default function ZAPApp() {
               detectShapeKind(replyText) ||
               detectShapeKind(userQuestion) || { kind: "kubus" as const, paramA: 10 };
 
-            if (shapeFromReply.kind === "jajar_genjang") {
+            if (shapeFromReply.kind === "persegi_panjang") {
+              const p = shapeFromReply.paramA || 14;
+              const l = shapeFromReply.paramB || 8;
+              responseGeometry = {
+                model: "2d_shape",
+                planeShapeKind: "persegi_panjang",
+                label: `Persegi Panjang 2D (p=${p}, l=${l})`,
+                desc: `Bangun datar persegi panjang (${p} × ${l} cm)`,
+                paramA: p,
+                paramB: l,
+                unit: "cm",
+              };
+            } else if (shapeFromReply.kind === "persegi") {
+              const s = shapeFromReply.paramA || 10;
+              responseGeometry = {
+                model: "2d_shape",
+                planeShapeKind: "persegi",
+                label: `Persegi 2D (s=${s})`,
+                desc: `Bangun datar persegi dengan panjang sisi ${s} cm`,
+                paramA: s,
+                unit: "cm",
+              };
+            } else if (shapeFromReply.kind === "jajar_genjang") {
               const a = shapeFromReply.paramA || 12;
               const t = shapeFromReply.paramB || 8;
               const s = shapeFromReply.paramC || 10;
@@ -2069,7 +2158,11 @@ export default function ZAPApp() {
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           smartboardItem: responseGeometry || detectedGeometry,
         };
-        setMessages((prev) => [...prev, assistantMsg]);
+        setMessages((prev) => {
+          const hasUser = prev.some((m) => m.id === userMsg.id);
+          const base = hasUser ? prev : [...prev, userMsg];
+          return [...base, assistantMsg];
+        });
       } catch (err) {
         console.error("Chat error:", err);
         const assistantMsg: Message = {
@@ -2081,7 +2174,11 @@ export default function ZAPApp() {
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           smartboardItem: detectedGeometry,
         };
-        setMessages((prev) => [...prev, assistantMsg]);
+        setMessages((prev) => {
+          const hasUser = prev.some((m) => m.id === userMsg.id);
+          const base = hasUser ? prev : [...prev, userMsg];
+          return [...base, assistantMsg];
+        });
       } finally {
         setLoading(false);
       }
@@ -2173,7 +2270,11 @@ export default function ZAPApp() {
             : null),
       };
 
-      setMessages((prev) => [...prev, assistantMsg]);
+      setMessages((prev) => {
+        const hasUser = prev.some((m) => m.id === userMsg.id);
+        const base = hasUser ? prev : [...prev, userMsg];
+        return [...base, assistantMsg];
+      });
     } catch (err: unknown) {
       console.error(err);
       const errMsg = err instanceof Error ? err.message : "Gagal terhubung ke microservice SymPy.";
@@ -2184,7 +2285,11 @@ export default function ZAPApp() {
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         smartboardItem: detectedGeometry,
       };
-      setMessages((prev) => [...prev, assistantMsg]);
+      setMessages((prev) => {
+        const hasUser = prev.some((m) => m.id === userMsg.id);
+        const base = hasUser ? prev : [...prev, userMsg];
+        return [...base, assistantMsg];
+      });
     } finally {
       setLoading(false);
     }
