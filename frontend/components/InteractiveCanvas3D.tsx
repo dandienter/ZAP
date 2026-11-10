@@ -755,15 +755,15 @@ export default function InteractiveCanvas3D({
         ctx.textAlign = "center";
         ctx.fillText(`alas (a) = ${a} ${u}`, (Ax + Bx) / 2, Ay + 22);
 
-        // Height label: t = ...
+        // Height label: t = ... (inside parallelogram, to the right of red dashed line)
         ctx.fillStyle = isDark ? "#fb7185" : "#be123c";
-        ctx.textAlign = "right";
-        ctx.fillText(`tinggi (t) = ${t} ${u}`, Dx - 8, (Dy + Ay) / 2);
+        ctx.textAlign = "left";
+        ctx.fillText(`tinggi (t) = ${t} ${u}`, Dx + 10, (Dy + Ay) / 2);
 
-        // Slant side label: s = ...
+        // Slant side label: s = ... (outside parallelogram, to the left of side AD)
         ctx.fillStyle = isDark ? "#34d399" : "#047857";
         ctx.textAlign = "right";
-        ctx.fillText(`sisi miring (s) = ${s} ${u}`, (Ax + Dx) / 2 - 10, (Ay + Dy) / 2);
+        ctx.fillText(`sisi miring (s) = ${s} ${u}`, (Ax + Dx) / 2 - 14, (Ay + Dy) / 2 - 6);
 
         // Angle indicator at vertex A
         ctx.strokeStyle = isDark ? "#fbbf24" : "#b45309";
@@ -836,8 +836,8 @@ export default function InteractiveCanvas3D({
         ctx.fillText(`sisi atas (a) = ${topW} ${u}`, (Dx + Cx) / 2, Dy - 10);
         ctx.fillText(`sisi bawah (b) = ${botW} ${u}`, (Ax + Bx) / 2, Ay + 22);
         ctx.fillStyle = isDark ? "#fb7185" : "#be123c";
-        ctx.textAlign = "right";
-        ctx.fillText(`t = ${h} ${u}`, Dx - 6, (Dy + Ay) / 2);
+        ctx.textAlign = "left";
+        ctx.fillText(`tinggi (t) = ${h} ${u}`, Dx + 8, (Dy + Ay) / 2);
       } else if (planeShapeKind === "segitiga") {
         const a = paramA || 10;
         const h = paramB || 8;

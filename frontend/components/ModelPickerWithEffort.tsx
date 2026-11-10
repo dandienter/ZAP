@@ -376,7 +376,7 @@ export default function ModelPickerWithEffort({
                 className="fixed inset-x-3 bottom-24 sm:absolute sm:inset-auto sm:right-full sm:mr-2 sm:bottom-0 sm:w-80 liquid-glass-popup rounded-2xl p-1.5 z-50 animate-liquid-pop origin-bottom-right"
                 onMouseEnter={() => setActiveSubmenu("model")}
               >
-                <div className="px-3 py-2 text-[11px] font-mono text-slate-500 dark:text-zinc-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-200/60 dark:border-white/[0.08] mb-1 font-semibold">
+                <div className="px-3 py-2 text-[11px] font-mono text-slate-600 dark:text-zinc-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-200/80 dark:border-white/[0.08] mb-1 font-bold">
                   <span>PILIH MODEL</span>
                   <button
                     type="button"
@@ -386,7 +386,7 @@ export default function ModelPickerWithEffort({
                     ✕
                   </button>
                 </div>
-                <div className="space-y-0.5 max-h-72 overflow-y-auto px-0.5">
+                <div className="space-y-0.5 max-h-80 overflow-y-auto px-0.5">
                   {AVAILABLE_MODELS.map((model) => {
                     const isSelected = model.id === currentModel.id;
                     const Icon = model.icon;
@@ -395,10 +395,10 @@ export default function ModelPickerWithEffort({
                         key={model.id}
                         type="button"
                         onClick={() => handleSelectModel(model)}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] transition cursor-pointer text-left ${
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer text-left ${
                           isSelected
-                            ? "bg-slate-900/[0.08] dark:bg-white/[0.12] text-slate-950 dark:text-white font-medium"
-                            : "text-slate-800 dark:text-zinc-300 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-950 dark:hover:text-white"
+                            ? "bg-slate-900/[0.08] dark:bg-white/[0.12] text-slate-950 dark:text-white font-semibold"
+                            : "text-slate-800 dark:text-zinc-200 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-950 dark:hover:text-white"
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
