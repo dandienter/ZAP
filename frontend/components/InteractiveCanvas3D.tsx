@@ -47,7 +47,12 @@ export type PlaneShapeKind =
   | "layang_layang"
   | "persegi"
   | "persegi_panjang"
-  | "lingkaran";
+  | "lingkaran"
+  | "jaring_prisma"
+  | "jaring_kubus"
+  | "jaring_limas"
+  | "jaring_balok"
+  | "jaring_tabung";
 
 interface InteractiveCanvas3DProps {
   initialModel?: MathModelType;
@@ -103,6 +108,9 @@ const SMART_PRESETS = [
   { label: "Jajar Genjang", model: "2d_shape" as MathModelType, planeShape: "jajar_genjang" as PlaneShapeKind, paramA: 12, paramB: 8, paramC: 10, unit: "cm", desc: "Jajar genjang alas, tinggi & sisi miring" },
   { label: "Trapesium", model: "2d_shape" as MathModelType, planeShape: "trapesium" as PlaneShapeKind, paramA: 8, paramB: 14, paramC: 6, unit: "cm", desc: "Trapesium sisi sejajar & tinggi" },
   { label: "Segitiga", model: "2d_shape" as MathModelType, planeShape: "segitiga" as PlaneShapeKind, paramA: 10, paramB: 8, unit: "cm", desc: "Segitiga alas & tinggi" },
+  { label: "Jaring Prisma 2D", model: "2d_shape" as MathModelType, planeShape: "jaring_prisma" as PlaneShapeKind, paramA: 8, paramB: 10, unit: "cm", desc: "Bentangan jaring-jaring 2D prisma segitiga" },
+  { label: "Jaring Kubus 2D", model: "2d_shape" as MathModelType, planeShape: "jaring_kubus" as PlaneShapeKind, paramA: 10, unit: "cm", desc: "Bentangan jaring-jaring 2D kubus" },
+  { label: "Jaring Limas 2D", model: "2d_shape" as MathModelType, planeShape: "jaring_limas" as PlaneShapeKind, paramA: 8, paramB: 10, unit: "cm", desc: "Bentangan jaring-jaring 2D limas segi empat" },
   { label: "y = x² - 3", model: "2d_quadratic" as MathModelType, desc: "Grafik parabola & akar real" },
   { label: "y = 2 sin(x)", model: "2d_trig" as MathModelType, desc: "Gelombang trigonometri & amplitudo" },
   { label: "Kubus 10cm", model: "solids" as MathModelType, solid: "kubus" as SolidKind, paramA: 10, unit: "cm", hasSlice: false, desc: "Kubus sisi 10 cm geometri ruang" },
@@ -231,18 +239,38 @@ export default function InteractiveCanvas3D({
 
   useEffect(() => {
     setActiveModel(initialModel);
-    if (initialPlaneShapeKind) {
+    if (initialModel === "2d_shape" && initialPlaneShapeKind) {
       setPlaneShapeKind(initialPlaneShapeKind);
       onPlaneShapeChange?.(initialPlaneShapeKind);
-    }
-    if (initialSolidKind) {
+      const label =
+        initialPlaneShapeKind === "jaring_prisma"
+          ? "Jaring Prisma 2D"
+          : initialPlaneShapeKind === "jaring_kubus"
+          ? "Jaring Kubus 2D"
+          : initialPlaneShapeKind === "jaring_limas"
+          ? "Jaring Limas 2D"
+          : initialPlaneShapeKind === "persegi_panjang"
+          ? "Persegi Panjang 2D"
+          : initialPlaneShapeKind === "persegi"
+          ? "Persegi 2D"
+          : initialPlaneShapeKind === "segitiga"
+          ? "Segitiga 2D"
+          : initialPlaneShapeKind === "lingkaran"
+          ? "Lingkaran 2D"
+          : initialPlaneShapeKind === "jajar_genjang"
+          ? "Jajar Genjang 2D"
+          : initialPlaneShapeKind === "trapesium"
+          ? "Trapesium 2D"
+          : initialPlaneShapeKind;
+      setFormulaInput(`${label} ${initialParamA || 10}${initialUnit || "cm"}`);
+    } else if (initialSolidKind) {
       setSolidKind(initialSolidKind);
       onSolidKindChange?.(initialSolidKind);
       if (SOLID_LABELS[initialSolidKind]) {
         setFormulaInput(`${SOLID_LABELS[initialSolidKind]} ${initialParamA || 10}${initialUnit || "cm"}`);
       }
     }
-  }, [initialModel, initialSolidKind, initialParamA, initialUnit, onSolidKindChange]);
+  }, [initialModel, initialSolidKind, initialPlaneShapeKind, initialParamA, initialUnit, onSolidKindChange, onPlaneShapeChange]);
 
   useEffect(() => {
     if (initialParamA !== undefined) setParamA(initialParamA);
@@ -385,11 +413,50 @@ export default function InteractiveCanvas3D({
 
     // Check if user specifically requests slicing / irisan
     const wantsSlice = /\b(irisan|potong|penampang|slice|belah|potongan)\b/i.test(raw);
+    const is2DRequested = /\b(2d|2-d|dua dimensi|jaring|jaring-jaring|net|bangun datar)\b/i.test(raw);
 
     // Parse dimensions & unit (e.g. "10cm", "10 cm", "r=7")
     const numMatch = raw.match(/(\d+(?:[.,]\d+)?)\s*(cm|m|mm|in)?/i);
     const parsedA = numMatch ? parseFloat(numMatch[1].replace(",", ".")) : undefined;
     const parsedUnit = numMatch ? (numMatch[2] || "cm") : "cm";
+
+    // 2D Nets (Jaring-jaring bangun ruang jika diminta dalam format 2D)
+    if (is2DRequested && (raw.includes("prisma") || raw.includes("prism"))) {
+      const s = parsedA || 8;
+      const t = 10;
+      setParamA(s);
+      setParamB(t);
+      setUnit(parsedUnit);
+      setPlaneShapeKind("jaring_prisma");
+      selectModel("2d_shape");
+      onPlaneShapeChange?.("jaring_prisma");
+      onParamsChange?.(s, t, paramC, parsedUnit);
+      return;
+    }
+
+    if (is2DRequested && (raw.includes("kubus") || raw.includes("cube"))) {
+      const s = parsedA || 10;
+      setParamA(s);
+      setUnit(parsedUnit);
+      setPlaneShapeKind("jaring_kubus");
+      selectModel("2d_shape");
+      onPlaneShapeChange?.("jaring_kubus");
+      onParamsChange?.(s, paramB, paramC, parsedUnit);
+      return;
+    }
+
+    if (is2DRequested && (raw.includes("limas") || raw.includes("piramid") || raw.includes("pyramid"))) {
+      const s = parsedA || 8;
+      const t = 10;
+      setParamA(s);
+      setParamB(t);
+      setUnit(parsedUnit);
+      setPlaneShapeKind("jaring_limas");
+      selectModel("2d_shape");
+      onPlaneShapeChange?.("jaring_limas");
+      onParamsChange?.(s, t, paramC, parsedUnit);
+      return;
+    }
 
     // Detect 2D Plane Geometry Shapes (Jajar Genjang, Trapesium, Segitiga, etc.)
     if (raw.includes("jajar genjang") || raw.includes("jajargenjang") || raw.includes("parallelogram")) {
@@ -1289,6 +1356,232 @@ export default function InteractiveCanvas3D({
           ctx.arc(vx, vy, 2, 0, Math.PI * 2);
           ctx.fill();
         });
+      } else if (planeShapeKind === "jaring_prisma") {
+        // Jaring-Jaring 2D Prisma Segitiga
+        const s = paramA || 8;
+        const t = paramB || 10;
+        const hTri = (Math.sqrt(3) / 2) * s;
+        const totalW = 3 * s;
+        const totalH = t + 2 * hTri;
+        const sc = Math.min((width * 0.7) / totalW, (height * 0.75) / totalH);
+
+        const w = s * sc;
+        const h = t * sc;
+        const ht = hTri * sc;
+
+        const leftX = originX - 1.5 * w;
+        const topY = originY - h / 2;
+
+        // Fill all 3 rectangles (sisi tegak)
+        ctx.fillStyle = isDark ? "rgba(56, 189, 248, 0.12)" : "rgba(14, 165, 233, 0.14)";
+        ctx.fillRect(leftX, topY, 3 * w, h);
+
+        // Fill 2 triangular bases (alas & tutup)
+        ctx.beginPath();
+        // Top triangle (Tutup)
+        ctx.moveTo(originX - 0.5 * w, topY);
+        ctx.lineTo(originX + 0.5 * w, topY);
+        ctx.lineTo(originX, topY - ht);
+        ctx.closePath();
+        // Bottom triangle (Alas)
+        ctx.moveTo(originX - 0.5 * w, topY + h);
+        ctx.lineTo(originX + 0.5 * w, topY + h);
+        ctx.lineTo(originX, topY + h + ht);
+        ctx.closePath();
+        ctx.fill();
+
+        // Stroke Outer Perimeter
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = isDark ? "#38bdf8" : "#0284c7";
+        ctx.strokeRect(leftX, topY, 3 * w, h);
+
+        ctx.beginPath();
+        // Top triangle outer edges
+        ctx.moveTo(originX - 0.5 * w, topY);
+        ctx.lineTo(originX, topY - ht);
+        ctx.lineTo(originX + 0.5 * w, topY);
+        // Bottom triangle outer edges
+        ctx.moveTo(originX - 0.5 * w, topY + h);
+        ctx.lineTo(originX, topY + h + ht);
+        ctx.lineTo(originX + 0.5 * w, topY + h);
+        ctx.stroke();
+
+        // Interior Folding Lines (garis lipatan putus-putus)
+        ctx.setLineDash([5, 4]);
+        ctx.lineWidth = 1.8;
+        ctx.strokeStyle = isDark ? "#fb7185" : "#e11d48";
+        ctx.beginPath();
+        // Between rect 1 and 2
+        ctx.moveTo(leftX + w, topY);
+        ctx.lineTo(leftX + w, topY + h);
+        // Between rect 2 and 3
+        ctx.moveTo(leftX + 2 * w, topY);
+        ctx.lineTo(leftX + 2 * w, topY + h);
+        // Top fold line
+        ctx.moveTo(originX - 0.5 * w, topY);
+        ctx.lineTo(originX + 0.5 * w, topY);
+        // Bottom fold line
+        ctx.moveTo(originX - 0.5 * w, topY + h);
+        ctx.lineTo(originX + 0.5 * w, topY + h);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Labels
+        ctx.font = "bold 11px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillStyle = isDark ? "#ffffff" : "#0f172a";
+        ctx.fillText("Tutup (Segitiga)", originX, topY - ht * 0.4);
+        ctx.fillText("Alas (Segitiga)", originX, topY + h + ht * 0.5);
+
+        ctx.fillStyle = isDark ? "#94a3b8" : "#64748b";
+        ctx.fillText("Sisi Tegak 1", leftX + 0.5 * w, originY);
+        ctx.fillText("Sisi Tegak 2 (Tengah)", originX, originY);
+        ctx.fillText("Sisi Tegak 3", leftX + 2.5 * w, originY);
+
+        ctx.font = "bold 12px sans-serif";
+        ctx.fillStyle = isDark ? "#38bdf8" : "#0369a1";
+        ctx.fillText(`s = ${s} ${u}`, originX, topY + h + 18);
+        ctx.textAlign = "left";
+        ctx.fillText(`t = ${t} ${u}`, leftX + 3 * w + 8, originY);
+
+        // Title indicator
+        ctx.font = "bold 13px sans-serif";
+        ctx.fillStyle = isDark ? "#38bdf8" : "#0284c7";
+        ctx.textAlign = "center";
+        ctx.fillText("Jaring-Jaring 2D Prisma Segitiga", originX, topY - ht - 16);
+      } else if (planeShapeKind === "jaring_kubus") {
+        // Jaring-Jaring 2D Kubus (Pola Salib / T-Cross)
+        const s = paramA || 10;
+        const sc = Math.min((width * 0.7) / (4 * s), (height * 0.7) / (3 * s));
+        const box = s * sc;
+
+        const startX = originX - 2 * box;
+        const startY = originY - 0.5 * box;
+
+        // Fill 6 squares
+        ctx.fillStyle = isDark ? "rgba(16, 185, 129, 0.12)" : "rgba(16, 185, 129, 0.14)";
+        // 4 in horizontal row
+        ctx.fillRect(startX, startY, 4 * box, box);
+        // 1 above (col 1)
+        ctx.fillRect(startX + box, startY - box, box, box);
+        // 1 below (col 1)
+        ctx.fillRect(startX + box, startY + box, box, box);
+
+        // Stroke Outer Perimeter
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = isDark ? "#34d399" : "#059669";
+        ctx.strokeRect(startX, startY, 4 * box, box);
+        ctx.strokeRect(startX + box, startY - box, box, box);
+        ctx.strokeRect(startX + box, startY + box, box, box);
+
+        // Folding lines (dashed)
+        ctx.setLineDash([5, 4]);
+        ctx.lineWidth = 1.8;
+        ctx.strokeStyle = isDark ? "#fb7185" : "#e11d48";
+        ctx.beginPath();
+        for (let i = 1; i < 4; i++) {
+          ctx.moveTo(startX + i * box, startY);
+          ctx.lineTo(startX + i * box, startY + box);
+        }
+        ctx.moveTo(startX + box, startY);
+        ctx.lineTo(startX + 2 * box, startY);
+        ctx.moveTo(startX + box, startY + box);
+        ctx.lineTo(startX + 2 * box, startY + box);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Labels
+        ctx.font = "bold 11px sans-serif";
+        ctx.fillStyle = isDark ? "#ffffff" : "#0f172a";
+        ctx.textAlign = "center";
+        ctx.fillText("Atas", startX + 1.5 * box, startY - 0.5 * box + 4);
+        ctx.fillText("Kiri", startX + 0.5 * box, startY + 0.5 * box + 4);
+        ctx.fillText("Depan", startX + 1.5 * box, startY + 0.5 * box + 4);
+        ctx.fillText("Kanan", startX + 2.5 * box, startY + 0.5 * box + 4);
+        ctx.fillText("Belakang", startX + 3.5 * box, startY + 0.5 * box + 4);
+        ctx.fillText("Bawah (Alas)", startX + 1.5 * box, startY + 1.5 * box + 4);
+
+        ctx.font = "bold 12px sans-serif";
+        ctx.fillStyle = isDark ? "#34d399" : "#047857";
+        ctx.fillText(`rusuk (s) = ${s} ${u}`, originX, startY + 2.2 * box);
+        ctx.font = "bold 13px sans-serif";
+        ctx.fillText("Jaring-Jaring 2D Kubus", originX, startY - 1.3 * box);
+      } else if (planeShapeKind === "jaring_limas") {
+        // Jaring-Jaring 2D Limas Segi Empat (Piramida)
+        const s = paramA || 8;
+        const t = paramB || 10;
+        const ts = Math.sqrt((s / 2) ** 2 + t ** 2);
+        const total = s + 2 * ts;
+        const sc = Math.min((width * 0.7) / total, (height * 0.7) / total);
+
+        const sq = s * sc;
+        const petal = ts * sc;
+
+        const leftX = originX - sq / 2;
+        const topY = originY - sq / 2;
+
+        // Central Square
+        ctx.fillStyle = isDark ? "rgba(245, 158, 11, 0.12)" : "rgba(245, 158, 11, 0.14)";
+        ctx.fillRect(leftX, topY, sq, sq);
+
+        // 4 Triangular Petals
+        ctx.beginPath();
+        // Top
+        ctx.moveTo(leftX, topY);
+        ctx.lineTo(leftX + sq, topY);
+        ctx.lineTo(originX, topY - petal);
+        ctx.closePath();
+        // Bottom
+        ctx.moveTo(leftX, topY + sq);
+        ctx.lineTo(leftX + sq, topY + sq);
+        ctx.lineTo(originX, topY + sq + petal);
+        ctx.closePath();
+        // Left
+        ctx.moveTo(leftX, topY);
+        ctx.lineTo(leftX, topY + sq);
+        ctx.lineTo(leftX - petal, originY);
+        ctx.closePath();
+        // Right
+        ctx.moveTo(leftX + sq, topY);
+        ctx.lineTo(leftX + sq, topY + sq);
+        ctx.lineTo(leftX + sq + petal, originY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Stroke Outer
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = isDark ? "#fbbf24" : "#d97706";
+        ctx.beginPath();
+        ctx.moveTo(leftX, topY);
+        ctx.lineTo(originX, topY - petal);
+        ctx.lineTo(leftX + sq, topY);
+        ctx.lineTo(leftX + sq + petal, originY);
+        ctx.lineTo(leftX + sq, topY + sq);
+        ctx.lineTo(originX, topY + sq + petal);
+        ctx.lineTo(leftX, topY + sq);
+        ctx.lineTo(leftX - petal, originY);
+        ctx.closePath();
+        ctx.stroke();
+
+        // Folding lines (dashed around central square)
+        ctx.setLineDash([5, 4]);
+        ctx.lineWidth = 1.8;
+        ctx.strokeStyle = isDark ? "#fb7185" : "#e11d48";
+        ctx.strokeRect(leftX, topY, sq, sq);
+        ctx.setLineDash([]);
+
+        // Labels
+        ctx.font = "bold 11px sans-serif";
+        ctx.fillStyle = isDark ? "#ffffff" : "#0f172a";
+        ctx.textAlign = "center";
+        ctx.fillText("Alas Persegi", originX, originY + 4);
+
+        ctx.font = "bold 12px sans-serif";
+        ctx.fillStyle = isDark ? "#fbbf24" : "#b45309";
+        ctx.fillText(`s = ${s} ${u}`, originX, topY + sq + 16);
+        ctx.fillText(`t_s = ${ts.toFixed(1)} ${u}`, originX, topY - petal - 8);
+        ctx.font = "bold 13px sans-serif";
+        ctx.fillText("Jaring-Jaring 2D Limas (Piramida)", originX, topY - petal - 24);
       }
     }
   }, [activeModel, planeShapeKind, paramA, paramB, paramC, unit, isProjectorMode, is2DGraphModel, isDark]);
@@ -1432,6 +1725,54 @@ export default function InteractiveCanvas3D({
             { label: "Diagonal Utama (d₁)", formula: "d₁", value: `${fmt(d1)} ${u}` },
             { label: "Diagonal Melintang (d₂)", formula: "d₂", value: `${fmt(d2)} ${u}` },
             { label: "Luas Layang-Layang", formula: "L = ½ d₁ · d₂", value: `${fmt(luas)} ${u}²` },
+          ],
+        };
+      } else if (planeShapeKind === "jaring_prisma") {
+        const s = paramA !== undefined ? paramA : 8;
+        const t = paramB !== undefined ? paramB : 10;
+        const luasAlas = (Math.sqrt(3) / 4) * s * s;
+        const luasSelimut = 3 * s * t;
+        const totalNet = 2 * luasAlas + luasSelimut;
+        return {
+          volume: 0,
+          surface: totalNet,
+          rows: [
+            { label: "Sisi Alas Segitiga (s)", formula: "s", value: `${fmt(s)} ${u}` },
+            { label: "Tinggi Sisi Tegak (t)", formula: "t", value: `${fmt(t)} ${u}` },
+            { label: "Luas 1 Alas Segitiga", formula: "La = (√3/4)s²", value: `${fmt(Number(luasAlas.toFixed(2)))} ${u}²` },
+            { label: "Luas 3 Sisi Tegak", formula: "Ls = 3st", value: `${fmt(Number(luasSelimut.toFixed(2)))} ${u}²` },
+            { label: "Total Luas Jaring-Jaring", formula: "L = 2La + Ls", value: `${fmt(Number(totalNet.toFixed(2)))} ${u}²` },
+          ],
+        };
+      } else if (planeShapeKind === "jaring_kubus") {
+        const s = paramA !== undefined ? paramA : 10;
+        const totalNet = 6 * s * s;
+        return {
+          volume: 0,
+          surface: totalNet,
+          rows: [
+            { label: "Panjang Rusuk (s)", formula: "s", value: `${fmt(s)} ${u}` },
+            { label: "Luas 1 Bidang Persegi", formula: "L₁ = s²", value: `${fmt(s * s)} ${u}²` },
+            { label: "Total Luas Jaring-Jaring", formula: "L = 6s²", value: `${fmt(totalNet)} ${u}²` },
+          ],
+        };
+      } else if (planeShapeKind === "jaring_limas") {
+        const s = paramA !== undefined ? paramA : 8;
+        const t = paramB !== undefined ? paramB : 10;
+        const ts = Math.sqrt((s / 2) ** 2 + t ** 2);
+        const luasAlas = s * s;
+        const luas4Segitiga = 2 * s * ts;
+        const totalNet = luasAlas + luas4Segitiga;
+        return {
+          volume: 0,
+          surface: totalNet,
+          rows: [
+            { label: "Sisi Alas Persegi (s)", formula: "s", value: `${fmt(s)} ${u}` },
+            { label: "Tinggi Limas (t)", formula: "t", value: `${fmt(t)} ${u}` },
+            { label: "Tinggi Sisi Miring (ts)", formula: "ts = √((s/2)²+t²)", value: `${fmt(Number(ts.toFixed(2)))} ${u}` },
+            { label: "Luas Alas Persegi", formula: "La = s²", value: `${fmt(luasAlas)} ${u}²` },
+            { label: "Luas 4 Segitiga Selimut", formula: "Ls = 2·s·ts", value: `${fmt(Number(luas4Segitiga.toFixed(2)))} ${u}²` },
+            { label: "Total Luas Jaring-Jaring", formula: "L = La + Ls", value: `${fmt(Number(totalNet.toFixed(2)))} ${u}²` },
           ],
         };
       }
@@ -2536,6 +2877,12 @@ export default function InteractiveCanvas3D({
                       ? `Belah Ketupat (${paramA}×${paramB} ${unit})`
                       : planeShapeKind === "layang_layang"
                       ? `Layang-Layang (${paramA}×${paramB} ${unit})`
+                      : planeShapeKind === "jaring_prisma"
+                      ? `Jaring Prisma (${paramA}×${paramB} ${unit})`
+                      : planeShapeKind === "jaring_kubus"
+                      ? `Jaring Kubus (${paramA} ${unit})`
+                      : planeShapeKind === "jaring_limas"
+                      ? `Jaring Limas (${paramA}×${paramB} ${unit})`
                       : planeShapeKind === "jajar_genjang"
                       ? `Jajar Genjang (${paramA} ${unit})`
                       : planeShapeKind === "trapesium"
@@ -2570,6 +2917,12 @@ export default function InteractiveCanvas3D({
                       ? "Belah Ketupat 2D"
                       : planeShapeKind === "layang_layang"
                       ? "Layang-Layang 2D"
+                      : planeShapeKind === "jaring_prisma"
+                      ? "Jaring-Jaring Prisma 2D"
+                      : planeShapeKind === "jaring_kubus"
+                      ? "Jaring-Jaring Kubus 2D"
+                      : planeShapeKind === "jaring_limas"
+                      ? "Jaring-Jaring Limas 2D"
                       : planeShapeKind === "jajar_genjang"
                       ? "Jajar Genjang 2D"
                       : planeShapeKind === "trapesium"
@@ -2614,6 +2967,13 @@ export default function InteractiveCanvas3D({
                           setParamA(12);
                           setParamB(16);
                           onParamsChange?.(12, 16, paramC, unit);
+                        } else if (planeShapeKind === "jaring_prisma" || planeShapeKind === "jaring_limas") {
+                          setParamA(8);
+                          setParamB(10);
+                          onParamsChange?.(8, 10, paramC, unit);
+                        } else if (planeShapeKind === "jaring_kubus") {
+                          setParamA(10);
+                          onParamsChange?.(10, paramB, paramC, unit);
                         } else {
                           setParamA(10);
                           setParamB(8);
@@ -2656,12 +3016,16 @@ export default function InteractiveCanvas3D({
                     {activeModel === "2d_shape"
                       ? planeShapeKind === "persegi_panjang"
                         ? "Panjang (p):"
-                        : planeShapeKind === "persegi"
+                        : planeShapeKind === "persegi" || planeShapeKind === "jaring_kubus"
                         ? "Panjang Sisi (s):"
                         : planeShapeKind === "lingkaran"
                         ? "Jari-jari (r):"
                         : planeShapeKind === "belah_ketupat" || planeShapeKind === "layang_layang"
                         ? "Diagonal 1 (d₁):"
+                        : planeShapeKind === "jaring_prisma"
+                        ? "Sisi Segitiga Alas (s):"
+                        : planeShapeKind === "jaring_limas"
+                        ? "Sisi Alas Persegi (s):"
                         : planeShapeKind === "jajar_genjang" || planeShapeKind === "segitiga"
                         ? "Panjang Alas (a):"
                         : planeShapeKind === "trapesium"
@@ -2700,7 +3064,7 @@ export default function InteractiveCanvas3D({
               </div>
 
               {/* Tinggi / Lebar Slider (Untuk Tabung, Balok, Prisma, Limas, 2D) */}
-              {((activeModel === "2d_shape" && planeShapeKind !== "persegi" && planeShapeKind !== "lingkaran") || activeModel === "cylinder" || solidKind === "balok" || solidKind === "prisma" || solidKind === "limas") && (
+              {((activeModel === "2d_shape" && planeShapeKind !== "persegi" && planeShapeKind !== "lingkaran" && planeShapeKind !== "jaring_kubus") || activeModel === "cylinder" || solidKind === "balok" || solidKind === "prisma" || solidKind === "limas") && (
                 <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-white/[0.06]">
                   <div className="flex justify-between text-slate-700 dark:text-zinc-300 font-medium">
                     <span>
@@ -2711,6 +3075,10 @@ export default function InteractiveCanvas3D({
                           ? "Sisi Bawah (b):"
                           : planeShapeKind === "belah_ketupat" || planeShapeKind === "layang_layang"
                           ? "Diagonal 2 (d₂):"
+                          : planeShapeKind === "jaring_prisma"
+                          ? "Tinggi Sisi Tegak (t):"
+                          : planeShapeKind === "jaring_limas"
+                          ? "Tinggi Limas (t):"
                           : "Tinggi Tegak (t):"
                         : activeModel === "cylinder" || solidKind === "prisma" || solidKind === "limas"
                         ? "Tinggi (t):"

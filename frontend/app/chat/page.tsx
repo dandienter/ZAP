@@ -33,6 +33,7 @@ import {
   recordDeletedConversation,
 } from "@/utils/account-sync";
 import { useTheme } from "@/utils/theme";
+import { resolveGeometricIntent } from "@/data/geometry-database";
 import {
   Plus,
   PlusCircle,
@@ -102,6 +103,7 @@ interface DetectedSmartboardItem {
   paramC?: number;
   unit?: string;
   hasSlice?: boolean;
+  targetTab?: "2d" | "3d";
 }
 
 interface UploadedFile {
@@ -157,7 +159,7 @@ function detectShapeKind(str: string): DetectedShapeInfo | null {
   // 0. Bangun Datar 2D (Persegi Panjang, Persegi, Jajar Genjang, Trapesium, Segitiga)
   if (
     (s.includes("persegi panjang") || s.includes("persegipanjang") || s.includes("rectangle")) &&
-    !s.includes("3d") && !s.includes("tiga dimensi") && !s.includes("ruang") && !s.includes("balok")
+    !s.includes("3d") && !s.includes("tiga dimensi") && !s.includes("ruang") && !s.includes("balok") && !s.includes("prisma")
   ) {
     const pMatch = s.match(/(?:p|panjang)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
     const lMatch = s.match(/(?:l|lebar)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
@@ -173,7 +175,7 @@ function detectShapeKind(str: string): DetectedShapeInfo | null {
 
   if (
     (s.includes("persegi") || s.includes("bujur sangkar") || s.includes("square")) &&
-    !s.includes("3d") && !s.includes("tiga dimensi") && !s.includes("ruang") && !s.includes("kubus")
+    !s.includes("3d") && !s.includes("tiga dimensi") && !s.includes("ruang") && !s.includes("kubus") && !s.includes("limas") && !s.includes("piramida") && !s.includes("piramid")
   ) {
     const sMatch = s.match(/(?:s|sisi|rusuk|panjang)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
     const nums = (s.match(/\d+(?:[.,]\d+)?/g) || []).map((m) => parseFloat(m.replace(",", ".")));
@@ -210,7 +212,10 @@ function detectShapeKind(str: string): DetectedShapeInfo | null {
     };
   }
 
-  if (s.includes("segitiga") || s.includes("triangle")) {
+  if (
+    (s.includes("segitiga") || s.includes("triangle")) &&
+    !s.includes("prisma") && !s.includes("prism") && !s.includes("limas") && !s.includes("piramida") && !s.includes("piramid") && !s.includes("pyramid")
+  ) {
     const aMatch = s.match(/(?:a|alas)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
     const tMatch = s.match(/(?:t|tinggi)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
     return {
@@ -357,6 +362,25 @@ function detectSmartboardItem(
 ): DetectedSmartboardItem | null {
   const t = text.toLowerCase().trim();
   if (!t) return null;
+
+  // 0. Prioritaskan Universal Token-Based Geometric Intent Resolver
+  // Memastikan resolusi token 2D vs 3D deterministik (contoh: "2d prisma" -> jaring_prisma 2D, "3d prisma" -> prisma 3D)
+  const resolved = resolveGeometricIntent(text, conversationHistory);
+  if (resolved) {
+    return {
+      model: resolved.smartboardItem.model as MathModelType,
+      solidKind: (resolved.smartboardItem.solidKind as SolidKind) || undefined,
+      planeShapeKind: (resolved.smartboardItem.planeShapeKind as PlaneShapeKind) || undefined,
+      label: resolved.smartboardItem.label,
+      desc: resolved.smartboardItem.desc,
+      paramA: resolved.smartboardItem.paramA,
+      paramB: resolved.smartboardItem.paramB,
+      paramC: resolved.smartboardItem.paramC,
+      unit: resolved.smartboardItem.unit,
+      hasSlice: resolved.smartboardItem.hasSlice,
+      targetTab: resolved.smartboardItem.targetTab,
+    };
+  }
 
   // 1. Cek apakah ada kata perintah aktif untuk visualisasi/pemodelan
   const hasExplicitCommand =
@@ -2127,200 +2151,35 @@ export default function ZAPApp() {
           chatData.reply ||
           "Halo! Saya asisten ChatZAP. Tuliskan langkah aljabar yang ingin kamu uji, atau mintalah visualisasi 3D geometri.";
 
-        // Hanya pasang smartboardItem jika pengguna secara eksplisit meminta visualisasi geometri
-        let responseGeometry = detectedGeometry;
+        // Gunakan smartboardItem resmi dari ZAP Universal Geometry Engine (backend API)
+        const responseGeometry: DetectedSmartboardItem | null =
+          chatData.smartboardItem
+            ? {
+                model: chatData.smartboardItem.model as MathModelType,
+                solidKind: (chatData.smartboardItem.solidKind as SolidKind) || undefined,
+                planeShapeKind: (chatData.smartboardItem.planeShapeKind as PlaneShapeKind) || undefined,
+                label: chatData.smartboardItem.label,
+                desc: chatData.smartboardItem.desc,
+                paramA: chatData.smartboardItem.paramA,
+                paramB: chatData.smartboardItem.paramB,
+                paramC: chatData.smartboardItem.paramC,
+                unit: chatData.smartboardItem.unit,
+                hasSlice: Boolean(chatData.smartboardItem.hasSlice),
+                targetTab: chatData.smartboardItem.targetTab,
+              }
+            : detectedGeometry;
 
-        // LAYER 2 SAFETY NET: Jika balasan AI mengonfirmasi bahwa objek geometri 3D telah AKTIF
-        // dan ditampilkan di Papan Tulis Pintar, sinkronkan frontend ke model 3D tersebut
-        if (!responseGeometry && replyText) {
-          const lowerReply = replyText.toLowerCase();
-          const activates3D =
-            lowerReply.includes("objek geometri 3d") ||
-            lowerReply.includes("bangun datar") ||
-            lowerReply.includes("papan tulis pintar (smartboard) di panel sebelah kanan") ||
-            (lowerReply.includes("papan tulis pintar") && lowerReply.includes("aktif")) ||
-            (lowerReply.includes("smartboard") && lowerReply.includes("aktif"));
-
-          if (activates3D) {
-            const shapeFromReply =
-              detectShapeKind(replyText) ||
-              detectShapeKind(userQuestion) || { kind: "kubus" as const, paramA: 10 };
-
-            if (shapeFromReply.kind === "persegi_panjang") {
-              const p = shapeFromReply.paramA || 14;
-              const l = shapeFromReply.paramB || 8;
-              responseGeometry = {
-                model: "2d_shape",
-                planeShapeKind: "persegi_panjang",
-                label: `Persegi Panjang 2D (p=${p}, l=${l})`,
-                desc: `Bangun datar persegi panjang (${p} × ${l} cm)`,
-                paramA: p,
-                paramB: l,
-                unit: "cm",
-              };
-            } else if (shapeFromReply.kind === "persegi") {
-              const s = shapeFromReply.paramA || 10;
-              responseGeometry = {
-                model: "2d_shape",
-                planeShapeKind: "persegi",
-                label: `Persegi 2D (s=${s})`,
-                desc: `Bangun datar persegi dengan panjang sisi ${s} cm`,
-                paramA: s,
-                unit: "cm",
-              };
-            } else if (shapeFromReply.kind === "jajar_genjang") {
-              const a = shapeFromReply.paramA || 12;
-              const t = shapeFromReply.paramB || 8;
-              const s = shapeFromReply.paramC || 10;
-              responseGeometry = {
-                model: "2d_shape",
-                planeShapeKind: "jajar_genjang",
-                label: `Jajar Genjang 2D (a=${a}, t=${t})`,
-                desc: `Bangun datar jajar genjang alas ${a} cm, tinggi ${t} cm`,
-                paramA: a,
-                paramB: t,
-                paramC: s,
-                unit: "cm",
-              };
-            } else if (shapeFromReply.kind === "trapesium") {
-              responseGeometry = {
-                model: "2d_shape",
-                planeShapeKind: "trapesium",
-                label: "Trapesium 2D (a=8, b=14)",
-                desc: "Bangun datar trapesium sisi sejajar 8 & 14 cm, tinggi 6 cm",
-                paramA: 8,
-                paramB: 14,
-                paramC: 6,
-                unit: "cm",
-              };
-            } else if (shapeFromReply.kind === "segitiga") {
-              responseGeometry = {
-                model: "2d_shape",
-                planeShapeKind: "segitiga",
-                label: "Segitiga 2D (a=10, t=8)",
-                desc: "Bangun datar segitiga alas 10 cm, tinggi 8 cm",
-                paramA: 10,
-                paramB: 8,
-                unit: "cm",
-              };
-            } else if (shapeFromReply.kind === "balok") {
-              const p = shapeFromReply.paramA || 10;
-              const l = shapeFromReply.paramB || 6;
-              const t_val = shapeFromReply.paramC || 4;
-              responseGeometry = {
-                model: "solids",
-                solidKind: "balok",
-                label: `Balok 3D (${p}×${l}×${t_val})`,
-                desc: `Bangun ruang balok (${p} × ${l} × ${t_val} cm)`,
-                paramA: p,
-                paramB: l,
-                paramC: t_val,
-                unit: "cm",
-                hasSlice: false,
-              };
-            } else if (shapeFromReply.kind === "tabung") {
-              responseGeometry = {
-                model: "cylinder",
-                label: `Tabung Silinder 3D (r=${shapeFromReply.paramA || 7})`,
-                desc: `Silinder ruang jari-jari ${shapeFromReply.paramA || 7} cm & tinggi 12 cm`,
-                paramA: shapeFromReply.paramA || 7,
-                paramB: 12,
-                unit: "cm",
-                hasSlice: false,
-              };
-            } else if (shapeFromReply.kind === "bola") {
-              responseGeometry = {
-                model: "solids",
-                solidKind: "bola",
-                label: `Bola 3D (r=${shapeFromReply.paramA || 7})`,
-                desc: `Bangun ruang bola dengan jari-jari ${shapeFromReply.paramA || 7} cm`,
-                paramA: shapeFromReply.paramA || 7,
-                unit: "cm",
-                hasSlice: false,
-              };
-            } else if (shapeFromReply.kind === "limas") {
-              const s = shapeFromReply.paramA || 8;
-              const t = shapeFromReply.paramB || 10;
-              responseGeometry = {
-                model: "solids",
-                solidKind: "limas",
-                label: `Limas Segi Empat 3D (Piramida)`,
-                desc: `Limas segi empat beraturan (piramida) alas ${s} cm, tinggi ${t} cm`,
-                paramA: s,
-                paramB: t,
-                unit: "cm",
-                hasSlice: false,
-              };
-            } else if (shapeFromReply.kind === "prisma") {
-              const s = shapeFromReply.paramA || 8;
-              const t = shapeFromReply.paramB || 10;
-              responseGeometry = {
-                model: "solids",
-                solidKind: "prisma",
-                label: `Prisma Segitiga 3D`,
-                desc: `Prisma segitiga beraturan alas ${s} cm, tinggi ${t} cm`,
-                paramA: s,
-                paramB: t,
-                unit: "cm",
-                hasSlice: false,
-              };
-            } else if (shapeFromReply.kind === "circle") {
-              const r = shapeFromReply.paramA || 7;
-              responseGeometry = {
-                model: "2d_shape",
-                planeShapeKind: "lingkaran",
-                label: `Lingkaran 2D (r=${r})`,
-                desc: `Bangun datar lingkaran dengan jari-jari ${r} cm`,
-                paramA: r,
-                unit: "cm",
-              };
-            } else if (shapeFromReply.kind === "belah_ketupat") {
-              const d1 = shapeFromReply.paramA || 12;
-              const d2 = shapeFromReply.paramB || 16;
-              responseGeometry = {
-                model: "2d_shape",
-                planeShapeKind: "belah_ketupat",
-                label: `Belah Ketupat 2D (d1=${d1}, d2=${d2})`,
-                desc: `Bangun datar belah ketupat diagonal ${d1} & ${d2} cm`,
-                paramA: d1,
-                paramB: d2,
-                unit: "cm",
-              };
-            } else if (shapeFromReply.kind === "layang_layang") {
-              const d1 = shapeFromReply.paramA || 12;
-              const d2 = shapeFromReply.paramB || 16;
-              responseGeometry = {
-                model: "2d_shape",
-                planeShapeKind: "layang_layang",
-                label: `Layang-Layang 2D (d1=${d1}, d2=${d2})`,
-                desc: `Bangun datar layang-layang diagonal ${d1} & ${d2} cm`,
-                paramA: d1,
-                paramB: d2,
-                unit: "cm",
-              };
-            } else {
-              responseGeometry = {
-                model: "solids",
-                solidKind: "kubus",
-                label: `Kubus 3D (${shapeFromReply.paramA || 10} cm)`,
-                desc: `Kubus 3D geometri ruang dengan panjang sisi ${shapeFromReply.paramA || 10} cm`,
-                paramA: shapeFromReply.paramA || 10,
-                unit: "cm",
-                hasSlice: false,
-              };
-            }
-
-            setActive3DModel(responseGeometry.model);
-            if (responseGeometry.solidKind) setActiveSolidKind(responseGeometry.solidKind);
-            if (responseGeometry.planeShapeKind) setActivePlaneShapeKind(responseGeometry.planeShapeKind);
-            if (responseGeometry.paramA !== undefined) setCanvasParamA(responseGeometry.paramA);
-            if (responseGeometry.paramB !== undefined) setCanvasParamB(responseGeometry.paramB);
-            if (responseGeometry.paramC !== undefined) setCanvasParamC(responseGeometry.paramC);
-            if (responseGeometry.unit) setCanvasUnit(responseGeometry.unit);
-            setCanvasShowSlice(Boolean(responseGeometry.hasSlice));
-            setShowRightPane(true);
-            setRightPaneTab("canvas");
-          }
+        if (responseGeometry) {
+          setActive3DModel(responseGeometry.model);
+          if (responseGeometry.solidKind) setActiveSolidKind(responseGeometry.solidKind);
+          if (responseGeometry.planeShapeKind) setActivePlaneShapeKind(responseGeometry.planeShapeKind);
+          if (responseGeometry.paramA !== undefined) setCanvasParamA(responseGeometry.paramA);
+          if (responseGeometry.paramB !== undefined) setCanvasParamB(responseGeometry.paramB);
+          if (responseGeometry.paramC !== undefined) setCanvasParamC(responseGeometry.paramC);
+          if (responseGeometry.unit) setCanvasUnit(responseGeometry.unit);
+          setCanvasShowSlice(Boolean(responseGeometry.hasSlice));
+          setShowRightPane(true);
+          setRightPaneTab("canvas");
         }
 
         const assistantMsg: Message = {

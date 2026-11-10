@@ -1,0 +1,534 @@
+{
+  "metadata": {
+    "version": "2.0.0",
+    "title": "ZAP Universal Geometry & Spatial Knowledge Base",
+    "description": "Comprehensive mathematical database of 2D shapes, 3D solids, 2D nets, formulas, KaTeX formatting, and Smartboard specifications.",
+    "standards": ["Kurikulum Merdeka Indonesia (SD-SMA)", "Wolfram MathWorld", "OpenStax Mathematics"]
+  },
+  "shapes_2d": [
+    {
+      "id": "persegi",
+      "name_id": "Persegi (Bujur Sangkar)",
+      "name_en": "Square",
+      "dimension": "2D",
+      "category": "Poligon Beraturan",
+      "aliases": ["persegi", "bujur sangkar", "square", "kotak 2d", "segi empat sama sisi"],
+      "parameters": [
+        { "name": "s", "label": "Panjang Sisi", "default": 10, "unit": "cm", "min": 1, "max": 50 }
+      ],
+      "properties": {
+        "vertices": 4,
+        "edges": 4,
+        "angles": "4 sudut siku-siku (90°)",
+        "symmetry_lines": 4,
+        "rotational_symmetry": 4
+      },
+      "formulas": {
+        "luas": { "formula": "s^2", "katex": "L = s^2", "explanation": "Luas adalah hasil kali panjang sisi dengan dirinya sendiri." },
+        "keliling": { "formula": "4*s", "katex": "K = 4s", "explanation": "Keliling adalah jumlah panjang keempat sisinya." },
+        "diagonal": { "formula": "s*sqrt(2)", "katex": "d = s\\sqrt{2}", "explanation": "Panjang diagonal diperoleh dari teorema Pythagoras d = \\sqrt{s^2 + s^2}." }
+      },
+      "smartboard": {
+        "targetTab": "2d",
+        "model": "2d_shape",
+        "planeShapeKind": "persegi",
+        "label": "Persegi 2D"
+      }
+    },
+    {
+      "id": "persegi_panjang",
+      "name_id": "Persegi Panjang",
+      "name_en": "Rectangle",
+      "dimension": "2D",
+      "category": "Poligon Segi Empat",
+      "aliases": ["persegi panjang", "persegipanjang", "rectangle", "oblong"],
+      "parameters": [
+        { "name": "p", "label": "Panjang", "default": 14, "unit": "cm", "min": 1, "max": 50 },
+        { "name": "l", "label": "Lebar", "default": 8, "unit": "cm", "min": 1, "max": 50 }
+      ],
+      "properties": {
+        "vertices": 4,
+        "edges": 4,
+        "angles": "4 sudut siku-siku (90°)",
+        "symmetry_lines": 2,
+        "rotational_symmetry": 2
+      },
+      "formulas": {
+        "luas": { "formula": "p*l", "katex": "L = p \\times l", "explanation": "Luas adalah perkalian panjang dengan lebar." },
+        "keliling": { "formula": "2*(p+l)", "katex": "K = 2(p + l)", "explanation": "Keliling adalah dua kali jumlah panjang dan lebar." },
+        "diagonal": { "formula": "sqrt(p^2 + l^2)", "katex": "d = \\sqrt{p^2 + l^2}", "explanation": "Panjang diagonal bidang dihitung melalui teorema Pythagoras." }
+      },
+      "smartboard": {
+        "targetTab": "2d",
+        "model": "2d_shape",
+        "planeShapeKind": "persegi_panjang",
+        "label": "Persegi Panjang 2D"
+      }
+    },
+    {
+      "id": "segitiga",
+      "name_id": "Segitiga (Umum / Sama Kaki / Sama Sisi)",
+      "name_en": "Triangle",
+      "dimension": "2D",
+      "category": "Poligon Segitiga",
+      "aliases": ["segitiga", "triangle", "segitiga sama sisi", "segitiga sama kaki", "segitiga siku-siku"],
+      "parameters": [
+        { "name": "a", "label": "Panjang Alas", "default": 10, "unit": "cm", "min": 1, "max": 50 },
+        { "name": "t", "label": "Tinggi Tegak", "default": 8, "unit": "cm", "min": 1, "max": 50 }
+      ],
+      "properties": {
+        "vertices": 3,
+        "edges": 3,
+        "angle_sum": "Total sudut interior = 180°"
+      },
+      "formulas": {
+        "luas": { "formula": "0.5*a*t", "katex": "L = \\frac{1}{2} \\times a \\times t", "explanation": "Setengah perkalian alas dengan tinggi tegak." },
+        "keliling": { "formula": "a + 2*sqrt((a/2)^2 + t^2)", "katex": "K = a + 2s = a + 2\\sqrt{\\left(\\frac{a}{2}\\right)^2 + t^2}", "explanation": "Penjumlahan ketiga sisi pada segitiga sama kaki." }
+      },
+      "smartboard": {
+        "targetTab": "2d",
+        "model": "2d_shape",
+        "planeShapeKind": "segitiga",
+        "label": "Segitiga 2D"
+      }
+    },
+    {
+      "id": "lingkaran",
+      "name_id": "Lingkaran",
+      "name_en": "Circle",
+      "dimension": "2D",
+      "category": "Bangun Datar Sisi Lengkung",
+      "aliases": ["lingkaran", "circle", "bulat 2d", "cakram"],
+      "parameters": [
+        { "name": "r", "label": "Jari-jari", "default": 7, "unit": "cm", "min": 1, "max": 50 },
+        { "name": "d", "label": "Diameter", "default": 14, "unit": "cm", "min": 2, "max": 100 }
+      ],
+      "properties": {
+        "vertices": 0,
+        "edges": 1,
+        "symmetry_lines": "Tak hingga",
+        "rotational_symmetry": "Tak hingga"
+      },
+      "formulas": {
+        "luas": { "formula": "pi*r^2", "katex": "L = \\pi r^2 = \\frac{1}{4}\\pi d^2", "explanation": "Perkalian konstanta pi dengan kuadrat jari-jari." },
+        "keliling": { "formula": "2*pi*r", "katex": "K = 2\\pi r = \\pi d", "explanation": "Panjang garis lengkung penutup lingkaran." },
+        "diameter": { "formula": "2*r", "katex": "d = 2r", "explanation": "Dua kali panjang jari-jari." }
+      },
+      "smartboard": {
+        "targetTab": "2d",
+        "model": "2d_shape",
+        "planeShapeKind": "lingkaran",
+        "label": "Lingkaran 2D"
+      }
+    },
+    {
+      "id": "jajar_genjang",
+      "name_id": "Jajar Genjang",
+      "name_en": "Parallelogram",
+      "dimension": "2D",
+      "category": "Poligon Segi Empat",
+      "aliases": ["jajar genjang", "jajargenjang", "parallelogram"],
+      "parameters": [
+        { "name": "a", "label": "Alas", "default": 12, "unit": "cm", "min": 1, "max": 50 },
+        { "name": "t", "label": "Tinggi Tegak", "default": 8, "unit": "cm", "min": 1, "max": 50 },
+        { "name": "s", "label": "Sisi Miring", "default": 10, "unit": "cm", "min": 1, "max": 50 }
+      ],
+      "properties": {
+        "vertices": 4,
+        "edges": 4,
+        "opposite_sides": "Sisi berhadapan sejajar dan sama panjang",
+        "opposite_angles": "Sudut berhadapan sama besar"
+      },
+      "formulas": {
+        "luas": { "formula": "a*t", "katex": "L = a \\times t", "explanation": "Perkalian panjang sisi alas dengan tinggi tegak tegak lurus." },
+        "keliling": { "formula": "2*(a+s)", "katex": "K = 2(a + s)", "explanation": "Dua kali jumlah panjang alas dan sisi miring." }
+      },
+      "smartboard": {
+        "targetTab": "2d",
+        "model": "2d_shape",
+        "planeShapeKind": "jajar_genjang",
+        "label": "Jajar Genjang 2D"
+      }
+    },
+    {
+      "id": "trapesium",
+      "name_id": "Trapesium",
+      "name_en": "Trapezoid / Trapezium",
+      "dimension": "2D",
+      "category": "Poligon Segi Empat",
+      "aliases": ["trapesium", "trapezoid", "trapesium sama kaki", "trapesium siku-siku"],
+      "parameters": [
+        { "name": "a", "label": "Sisi Sejajar Atas", "default": 8, "unit": "cm", "min": 1, "max": 50 },
+        { "name": "b", "label": "Sisi Sejajar Bawah", "default": 14, "unit": "cm", "min": 1, "max": 50 },
+        { "name": "t", "label": "Tinggi", "default": 6, "unit": "cm", "min": 1, "max": 50 }
+      ],
+      "properties": {
+        "vertices": 4,
+        "edges": 4,
+        "parallel_pairs": "Memiliki tepat sepasang sisi sejajar"
+      },
+      "formulas": {
+        "luas": { "formula": "0.5*(a+b)*t", "katex": "L = \\frac{a + b}{2} \\times t", "explanation": "Rata-rata panjang sisi sejajar dikalikan tinggi tegak." },
+        "keliling": { "formula": "a + b + 2*s", "katex": "K = a + b + 2\\sqrt{\\left(\\frac{b-a}{2}\\right)^2 + t^2}", "explanation": "Jumlah keempat sisi pada trapesium sama kaki." }
+      },
+      "smartboard": {
+        "targetTab": "2d",
+        "model": "2d_shape",
+        "planeShapeKind": "trapesium",
+        "label": "Trapesium 2D"
+      }
+    },
+    {
+      "id": "belah_ketupat",
+      "name_id": "Belah Ketupat",
+      "name_en": "Rhombus",
+      "dimension": "2D",
+      "category": "Poligon Segi Empat",
+      "aliases": ["belah ketupat", "belahketupat", "rhombus", "diamond"],
+      "parameters": [
+        { "name": "d1", "label": "Diagonal 1", "default": 12, "unit": "cm", "min": 1, "max": 50 },
+        { "name": "d2", "label": "Diagonal 2", "default": 16, "unit": "cm", "min": 1, "max": 50 }
+      ],
+      "properties": {
+        "vertices": 4,
+        "edges": 4,
+        "all_sides_equal": true,
+        "diagonals_perpendicular": "Diagonal saling tegak lurus dan membagi dua sama panjang"
+      },
+      "formulas": {
+        "luas": { "formula": "0.5*d1*d2", "katex": "L = \\frac{d_1 \\times d_2}{2}", "explanation": "Setengah hasil kali panjang kedua diagonalnya." },
+        "sisi": { "formula": "sqrt((d1/2)^2 + (d2/2)^2)", "katex": "s = \\sqrt{\\left(\\frac{d_1}{2}\\right)^2 + \\left(\\frac{d_2}{2}\\right)^2}", "explanation": "Sisi miring dari segitiga siku-siku seperempat belah ketupat." },
+        "keliling": { "formula": "4*s", "katex": "K = 4s", "explanation": "Empat kali panjang sisinya." }
+      },
+      "smartboard": {
+        "targetTab": "2d",
+        "model": "2d_shape",
+        "planeShapeKind": "belah_ketupat",
+        "label": "Belah Ketupat 2D"
+      }
+    },
+    {
+      "id": "layang_layang",
+      "name_id": "Layang-Layang",
+      "name_en": "Kite",
+      "dimension": "2D",
+      "category": "Poligon Segi Empat",
+      "aliases": ["layang layang", "layang-layang", "layanglayang", "kite"],
+      "parameters": [
+        { "name": "d1", "label": "Diagonal Utama (Horisontal)", "default": 12, "unit": "cm", "min": 1, "max": 50 },
+        { "name": "d2", "label": "Diagonal Melintang (Vertikal)", "default": 16, "unit": "cm", "min": 1, "max": 50 }
+      ],
+      "properties": {
+        "vertices": 4,
+        "edges": 4,
+        "adjacent_equal_pairs": 2,
+        "diagonals_perpendicular": true
+      },
+      "formulas": {
+        "luas": { "formula": "0.5*d1*d2", "katex": "L = \\frac{d_1 \\times d_2}{2}", "explanation": "Setengah hasil kali kedua diagonalnya." },
+        "keliling": { "formula": "2*(a+b)", "katex": "K = 2(a + b)", "explanation": "Dua kali penjumlahan sepasang sisi pendek dan sepasang sisi panjang." }
+      },
+      "smartboard": {
+        "targetTab": "2d",
+        "model": "2d_shape",
+        "planeShapeKind": "layang_layang",
+        "label": "Layang-Layang 2D"
+      }
+    }
+  ],
+  "shapes_3d": [
+    {
+      "id": "kubus",
+      "name_id": "Kubus",
+      "name_en": "Cube / Regular Hexahedron",
+      "dimension": "3D",
+      "category": "Polihedron Sisi Datar Beraturan",
+      "aliases": ["kubus", "cube", "kotak 3d", "hexahedron"],
+      "parameters": [
+        { "name": "s", "label": "Panjang Rusuk / Sisi", "default": 10, "unit": "cm", "min": 1, "max": 50 }
+      ],
+      "properties": {
+        "faces": "6 bidang persegi kongruen",
+        "edges": 12,
+        "vertices": 8
+      },
+      "formulas": {
+        "volume": { "formula": "s^3", "katex": "V = s^3", "explanation": "Pangkat tiga dari panjang rusuk." },
+        "luas_permukaan": { "formula": "6*s^2", "katex": "L = 6s^2", "explanation": "Enam kali luas bidang perseginya." },
+        "diagonal_bidang": { "formula": "s*sqrt(2)", "katex": "d_b = s\\sqrt{2}", "explanation": "Panjang diagonal sisi bidang." },
+        "diagonal_ruang": { "formula": "s*sqrt(3)", "katex": "d_r = s\\sqrt{3}", "explanation": "Panjang garis lurus yang menghubungkan dua titik sudut berlawanan ruang." }
+      },
+      "smartboard": {
+        "targetTab": "3d",
+        "model": "solids",
+        "solidKind": "kubus",
+        "label": "Kubus 3D"
+      },
+      "net_2d_counterpart": "jaring_kubus"
+    },
+    {
+      "id": "balok",
+      "name_id": "Balok (Prisma Segi Empat Panjang)",
+      "name_en": "Cuboid / Rectangular Prism",
+      "dimension": "3D",
+      "category": "Polihedron Sisi Datar",
+      "aliases": ["balok", "cuboid", "rectangular prism", "beam", "persegi panjang 3d"],
+      "parameters": [
+        { "name": "p", "label": "Panjang", "default": 10, "unit": "cm", "min": 1, "max": 50 },
+        { "name": "l", "label": "Lebar", "default": 6, "unit": "cm", "min": 1, "max": 50 },
+        { "name": "t", "label": "Tinggi", "default": 4, "unit": "cm", "min": 1, "max": 50 }
+      ],
+      "properties": {
+        "faces": "6 bidang persegi panjang (3 pasang kongruen)",
+        "edges": 12,
+        "vertices": 8
+      },
+      "formulas": {
+        "volume": { "formula": "p*l*t", "katex": "V = p \\times l \\times t", "explanation": "Hasil kali panjang, lebar, dan tinggi." },
+        "luas_permukaan": { "formula": "2*(p*l + p*t + l*t)", "katex": "L = 2(pl + pt + lt)", "explanation": "Dua kali jumlah kombinasi ketiga pasang bidang." },
+        "diagonal_ruang": { "formula": "sqrt(p^2 + l^2 + t^2)", "katex": "d_r = \\sqrt{p^2 + l^2 + t^2}", "explanation": "Diagonal ruang dihitung melalui teorema Pythagoras 3D." }
+      },
+      "smartboard": {
+        "targetTab": "3d",
+        "model": "solids",
+        "solidKind": "balok",
+        "label": "Balok 3D"
+      },
+      "net_2d_counterpart": "jaring_balok"
+    },
+    {
+      "id": "prisma",
+      "name_id": "Prisma Segitiga",
+      "name_en": "Triangular Prism",
+      "dimension": "3D",
+      "category": "Prisma Sisi Datar",
+      "aliases": ["prisma", "prism", "prisma segitiga", "triangular prism"],
+      "parameters": [
+        { "name": "s", "label": "Sisi Alas Segitiga", "default": 8, "unit": "cm", "min": 1, "max": 50 },
+        { "name": "t", "label": "Tinggi Prisma", "default": 10, "unit": "cm", "min": 1, "max": 50 }
+      ],
+      "properties": {
+        "faces": "5 bidang (2 segitiga kongruen sebagai alas & tutup, 3 persegi panjang tegak)",
+        "edges": 9,
+        "vertices": 6
+      },
+      "formulas": {
+        "luas_alas": { "formula": "(sqrt(3)/4)*s^2", "katex": "L_a = \\frac{\\sqrt{3}}{4}s^2", "explanation": "Luas segitiga sama sisi pada bidang alas." },
+        "luas_selimut": { "formula": "3*s*t", "katex": "L_s = K_{\\text{alas}} \\times t = 3s \\cdot t", "explanation": "Luas ketiga bidang tegak persegi panjang." },
+        "luas_permukaan": { "formula": "2*L_a + 3*s*t", "katex": "L = 2L_a + L_s = 2\\left(\\frac{\\sqrt{3}}{4}s^2\\right) + 3st", "explanation": "Jumlah dua bidang alas dan tiga bidang tegak." },
+        "volume": { "formula": "L_a*t", "katex": "V = L_a \\times t = \\frac{\\sqrt{3}}{4}s^2 t", "explanation": "Perkalian luas alas dengan tinggi prisma." }
+      },
+      "smartboard": {
+        "targetTab": "3d",
+        "model": "solids",
+        "solidKind": "prisma",
+        "label": "Prisma Segitiga 3D"
+      },
+      "net_2d_counterpart": "jaring_prisma"
+    },
+    {
+      "id": "limas",
+      "name_id": "Limas Segi Empat (Piramida)",
+      "name_en": "Square Pyramid",
+      "dimension": "3D",
+      "category": "Polihedron Piramidal",
+      "aliases": ["limas", "piramida", "piramid", "pyramid", "limas segi empat"],
+      "parameters": [
+        { "name": "s", "label": "Sisi Alas Persegi", "default": 8, "unit": "cm", "min": 1, "max": 50 },
+        { "name": "t", "label": "Tinggi Limas", "default": 10, "unit": "cm", "min": 1, "max": 50 }
+      ],
+      "properties": {
+        "faces": "5 bidang (1 persegi alas, 4 segitiga tegak kongruen)",
+        "edges": 8,
+        "vertices": "5 (1 titik puncak apex + 4 titik sudut alas)"
+      },
+      "formulas": {
+        "luas_alas": { "formula": "s^2", "katex": "L_a = s^2", "explanation": "Luas bidang alas persegi." },
+        "tinggi_sisi_tegak": { "formula": "sqrt((s/2)^2 + t^2)", "katex": "t_s = \\sqrt{\\left(\\frac{s}{2}\\right)^2 + t^2}", "explanation": "Tinggi apotema segitiga sisi miring." },
+        "luas_selimut": { "formula": "4*(0.5*s*t_s)", "katex": "L_s = 2 s \\cdot t_s", "explanation": "Jumlah luas keempat segitiga bidang tegak." },
+        "luas_permukaan": { "formula": "s^2 + 2*s*t_s", "katex": "L = L_a + L_s = s^2 + 2s\\sqrt{\\left(\\frac{s}{2}\\right)^2 + t^2}", "explanation": "Jumlah luas alas persegi ditambah keempat segitiga tegak." },
+        "volume": { "formula": "(1/3)*s^2*t", "katex": "V = \\frac{1}{3} s^2 t", "explanation": "Sepertiga kali luas alas dikali tinggi limas." }
+      },
+      "smartboard": {
+        "targetTab": "3d",
+        "model": "solids",
+        "solidKind": "limas",
+        "label": "Limas Segi Empat 3D (Piramida)"
+      },
+      "net_2d_counterpart": "jaring_limas"
+    },
+    {
+      "id": "tabung",
+      "name_id": "Tabung (Silinder)",
+      "name_en": "Cylinder",
+      "dimension": "3D",
+      "category": "Bangun Ruang Sisi Lengkung",
+      "aliases": ["tabung", "silinder", "cylinder", "can"],
+      "parameters": [
+        { "name": "r", "label": "Jari-jari Alas", "default": 7, "unit": "cm", "min": 1, "max": 50 },
+        { "name": "t", "label": "Tinggi Silinder", "default": 12, "unit": "cm", "min": 1, "max": 50 }
+      ],
+      "properties": {
+        "faces": "3 bidang (2 lingkaran alas & tutup, 1 selimut persegi panjang lengkung)",
+        "edges": "2 rusuk lengkung",
+        "vertices": 0
+      },
+      "formulas": {
+        "luas_selimut": { "formula": "2*pi*r*t", "katex": "L_s = 2\\pi r t", "explanation": "Persegi panjang dengan panjang keliling lingkaran alas dan lebar tinggi tabung." },
+        "luas_permukaan": { "formula": "2*pi*r*(r + t)", "katex": "L = 2\\pi r(r + t)", "explanation": "Dua lingkaran alas dan tutup ditambah selimut silinder." },
+        "volume": { "formula": "pi*r^2*t", "katex": "V = \\pi r^2 t", "explanation": "Luas lingkaran alas dikalikan tinggi tegak." }
+      },
+      "smartboard": {
+        "targetTab": "3d",
+        "model": "cylinder",
+        "label": "Tabung Silinder 3D"
+      },
+      "net_2d_counterpart": "jaring_tabung"
+    },
+    {
+      "id": "kerucut",
+      "name_id": "Kerucut",
+      "name_en": "Cone",
+      "dimension": "3D",
+      "category": "Bangun Ruang Sisi Lengkung",
+      "aliases": ["kerucut", "cone", "irisan kerucut"],
+      "parameters": [
+        { "name": "r", "label": "Jari-jari Alas", "default": 7, "unit": "cm", "min": 1, "max": 50 },
+        { "name": "t", "label": "Tinggi Kerucut", "default": 12, "unit": "cm", "min": 1, "max": 50 }
+      ],
+      "properties": {
+        "faces": "2 bidang (1 lingkaran alas, 1 juring lingkaran selimut)",
+        "vertices": "1 titik puncak apex"
+      },
+      "formulas": {
+        "garis_pelukis": { "formula": "sqrt(r^2 + t^2)", "katex": "s = \\sqrt{r^2 + t^2}", "explanation": "Panjang apotema garis miring kerucut." },
+        "luas_selimut": { "formula": "pi*r*s", "katex": "L_s = \\pi r s", "explanation": "Luas bidang juring lengkung selimut." },
+        "luas_permukaan": { "formula": "pi*r*(r + s)", "katex": "L = \\pi r (r + s)", "explanation": "Luas lingkaran alas ditambah luas selimut." },
+        "volume": { "formula": "(1/3)*pi*r^2*t", "katex": "V = \\frac{1}{3}\\pi r^2 t", "explanation": "Sepertiga luas lingkaran alas dikali tinggi kerucut." }
+      },
+      "smartboard": {
+        "targetTab": "3d",
+        "model": "conic_slicer",
+        "label": "Kerucut 3D"
+      },
+      "net_2d_counterpart": "jaring_kerucut"
+    },
+    {
+      "id": "bola",
+      "name_id": "Bola",
+      "name_en": "Sphere",
+      "dimension": "3D",
+      "category": "Bangun Ruang Sisi Lengkung Simetris Penuh",
+      "aliases": ["bola", "sphere", "globe", "bulatan 3d"],
+      "parameters": [
+        { "name": "r", "label": "Jari-jari", "default": 7, "unit": "cm", "min": 1, "max": 50 }
+      ],
+      "properties": {
+        "faces": "1 bidang lengkung kontinu tanpa rusuk",
+        "vertices": 0
+      },
+      "formulas": {
+        "luas_permukaan": { "formula": "4*pi*r^2", "katex": "L = 4\\pi r^2", "explanation": "Empat kali luas lingkaran terbesar (lingkaran khatulistiwa)." },
+        "volume": { "formula": "(4/3)*pi*r^3", "katex": "V = \\frac{4}{3}\\pi r^3", "explanation": "Empat per tiga pi dikali pangkat tiga jari-jari." }
+      },
+      "smartboard": {
+        "targetTab": "3d",
+        "model": "solids",
+        "solidKind": "bola",
+        "label": "Bola 3D"
+      }
+    }
+  ],
+  "nets_2d": [
+    {
+      "id": "jaring_prisma",
+      "name_id": "Jaring-Jaring Prisma Segitiga (2D)",
+      "name_en": "Triangular Prism 2D Net",
+      "dimension": "2D_NET",
+      "parent_3d_id": "prisma",
+      "aliases": ["2d prisma", "jaring-jaring prisma", "jaring jaring prisma", "prisma 2d", "net prisma segitiga", "proyeksi prisma"],
+      "components": "2 buah segitiga sama sisi (alas & tutup) dan 3 buah persegi panjang sisi tegak",
+      "formulas": {
+        "luas_jaring_jaring": { "katex": "L_{\\text{jaring}} = 2L_{\\text{alas}} + 3(s \\times t)", "explanation": "Total luas bentangan 2 segitiga dan 3 persegi panjang." }
+      },
+      "smartboard": {
+        "targetTab": "2d",
+        "model": "2d_shape",
+        "planeShapeKind": "jaring_prisma",
+        "label": "Jaring-Jaring Prisma Segitiga 2D"
+      }
+    },
+    {
+      "id": "jaring_kubus",
+      "name_id": "Jaring-Jaring Kubus (2D)",
+      "name_en": "Cube 2D Net",
+      "dimension": "2D_NET",
+      "parent_3d_id": "kubus",
+      "aliases": ["2d kubus", "jaring-jaring kubus", "jaring jaring kubus", "kubus 2d", "net kubus"],
+      "components": "6 buah bujur sangkar / persegi kongruen yang tersusun dalam bentuk salib (T-cross)",
+      "formulas": {
+        "luas_jaring_jaring": { "katex": "L_{\\text{jaring}} = 6s^2", "explanation": "Total luas bentangan keenam persegi kongruen." }
+      },
+      "smartboard": {
+        "targetTab": "2d",
+        "model": "2d_shape",
+        "planeShapeKind": "jaring_kubus",
+        "label": "Jaring-Jaring Kubus 2D"
+      }
+    },
+    {
+      "id": "jaring_limas",
+      "name_id": "Jaring-Jaring Limas Segi Empat (Piramida 2D)",
+      "name_en": "Square Pyramid 2D Net",
+      "dimension": "2D_NET",
+      "parent_3d_id": "limas",
+      "aliases": ["2d limas", "2d piramida", "jaring-jaring limas", "jaring jaring limas", "jaring-jaring piramida", "piramida 2d"],
+      "components": "1 buah persegi di pusat sebagai alas, dikelilingi 4 buah segitiga sama kaki sebagai selimut",
+      "formulas": {
+        "luas_jaring_jaring": { "katex": "L_{\\text{jaring}} = s^2 + 2s \\cdot t_s", "explanation": "Luas persegi tengah ditambah luas 4 segitiga selimut." }
+      },
+      "smartboard": {
+        "targetTab": "2d",
+        "model": "2d_shape",
+        "planeShapeKind": "jaring_limas",
+        "label": "Jaring-Jaring Limas 2D (Piramida)"
+      }
+    },
+    {
+      "id": "jaring_balok",
+      "name_id": "Jaring-Jaring Balok (2D)",
+      "name_en": "Cuboid 2D Net",
+      "dimension": "2D_NET",
+      "parent_3d_id": "balok",
+      "aliases": ["2d balok", "jaring-jaring balok", "jaring jaring balok", "balok 2d"],
+      "components": "6 buah persegi panjang yang terdiri dari 3 pasang bidang kongruen",
+      "formulas": {
+        "luas_jaring_jaring": { "katex": "L_{\\text{jaring}} = 2(pl + pt + lt)", "explanation": "Jumlah luas bentangan keenam persegi panjang." }
+      },
+      "smartboard": {
+        "targetTab": "2d",
+        "model": "2d_shape",
+        "planeShapeKind": "jaring_balok",
+        "label": "Jaring-Jaring Balok 2D"
+      }
+    },
+    {
+      "id": "jaring_tabung",
+      "name_id": "Jaring-Jaring Tabung (2D)",
+      "name_en": "Cylinder 2D Net",
+      "dimension": "2D_NET",
+      "parent_3d_id": "tabung",
+      "aliases": ["2d tabung", "jaring-jaring tabung", "jaring jaring tabung", "tabung 2d"],
+      "components": "2 buah lingkaran kongruen (alas dan tutup) dan 1 buah persegi panjang selimut dengan panjang 2*pi*r dan lebar t",
+      "formulas": {
+        "luas_jaring_jaring": { "katex": "L_{\\text{jaring}} = 2\\pi r^2 + 2\\pi r t", "explanation": "Luas 2 lingkaran alas dan tutup ditambah selimut persegi panjang." }
+      },
+      "smartboard": {
+        "targetTab": "2d",
+        "model": "2d_shape",
+        "planeShapeKind": "jaring_tabung",
+        "label": "Jaring-Jaring Tabung 2D"
+      }
+    }
+  ]
+}
