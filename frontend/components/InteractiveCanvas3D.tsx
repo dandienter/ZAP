@@ -64,10 +64,92 @@ export type PlaneShapeKind =
 export interface BoardFormulaItem {
   id: string;
   latex: string;
+  rawText?: string;
   x: number; // percentage 0-100% dari lebar kanvas
   y: number; // percentage 0-100% dari tinggi kanvas
   color?: "default" | "amber" | "emerald" | "blue" | "rose" | "purple";
   fontSize?: "sm" | "base" | "lg" | "xl";
+}
+
+/**
+ * Otomatis mendeteksi notasi matematika umum dari ketikan keyboard dan mengubahnya ke KaTeX
+ */
+export function autoFormatToLatex(input: string): string {
+  if (!input || !input.trim()) return "";
+  let s = input.trim();
+
+  // Jika sudah berformat LaTeX murni (mengandung backslash), pertahankan
+  if (s.includes("\\frac") || s.includes("\\sqrt") || s.includes("\\sum") || s.includes("\\int") || s.includes("\\pi")) {
+    return s;
+  }
+
+  // 1. Pangkat unicode superscripts
+  s = s.replace(/²/g, "^2").replace(/³/g, "^3");
+
+  // 2. Pecahan sederhana: e.g. 1/2 atau a/b (hindari path atau tanggal)
+  s = s.replace(/(\b\d+|\b[a-zA-Z])\s*\/\s*(\b\d+|\b[a-zA-Z])/g, "\\frac{$1}{$2}");
+
+  // 3. Akar kuadrat: sqrt(x) atau akar(x)
+  s = s.replace(/\bsqrt\(([^)]+)\)/gi, "\\sqrt{$1}");
+  s = s.replace(/\bakar\(([^)]+)\)/gi, "\\sqrt{$1}");
+
+  // 4. Trigonometri
+  s = s.replace(/\bsin\b/gi, "\\sin");
+  s = s.replace(/\bcos\b/gi, "\\cos");
+  s = s.replace(/\btan\b/gi, "\\tan");
+
+  // 5. Huruf Yunani
+  s = s.replace(/\bpi\b/gi, "\\pi");
+  s = s.replace(/\btheta\b/gi, "\\theta");
+  s = s.replace(/\balpha\b/gi, "\\alpha");
+  s = s.replace(/\bbeta\b/gi, "\\beta");
+
+  // 6. Operator aritmatika
+  s = s.replace(/\s*\*\s*/g, " \\cdot ");
+  s = s.replace(/\+\-/g, "\\pm");
+  s = s.replace(/<=/g, "\\le");
+  s = s.replace(/>=/g, "\\ge");
+  s = s.replace(/!=/g, "\\neq");
+
+  return s;
+}
+
+/**
+ * Deteksi intensi transformasi formula/teks: Grafik 2D, 3D Solid, atau Bangun Datar 2D
+ */
+export function detectMathTransform(text: string): "graph" | "3d" | "2d_shape" | null {
+  const lower = text.toLowerCase().trim();
+  // 3D Solids
+  if (
+    /\b(kubus|balok|bola|silinder|tabung|kerucut|prisma|limas|piramida|pelana|saddle|3d|ruang)\b/i.test(lower) &&
+    !lower.includes("jaring")
+  ) {
+    return "3d";
+  }
+  // 2D Nets atau bangun datar
+  if (
+    /\b(jaring|jaring-jaring|net|persegi panjang|persegi|segitiga|lingkaran|belah ketupat|layang-layang|jajar genjang|trapesium|2d)\b/i.test(
+      lower
+    )
+  ) {
+    return "2d_shape";
+  }
+  // Fungsi kurva aljabar 2D (parabola, sinus, linear)
+  if (
+    lower.includes("y =") ||
+    lower.includes("y=") ||
+    lower.includes("f(x)") ||
+    lower.includes("x^2") ||
+    lower.includes("x²") ||
+    lower.includes("sin") ||
+    lower.includes("cos") ||
+    lower.includes("tan") ||
+    lower.includes("parabola") ||
+    lower.includes("grafik")
+  ) {
+    return "graph";
+  }
+  return null;
 }
 
 export const FORMULA_SYMBOLS = [
@@ -261,6 +343,26 @@ export default function InteractiveCanvas3D({
   const [isAiWidgetOpen, setIsAiWidgetOpen] = useState(false);
   const [aiWidgetInput, setAiWidgetInput] = useState("");
   const [aiWidgetFeedback, setAiWidgetFeedback] = useState<string | null>(null);
+
+  // On-Canvas Direct Typing & Selection State
+  const [isTypingToolActive, setIsTypingToolActive] = useState(false);
+  const [selectedFormulaId, setSelectedFormulaId] = useState<string | null>(null);
+
+  // Inline On-Canvas Composer (creates/edits directly where clicked on the canvas)
+  const [inlineComposer, setInlineComposer] = useState<{
+    x: number; // percentage
+    y: number; // percentage
+    text: string;
+    id?: string;
+  } | null>(null);
+
+  // Drag selection marquee (lasso / drag to select components)
+  const [selectionMarquee, setSelectionMarquee] = useState<{
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+  } | null>(null);
 
   // Formula input bar (legacy & synced with AI widget)
   const [formulaInput, setFormulaInput] = useState("");
@@ -898,6 +1000,78 @@ export default function InteractiveCanvas3D({
   };
 
   // =========================================================================
+  // ON-CANVAS COMPONENT TRANSFORMATION (TO 2D GRAPH, 3D SOLID, OR 2D NET)
+  // =========================================================================
+  const handleTransformToGraph = (expr: string) => {
+    const raw = expr.toLowerCase();
+    if (raw.includes("sin") || raw.includes("cos")) {
+      const numMatch = raw.match(/(\d+(?:[.,]\d+)?)\s*(?:\\sin|sin)/i);
+      const amp = numMatch ? parseFloat(numMatch[1].replace(",", ".")) : 2;
+      setParamA(amp);
+      setParamB(1);
+      selectModel("2d_trig");
+    } else if (raw.includes("x^2") || raw.includes("x²") || raw.includes("parabola") || raw.includes("kuadrat")) {
+      let cVal = -3;
+      if (raw.includes("- 3") || raw.includes("-3")) cVal = -3;
+      else if (raw.includes("+ 3") || raw.includes("+3")) cVal = 3;
+      else {
+        const cMatch = raw.match(/([+-]\s*\d+(?:[.,]\d+)?)\s*$/);
+        if (cMatch) cVal = parseFloat(cMatch[1].replace(/\s+/g, "").replace(",", "."));
+      }
+      setParamA(1);
+      setParamB(0);
+      setParamC(cVal);
+      selectModel("2d_quadratic");
+    } else {
+      setParamA(2);
+      setParamB(1);
+      selectModel("2d_linear");
+    }
+  };
+
+  const handleTransformTo3D = (expr: string) => {
+    handleSynthesizeFormula(expr);
+  };
+
+  const handleTransformTo2D = (expr: string) => {
+    handleSynthesizeFormula(expr);
+  };
+
+  const commitInlineComposer = () => {
+    if (!inlineComposer || !inlineComposer.text.trim()) {
+      setInlineComposer(null);
+      return;
+    }
+    const raw = inlineComposer.text.trim();
+    const formattedLatex = autoFormatToLatex(raw);
+
+    if (inlineComposer.id) {
+      setFormulaNotes((prev) =>
+        prev.map((item) =>
+          item.id === inlineComposer.id
+            ? { ...item, latex: formattedLatex, rawText: raw }
+            : item
+        )
+      );
+      setSelectedFormulaId(inlineComposer.id);
+    } else {
+      const newId = `formula_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const newNote: BoardFormulaItem = {
+        id: newId,
+        latex: formattedLatex,
+        rawText: raw,
+        x: Math.max(2, Math.min(80, inlineComposer.x)),
+        y: Math.max(2, Math.min(80, inlineComposer.y)),
+        color: "default",
+        fontSize: "base",
+      };
+      setFormulaNotes((prev) => [...prev, newNote]);
+      setSelectedFormulaId(newId);
+    }
+    setInlineComposer(null);
+  };
+
+  // =========================================================================
   // 3. 2D CARTESIAN & PLANE GEOMETRY VIEW (JAJAR GENJANG, TRAPESIUM, SEGITIGA)
   // =========================================================================
   const is2DGraphModel =
@@ -928,51 +1102,75 @@ export default function InteractiveCanvas3D({
     ctx.fillStyle = isProjectorMode ? "#0c101d" : isDark ? "#080a0f" : "#ffffff";
     ctx.fillRect(0, 0, width, height);
 
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(148, 163, 184, 0.25)";
-    const minX = -Math.ceil(originX / scale);
-    const maxX = Math.ceil((width - originX) / scale);
-    const minY = -Math.ceil((height - originY) / scale);
-    const maxY = Math.ceil(originY / scale);
+    const isCartesianGraph = activeModel !== "2d_shape";
 
-    for (let x = minX; x <= maxX; x++) {
-      const cx = originX + x * scale;
+    if (isCartesianGraph) {
+      // 1. Grid lines kartesius untuk fungsi aljabar (parabola, trig, linear)
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(148, 163, 184, 0.25)";
+      const minX = -Math.ceil(originX / scale);
+      const maxX = Math.ceil((width - originX) / scale);
+      const minY = -Math.ceil((height - originY) / scale);
+      const maxY = Math.ceil(originY / scale);
+
+      for (let x = minX; x <= maxX; x++) {
+        const cx = originX + x * scale;
+        ctx.beginPath();
+        ctx.moveTo(cx, 0);
+        ctx.lineTo(cx, height);
+        ctx.stroke();
+      }
+      for (let y = minY; y <= maxY; y++) {
+        const cy = originY - y * scale;
+        ctx.beginPath();
+        ctx.moveTo(0, cy);
+        ctx.lineTo(width, cy);
+        ctx.stroke();
+      }
+
+      // Sumbu X dan Y
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.25)" : "rgba(100, 116, 139, 0.4)";
       ctx.beginPath();
-      ctx.moveTo(cx, 0);
-      ctx.lineTo(cx, height);
+      ctx.moveTo(0, originY);
+      ctx.lineTo(width, originY);
       ctx.stroke();
-    }
-    for (let y = minY; y <= maxY; y++) {
-      const cy = originY - y * scale;
+
       ctx.beginPath();
-      ctx.moveTo(0, cy);
-      ctx.lineTo(width, cy);
+      ctx.moveTo(originX, 0);
+      ctx.lineTo(originX, height);
       ctx.stroke();
-    }
 
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.25)" : "rgba(100, 116, 139, 0.4)";
-    ctx.beginPath();
-    ctx.moveTo(0, originY);
-    ctx.lineTo(width, originY);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(originX, 0);
-    ctx.lineTo(originX, height);
-    ctx.stroke();
-
-    ctx.fillStyle = isDark ? "rgba(255, 255, 255, 0.55)" : "#475569";
-    ctx.font = "11px monospace";
-    for (let x = minX; x <= maxX; x += 2) {
-      if (x !== 0) ctx.fillText(x.toString(), originX + x * scale - 4, originY + 14);
+      // Angka koordinat
+      ctx.fillStyle = isDark ? "rgba(255, 255, 255, 0.55)" : "#475569";
+      ctx.font = "11px monospace";
+      for (let x = minX; x <= maxX; x += 2) {
+        if (x !== 0) ctx.fillText(x.toString(), originX + x * scale - 4, originY + 14);
+      }
+      for (let y = minY; y <= maxY; y += 2) {
+        if (y !== 0) ctx.fillText(y.toString(), originX + 6, originY - y * scale + 3);
+      }
+      ctx.fillText("0", originX + 5, originY + 12);
+      ctx.fillText("X", width - 15, originY - 6);
+      ctx.fillText("Y", originX + 6, 15);
+    } else {
+      // 2. Blueprint chalkboard grid halus untuk Bangun Datar 2D & Jaring-Jaring (TANPA Sumbu X/Y atau angka tabrakan)
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(148, 163, 184, 0.12)";
+      const step = 40;
+      for (let cx = 0; cx <= width; cx += step) {
+        ctx.beginPath();
+        ctx.moveTo(cx, 0);
+        ctx.lineTo(cx, height);
+        ctx.stroke();
+      }
+      for (let cy = 0; cy <= height; cy += step) {
+        ctx.beginPath();
+        ctx.moveTo(0, cy);
+        ctx.lineTo(width, cy);
+        ctx.stroke();
+      }
     }
-    for (let y = minY; y <= maxY; y += 2) {
-      if (y !== 0) ctx.fillText(y.toString(), originX + 6, originY - y * scale + 3);
-    }
-    ctx.fillText("0", originX + 5, originY + 12);
-    ctx.fillText("X", width - 15, originY - 6);
-    ctx.fillText("Y", originX + 6, 15);
 
     ctx.lineWidth = 2.5;
     if (activeModel === "2d_quadratic") {
@@ -1561,17 +1759,31 @@ export default function InteractiveCanvas3D({
           ctx.fill();
         });
       } else if (planeShapeKind === "jaring_prisma") {
-        // Jaring-Jaring 2D Prisma Segitiga
+        // Jaring-Jaring 2D Prisma Segitiga (Bentangan 3 persegi panjang sisi tegak + 2 segitiga alas/tutup)
         const s = paramA || 8;
         const t = paramB || 10;
+        const u = unit || "cm";
         const hTri = (Math.sqrt(3) / 2) * s;
+
+        // Healthy aspect ratio clamping so columns never collapse into skinny overlapping slits
         const totalW = 3 * s;
         const totalH = t + 2 * hTri;
-        const sc = Math.min((width * 0.7) / totalW, (height * 0.75) / totalH);
+        const sc = Math.min((width * 0.65) / totalW, (height * 0.70) / totalH);
 
-        const w = s * sc;
-        const h = t * sc;
-        const ht = hTri * sc;
+        // Ensure each rectangular column is at least 65px wide and total height is at least 120px
+        let w = Math.max(65, s * sc);
+        let h = Math.max(120, t * sc);
+        let ht = Math.max(38, hTri * sc);
+
+        // Fit within canvas safely
+        if (3 * w > width * 0.8) {
+          w = (width * 0.8) / 3;
+        }
+        if (h + 2 * ht > height * 0.75) {
+          const factor = (height * 0.75) / (h + 2 * ht);
+          h *= factor;
+          ht *= factor;
+        }
 
         const leftX = originX - 1.5 * w;
         const topY = originY - h / 2;
@@ -1630,29 +1842,64 @@ export default function InteractiveCanvas3D({
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Labels
-        ctx.font = "bold 11px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillStyle = isDark ? "#ffffff" : "#0f172a";
-        ctx.fillText("Tutup (Segitiga)", originX, topY - ht * 0.4);
-        ctx.fillText("Alas (Segitiga)", originX, topY + h + ht * 0.5);
+        // Helper to draw clean pill text badge without any background collision
+        const drawPillBadge = (text: string, bx: number, by: number, isPrimary = false) => {
+          ctx.font = isPrimary ? "bold 12px sans-serif" : "bold 11px sans-serif";
+          const tw = ctx.measureText(text).width;
+          const pw = tw + 14;
+          const ph = 20;
 
-        ctx.fillStyle = isDark ? "#94a3b8" : "#64748b";
-        ctx.fillText("Sisi Tegak 1", leftX + 0.5 * w, originY);
-        ctx.fillText("Sisi Tegak 2 (Tengah)", originX, originY);
-        ctx.fillText("Sisi Tegak 3", leftX + 2.5 * w, originY);
+          ctx.fillStyle = isDark ? "rgba(15, 23, 42, 0.9)" : "rgba(255, 255, 255, 0.95)";
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(bx - pw / 2, by - ph / 2, pw, ph, 6);
+          else ctx.rect(bx - pw / 2, by - ph / 2, pw, ph);
+          ctx.fill();
 
-        ctx.font = "bold 12px sans-serif";
-        ctx.fillStyle = isDark ? "#38bdf8" : "#0369a1";
-        ctx.fillText(`s = ${s} ${u}`, originX, topY + h + 18);
-        ctx.textAlign = "left";
-        ctx.fillText(`t = ${t} ${u}`, leftX + 3 * w + 8, originY);
+          ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.12)";
+          ctx.lineWidth = 1;
+          ctx.stroke();
 
-        // Title indicator
-        ctx.font = "bold 13px sans-serif";
-        ctx.fillStyle = isDark ? "#38bdf8" : "#0284c7";
-        ctx.textAlign = "center";
-        ctx.fillText("Jaring-Jaring 2D Prisma Segitiga", originX, topY - ht - 16);
+          ctx.fillStyle = isPrimary ? (isDark ? "#38bdf8" : "#0284c7") : (isDark ? "#e2e8f0" : "#1e293b");
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(text, bx, by);
+        };
+
+        // Triangles labels
+        drawPillBadge("Tutup Segitiga", originX, topY - ht * 0.45);
+        drawPillBadge("Alas Segitiga", originX, topY + h + ht * 0.45);
+
+        // Rectangles labels (using adaptive numbering if narrow, full label if wide)
+        if (w >= 90) {
+          drawPillBadge("Sisi Tegak 1", leftX + 0.5 * w, originY);
+          drawPillBadge("Sisi Tegak 2 (Tengah)", originX, originY);
+          drawPillBadge("Sisi Tegak 3", leftX + 2.5 * w, originY);
+        } else {
+          drawPillBadge("Bidang 1", leftX + 0.5 * w, originY);
+          drawPillBadge("Bidang 2", originX, originY);
+          drawPillBadge("Bidang 3", leftX + 2.5 * w, originY);
+        }
+
+        // Side length (s) label below alas
+        drawPillBadge(`s = ${s} ${u}`, originX, topY + h + ht + 20, true);
+
+        // Height (t) dimension with dedicated vertical arrow line on the right
+        const dimX = leftX + 3 * w + 20;
+        ctx.strokeStyle = isDark ? "#38bdf8" : "#0284c7";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(dimX, topY);
+        ctx.lineTo(dimX, topY + h);
+        ctx.moveTo(dimX - 4, topY);
+        ctx.lineTo(dimX + 4, topY);
+        ctx.moveTo(dimX - 4, topY + h);
+        ctx.lineTo(dimX + 4, topY + h);
+        ctx.stroke();
+
+        drawPillBadge(`t = ${t} ${u}`, dimX + 34, originY, true);
+
+        // Clean title badge above top triangle
+        drawPillBadge("Jaring-Jaring 2D Prisma Segitiga", originX, topY - ht - 20, true);
       } else if (planeShapeKind === "jaring_kubus") {
         // Jaring-Jaring 2D Kubus (Pola Salib / T-Cross)
         const s = paramA || 10;
@@ -2738,6 +2985,77 @@ export default function InteractiveCanvas3D({
     rebuildMeshes();
   }, [rebuildMeshes]);
 
+  // Board workspace pointer handlers (inline composer on click / marquee selection on drag)
+  const handleBoardPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDrawingToolActive) return;
+    const target = e.target as HTMLElement;
+    if (target.closest("button") || target.closest("input") || target.closest("textarea") || target.closest(".liquid-glass-popup")) return;
+
+    const boardEl = boardWorkspaceRef.current;
+    if (!boardEl) return;
+    const rect = boardEl.getBoundingClientRect();
+    const pctX = ((e.clientX - rect.left) / rect.width) * 100;
+    const pctY = ((e.clientY - rect.top) / rect.height) * 100;
+
+    // If Typing tool is active, clicking canvas opens inline composer!
+    if (isTypingToolActive) {
+      setInlineComposer({ x: Math.max(2, Math.min(75, pctX)), y: Math.max(2, Math.min(75, pctY)), text: "" });
+      setSelectedFormulaId(null);
+      return;
+    }
+
+    // If clicked outside any formula note, deselect and start marquee drag
+    if (!target.closest("[data-formula-card]")) {
+      setSelectedFormulaId(null);
+      setSelectionMarquee({
+        startX: pctX,
+        startY: pctY,
+        currentX: pctX,
+        currentY: pctY,
+      });
+    }
+  };
+
+  const handleBoardPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!selectionMarquee) return;
+    const boardEl = boardWorkspaceRef.current;
+    if (!boardEl) return;
+    const rect = boardEl.getBoundingClientRect();
+    const pctX = ((e.clientX - rect.left) / rect.width) * 100;
+    const pctY = ((e.clientY - rect.top) / rect.height) * 100;
+
+    setSelectionMarquee((prev) => (prev ? { ...prev, currentX: pctX, currentY: pctY } : null));
+  };
+
+  const handleBoardPointerUp = () => {
+    if (selectionMarquee) {
+      const minX = Math.min(selectionMarquee.startX, selectionMarquee.currentX);
+      const maxX = Math.max(selectionMarquee.startX, selectionMarquee.currentX);
+      const minY = Math.min(selectionMarquee.startY, selectionMarquee.currentY);
+      const maxY = Math.max(selectionMarquee.startY, selectionMarquee.currentY);
+
+      if (maxX - minX > 2 || maxY - minY > 2) {
+        const hit = formulaNotes.find((note) => {
+          return note.x >= minX - 12 && note.x <= maxX && note.y >= minY - 6 && note.y <= maxY;
+        });
+        if (hit) {
+          setSelectedFormulaId(hit.id);
+        }
+      }
+      setSelectionMarquee(null);
+    }
+  };
+
+  const handleBoardDoubleClick = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDrawingToolActive) return;
+    const boardEl = boardWorkspaceRef.current;
+    if (!boardEl) return;
+    const rect = boardEl.getBoundingClientRect();
+    const pctX = ((e.clientX - rect.left) / rect.width) * 100;
+    const pctY = ((e.clientY - rect.top) / rect.height) * 100;
+    setInlineComposer({ x: Math.max(2, Math.min(75, pctX)), y: Math.max(2, Math.min(75, pctY)), text: "" });
+  };
+
   // =========================================================================
   // RENDER PANDANGAN UTAMA PAPAN TULIS VIRTUAL
   // =========================================================================
@@ -2799,58 +3117,37 @@ export default function InteractiveCanvas3D({
           )}
         </div>
 
-        {/* Center: Clean Canvas Status Pill */}
-        <div className="flex-1 min-w-0 flex items-center justify-center">
-          <div className="px-3 py-1 rounded-xl bg-slate-100/80 dark:bg-white/[0.04] border border-slate-200/80 dark:border-white/[0.06] flex items-center gap-2 max-w-xs truncate text-xs text-slate-600 dark:text-zinc-300">
-            {activeModel === "empty" ? (
-              <>
-                <Pencil className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 shrink-0" />
-                <span className="truncate font-medium">Papan Tulis Pintar</span>
-                {formulaNotes.length > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 font-mono font-semibold">
-                    {formulaNotes.length} Rumus
-                  </span>
-                )}
-              </>
-            ) : activeModel === "2d_shape" ? (
-              <>
-                <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 animate-pulse" />
-                <span className="truncate font-medium capitalize">
-                  {planeShapeKind.replace(/_/g, " ")} 2D
-                </span>
-              </>
-            ) : is3DModel ? (
-              <>
-                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
-                <span className="truncate font-medium capitalize">
-                  {solidKind} 3D
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="w-2 h-2 rounded-full bg-purple-500 shrink-0 animate-pulse" />
-                <span className="truncate font-medium">Grafik 2D</span>
-              </>
-            )}
-          </div>
-        </div>
+        {/* Center: Flexible Spacer (Komponen teks status di header telah dihapus sesuai permintaan) */}
+        <div className="flex-1" />
 
         {/* Right: Tools Cluster */}
         <div className="flex items-center gap-1 shrink-0">
-          {/* Tombol Tulis Rumus KaTeX Keyboard */}
+          {/* Tombol Mode Ketik Langsung di Kanvas */}
           <button
             type="button"
-            onClick={handleOpenNewFormula}
-            className="p-1.5 px-2 rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer dark:bg-white/[0.04] bg-slate-100 text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white border dark:border-white/[0.06] border-slate-200 hover:border-slate-300 dark:hover:border-white/20 active:scale-95"
-            title="Tulis Rumus Matematika (KaTeX / LaTeX Keyboard)"
+            onClick={() => {
+              if (isTypingToolActive) {
+                setIsTypingToolActive(false);
+              } else {
+                setIsTypingToolActive(true);
+                setIsDrawingToolActive(false);
+              }
+            }}
+            className={`p-1.5 px-2.5 rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer ${
+              isTypingToolActive
+                ? "bg-amber-500 text-white shadow-sm font-semibold"
+                : "dark:bg-white/[0.04] bg-slate-100 text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white border dark:border-white/[0.06] border-slate-200"
+            }`}
+            title="Mode Ketik di Kanvas (Klik di mana saja pada papan untuk mengetik rumus/teks)"
           >
-            <Type className="w-3.5 h-3.5 text-amber-500" />
-            <span className="text-[11px] font-mono font-medium hidden sm:inline">Rumus</span>
+            <Type className="w-3.5 h-3.5" />
+            <span className="text-[11px] font-mono font-medium hidden sm:inline">Ketik Rumus</span>
           </button>
 
           <button
             type="button"
             onClick={() => {
+              setIsTypingToolActive(false);
               if (isDrawingToolActive && drawingMode === "pen") setIsDrawingToolActive(false);
               else {
                 setIsDrawingToolActive(true);
@@ -2971,7 +3268,13 @@ export default function InteractiveCanvas3D({
       {/* 2. MAIN BOARD WORKSPACE */}
       <div
         ref={boardWorkspaceRef}
-        className="flex-1 relative w-full h-full min-h-0 bg-slate-50 dark:bg-[#080a0f] overflow-hidden"
+        onPointerDown={handleBoardPointerDown}
+        onPointerMove={handleBoardPointerMove}
+        onPointerUp={handleBoardPointerUp}
+        onDoubleClick={handleBoardDoubleClick}
+        className={`flex-1 relative w-full h-full min-h-0 bg-slate-50 dark:bg-[#080a0f] overflow-hidden ${
+          isTypingToolActive ? "cursor-text" : ""
+        }`}
       >
         {/* A. EMPTY STATE */}
         {activeModel === "empty" && (
@@ -2994,11 +3297,14 @@ export default function InteractiveCanvas3D({
               <div className="flex items-center justify-center gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={handleOpenNewFormula}
+                  onClick={() => {
+                    setIsTypingToolActive(true);
+                    setInlineComposer({ x: 30, y: 35, text: "" });
+                  }}
                   className="px-3.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300/60 dark:border-amber-500/30 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
                 >
                   <Type className="w-3.5 h-3.5" />
-                  <span>Tulis Rumus KaTeX</span>
+                  <span>Ketik Rumus di Kanvas</span>
                 </button>
                 <button
                   type="button"
@@ -3560,73 +3866,307 @@ export default function InteractiveCanvas3D({
           </div>
         )}
 
-        {/* E. KATEX FORMULA CARDS OVERLAY (Draggable, Sharp Keyboard Typography) */}
-        {formulaNotes.map((note) => (
-          <div
-            key={note.id}
-            style={{ left: `${note.x}%`, top: `${note.y}%` }}
-            className={`absolute z-20 group rounded-2xl p-3.5 shadow-xl backdrop-blur-md select-none border transition-all duration-150 ${
-              note.color === "amber"
-                ? "bg-amber-500/10 dark:bg-amber-950/40 border-amber-300/80 dark:border-amber-500/30 text-amber-950 dark:text-amber-100"
-                : note.color === "emerald"
-                ? "bg-emerald-500/10 dark:bg-emerald-950/40 border-emerald-300/80 dark:border-emerald-500/30 text-emerald-950 dark:text-emerald-100"
-                : note.color === "blue"
-                ? "bg-blue-500/10 dark:bg-blue-950/40 border-blue-300/80 dark:border-blue-500/30 text-blue-950 dark:text-blue-100"
-                : note.color === "rose"
-                ? "bg-rose-500/10 dark:bg-rose-950/40 border-rose-300/80 dark:border-rose-500/30 text-rose-950 dark:text-rose-100"
-                : note.color === "purple"
-                ? "bg-purple-500/10 dark:bg-purple-950/40 border-purple-300/80 dark:border-purple-500/30 text-purple-950 dark:text-purple-100"
-                : "bg-white/95 dark:bg-[#121520]/95 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white"
-            }`}
-          >
-            {/* Card mini-toolbar */}
-            <div className="flex items-center justify-between gap-3 mb-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
-              <div
-                onPointerDown={(e) => handleFormulaPointerDown(note.id, e)}
-                className="cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-1 text-[10px] font-mono text-slate-500 dark:text-zinc-400"
-                title="Tahan & geser untuk memindahkan posisi rumus di kanvas"
-              >
-                <Move className="w-3 h-3 text-slate-500 dark:text-zinc-400" />
-                <span className="text-[9px] uppercase tracking-wider font-semibold">KaTeX</span>
+        {/* E. KATEX FORMULA CARDS OVERLAY (Draggable, Selectable, Auto-Latex Typography) */}
+        {formulaNotes.map((note) => {
+          const isSelected = selectedFormulaId === note.id;
+          const detected = detectMathTransform(note.rawText || note.latex);
+
+          return (
+            <div
+              key={note.id}
+              data-formula-card="true"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedFormulaId(note.id);
+              }}
+              style={{ left: `${note.x}%`, top: `${note.y}%` }}
+              className={`absolute z-20 group rounded-2xl p-3.5 shadow-xl backdrop-blur-md select-none border transition-all duration-150 ${
+                isSelected
+                  ? "ring-2 ring-amber-500 shadow-2xl scale-[1.02]"
+                  : "hover:border-slate-400 dark:hover:border-white/30"
+              } ${
+                note.color === "amber"
+                  ? "bg-amber-500/10 dark:bg-amber-950/40 border-amber-300/80 dark:border-amber-500/30 text-amber-950 dark:text-amber-100"
+                  : note.color === "emerald"
+                  ? "bg-emerald-500/10 dark:bg-emerald-950/40 border-emerald-300/80 dark:border-emerald-500/30 text-emerald-950 dark:text-emerald-100"
+                  : note.color === "blue"
+                  ? "bg-blue-500/10 dark:bg-blue-950/40 border-blue-300/80 dark:border-blue-500/30 text-blue-950 dark:text-blue-100"
+                  : note.color === "rose"
+                  ? "bg-rose-500/10 dark:bg-rose-950/40 border-rose-300/80 dark:border-rose-500/30 text-rose-950 dark:text-rose-100"
+                  : note.color === "purple"
+                  ? "bg-purple-500/10 dark:bg-purple-950/40 border-purple-300/80 dark:border-purple-500/30 text-purple-950 dark:text-purple-100"
+                  : "bg-white/95 dark:bg-[#121520]/95 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white"
+              }`}
+            >
+              {/* Contextual Floating Transformation Bar (When Selected - Like Video) */}
+              {isSelected && (
+                <>
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute -top-11 left-0 flex items-center gap-1 p-1 rounded-xl liquid-glass-popup border border-slate-200/90 dark:border-white/15 shadow-2xl z-30 animate-fadeIn whitespace-nowrap text-xs text-slate-800 dark:text-zinc-200"
+                  >
+                    {/* Transform to 2D Graph */}
+                    {(detected === "graph" || note.latex.includes("x") || note.latex.includes("sin")) && (
+                      <button
+                        type="button"
+                        onClick={() => handleTransformToGraph(note.rawText || note.latex)}
+                        className="px-2.5 py-1 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-[11px] font-semibold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                        title="Ubah formula ini menjadi Grafik Kartesius 2D"
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        <span>Ubah ke Grafik 2D</span>
+                      </button>
+                    )}
+
+                    {/* Transform to 3D Solid */}
+                    {(detected === "3d" || /kubus|prisma|limas|balok|bola|tabung/i.test(note.rawText || note.latex)) && (
+                      <button
+                        type="button"
+                        onClick={() => handleTransformTo3D(note.rawText || note.latex)}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-semibold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                        title="Ubah teks ini menjadi Model Geometri 3D"
+                      >
+                        <Box className="w-3 h-3" />
+                        <span>Ubah ke Model 3D</span>
+                      </button>
+                    )}
+
+                    {/* Transform to 2D Net/Shape */}
+                    {(detected === "2d_shape" || /jaring|persegi|segitiga|lingkaran/i.test(note.rawText || note.latex)) && (
+                      <button
+                        type="button"
+                        onClick={() => handleTransformTo2D(note.rawText || note.latex)}
+                        className="px-2.5 py-1 rounded-lg bg-purple-500 hover:bg-purple-600 text-white text-[11px] font-semibold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                        title="Ubah teks ini menjadi Bentangan / Jaring-Jaring 2D"
+                      >
+                        <Layers className="w-3 h-3" />
+                        <span>Ubah ke Diagram 2D</span>
+                      </button>
+                    )}
+
+                    {/* Fallback buttons if type is not specifically detected */}
+                    {!detected && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleTransformToGraph(note.rawText || note.latex)}
+                          className="px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.08] text-[11px] font-medium text-blue-600 dark:text-blue-400 flex items-center gap-1 transition cursor-pointer"
+                        >
+                          📈 Grafik 2D
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleTransformTo3D(note.rawText || note.latex)}
+                          className="px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.08] text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1 transition cursor-pointer"
+                        >
+                          🧊 3D Solid
+                        </button>
+                      </>
+                    )}
+
+                    <div className="w-[1px] h-4 bg-slate-200 dark:bg-white/10 mx-0.5" />
+
+                    {/* Edit inline button */}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setInlineComposer({
+                          x: note.x,
+                          y: note.y,
+                          text: note.rawText || note.latex,
+                          id: note.id,
+                        })
+                      }
+                      className="p-1 rounded-lg text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.08] transition cursor-pointer"
+                      title="Edit Rumus Langsung"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+
+                    {/* Delete button */}
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteFormula(note.id)}
+                      className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition cursor-pointer"
+                      title="Hapus Rumus"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* 4 Corner Anchors for Active Selection (Matching Smartboard in Video) */}
+                  <span className="absolute -top-1.5 -left-1.5 w-3 h-3 rounded-full bg-amber-500 ring-2 ring-white dark:ring-[#080a0f] pointer-events-none" />
+                  <span className="absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full bg-amber-500 ring-2 ring-white dark:ring-[#080a0f] pointer-events-none" />
+                  <span className="absolute -bottom-1.5 -left-1.5 w-3 h-3 rounded-full bg-amber-500 ring-2 ring-white dark:ring-[#080a0f] pointer-events-none" />
+                  <span className="absolute -bottom-1.5 -right-1.5 w-3 h-3 rounded-full bg-amber-500 ring-2 ring-white dark:ring-[#080a0f] pointer-events-none" />
+                </>
+              )}
+
+              {/* Card mini-toolbar */}
+              <div className="flex items-center justify-between gap-3 mb-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                <div
+                  onPointerDown={(e) => handleFormulaPointerDown(note.id, e)}
+                  className="cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-1 text-[10px] font-mono text-slate-500 dark:text-zinc-400"
+                  title="Tahan & geser untuk memindahkan posisi rumus di kanvas"
+                >
+                  <Move className="w-3 h-3 text-slate-500 dark:text-zinc-400" />
+                  <span className="text-[9px] uppercase tracking-wider font-semibold">KaTeX</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setInlineComposer({
+                        x: note.x,
+                        y: note.y,
+                        text: note.rawText || note.latex,
+                        id: note.id,
+                      })
+                    }
+                    className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
+                    title="Edit Rumus Langsung"
+                  >
+                    <Edit3 className="w-3 h-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteFormula(note.id)}
+                    className="p-1 rounded hover:bg-red-500/10 text-slate-400 hover:text-red-500 transition cursor-pointer"
+                    title="Hapus Rumus"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
+
+              {/* Sharp KaTeX Formula Rendering */}
+              <div
+                className={`cursor-pointer overflow-x-auto ${
+                  note.fontSize === "sm"
+                    ? "text-xs"
+                    : note.fontSize === "lg"
+                    ? "text-lg font-medium"
+                    : note.fontSize === "xl"
+                    ? "text-2xl font-bold"
+                    : "text-base font-normal"
+                }`}
+                onDoubleClick={() =>
+                  setInlineComposer({
+                    x: note.x,
+                    y: note.y,
+                    text: note.rawText || note.latex,
+                    id: note.id,
+                  })
+                }
+                title="Klik untuk memilih, atau klik dua kali untuk mengedit"
+              >
+                <MathView math={note.latex} block />
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Marquee Drag-to-Select Box */}
+        {selectionMarquee && (
+          <div
+            style={{
+              left: `${Math.min(selectionMarquee.startX, selectionMarquee.currentX)}%`,
+              top: `${Math.min(selectionMarquee.startY, selectionMarquee.currentY)}%`,
+              width: `${Math.abs(selectionMarquee.currentX - selectionMarquee.startX)}%`,
+              height: `${Math.abs(selectionMarquee.currentY - selectionMarquee.startY)}%`,
+            }}
+            className="absolute z-30 border-2 border-dashed border-amber-500 bg-amber-500/10 rounded-xl pointer-events-none transition-none"
+          />
+        )}
+
+        {/* Inline On-Canvas Direct Typing Box */}
+        {inlineComposer && (
+          <div
+            style={{ left: `${inlineComposer.x}%`, top: `${inlineComposer.y}%` }}
+            className="absolute z-40 -translate-x-2 -translate-y-2 min-w-[280px] max-w-md p-3 rounded-2xl liquid-glass-popup border-2 border-amber-500/80 shadow-2xl animate-liquid-pop select-none text-slate-800 dark:text-zinc-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-100 dark:border-white/[0.08] text-[11px] font-medium text-slate-500 dark:text-zinc-400">
+              <span className="flex items-center gap-1.5">
+                <Type className="w-3.5 h-3.5 text-amber-500" />
+                <span>Ketik Rumus di Kanvas</span>
+              </span>
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => handleOpenEditFormula(note)}
-                  className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
-                  title="Edit Rumus"
+                  onClick={() => {
+                    const text = inlineComposer.text;
+                    const editingId = inlineComposer.id;
+                    setInlineComposer(null);
+                    if (editingId) {
+                      const note = formulaNotes.find((n) => n.id === editingId);
+                      if (note) {
+                        handleOpenEditFormula(note);
+                        return;
+                      }
+                    }
+                    handleOpenNewFormula();
+                    if (text) setLatexDraft(autoFormatToLatex(text));
+                  }}
+                  className="text-[10px] text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                  title="Buka panel simbol matematika lengkap dan palet warna"
                 >
-                  <Edit3 className="w-3 h-3" />
+                  Simbol &amp; Palet ↗
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteFormula(note.id)}
-                  className="p-1 rounded hover:bg-red-500/10 text-slate-400 hover:text-red-500 transition cursor-pointer"
-                  title="Hapus Rumus"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                <span className="text-[10px] text-slate-400">Otomatis KaTeX</span>
               </div>
             </div>
 
-            {/* Sharp KaTeX Formula Rendering */}
-            <div
-              className={`cursor-pointer overflow-x-auto ${
-                note.fontSize === "sm"
-                  ? "text-xs"
-                  : note.fontSize === "lg"
-                  ? "text-lg font-medium"
-                  : note.fontSize === "xl"
-                  ? "text-2xl font-bold"
-                  : "text-base font-normal"
-              }`}
-              onDoubleClick={() => handleOpenEditFormula(note)}
-              title="Klik dua kali untuk mengedit rumus"
-            >
-              <MathView math={note.latex} block />
+            {/* Live Auto-KaTeX Preview */}
+            <div className="min-h-[36px] px-3 py-2 mb-2 rounded-xl bg-slate-100/90 dark:bg-black/40 border border-slate-200/80 dark:border-white/10 flex items-center justify-center text-sm font-medium overflow-x-auto text-slate-900 dark:text-white">
+              {inlineComposer.text.trim() ? (
+                <MathView math={autoFormatToLatex(inlineComposer.text)} block={false} />
+              ) : (
+                <span className="text-xs text-slate-400 dark:text-zinc-500 italic">
+                  Ketik rumus, misal: y = x^2 - 3, a^2 + b^2 = c^2, atau kubus 10cm...
+                </span>
+              )}
+            </div>
+
+            {/* Direct Input Field */}
+            <div className="flex items-center gap-1.5">
+              <input
+                type="text"
+                value={inlineComposer.text}
+                onChange={(e) => setInlineComposer({ ...inlineComposer, text: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    commitInlineComposer();
+                  } else if (e.key === "Escape") {
+                    setInlineComposer(null);
+                  }
+                }}
+                placeholder="Ketik rumus matematika..."
+                className="flex-1 bg-white dark:bg-[#121520] border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition shadow-inner"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={commitInlineComposer}
+                disabled={!inlineComposer.text.trim()}
+                className="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-30 text-white text-xs font-semibold shadow-xs transition cursor-pointer flex items-center gap-1"
+                title="Simpan ke Papan (Enter)"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Pasang</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setInlineComposer(null)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
+                title="Batal (Esc)"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
-        ))}
+        )}
 
         {/* F. FLOATING ZAP AI COPILOT ASSISTANT (Bottom-Right Chatbot Widget) */}
         <div className="absolute bottom-4 right-4 z-30 flex flex-col items-end">

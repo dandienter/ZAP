@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   Check,
   ExternalLink,
 } from "lucide-react";
@@ -321,72 +322,68 @@ export default function ModelPickerWithEffort({
         />
       </button>
 
-      {/* Minimal Context Menu (Liquid Glass Drop Blur) */}
+      {/* Minimal Context Menu (Liquid Glass Drop Blur - In-Card Drilldown without Horizontal Overflow) */}
       {isOpen && (
         <div
           className={`absolute right-0 z-50 select-none animate-liquid-pop origin-bottom-right ${
             dropUp ? "bottom-full mb-2.5" : "top-full mt-2.5"
           }`}
         >
-          {/* Main 2-Row Context Menu Card */}
-          <div className="w-68 sm:w-72 liquid-glass-popup rounded-2xl p-1.5 relative text-slate-800 dark:text-zinc-200">
-            {/* Row 1: Model */}
-            <button
-              type="button"
-              onClick={() => setActiveSubmenu(activeSubmenu === "model" ? null : "model")}
-              onMouseEnter={() => setActiveSubmenu("model")}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] transition cursor-pointer ${
-                activeSubmenu === "model"
-                  ? "bg-slate-900/[0.08] dark:bg-white/[0.12] text-slate-950 dark:text-white font-medium"
-                  : "text-slate-700 dark:text-zinc-300 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-950 dark:hover:text-white"
-              }`}
-            >
-              <span className="font-medium text-slate-800 dark:text-zinc-200">Model</span>
-              <div className="flex items-center gap-1.5 text-slate-500 dark:text-zinc-400">
-                <span className="truncate max-w-[140px] font-normal text-right">
-                  {currentModel.id.includes("deepseek") ? "DeepSeek-V4.1-Flash" : currentModel.shortName}
-                </span>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 flex-shrink-0" />
-              </div>
-            </button>
+          {/* Main Context Menu Card (Drilldown in-place so it NEVER overflows screen edges) */}
+          <div className="w-72 sm:w-80 liquid-glass-popup rounded-2xl p-2 relative text-slate-800 dark:text-zinc-200 shadow-2xl border border-slate-200/90 dark:border-white/10">
+            {/* VIEW A: Main Menu (Model + Effort) */}
+            {activeSubmenu === null && (
+              <div className="space-y-1">
+                {/* Row 1: Model */}
+                <button
+                  type="button"
+                  onClick={() => setActiveSubmenu("model")}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] transition cursor-pointer text-slate-700 dark:text-zinc-300 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-950 dark:hover:text-white"
+                >
+                  <span className="font-medium text-slate-800 dark:text-zinc-200">Model</span>
+                  <div className="flex items-center gap-1.5 text-slate-500 dark:text-zinc-400">
+                    <span className="truncate max-w-[150px] font-normal text-right">
+                      {currentModel.id.includes("deepseek") ? "DeepSeek-V4.1-Flash" : currentModel.shortName}
+                    </span>
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 flex-shrink-0" />
+                  </div>
+                </button>
 
-            {/* Row 2: Effort */}
-            <button
-              type="button"
-              onClick={() => setActiveSubmenu(activeSubmenu === "effort" ? null : "effort")}
-              onMouseEnter={() => setActiveSubmenu("effort")}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] transition cursor-pointer ${
-                activeSubmenu === "effort"
-                  ? "bg-slate-900/[0.08] dark:bg-white/[0.12] text-slate-950 dark:text-white font-medium"
-                  : "text-slate-700 dark:text-zinc-300 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-950 dark:hover:text-white"
-              }`}
-            >
-              <span className="font-medium text-slate-800 dark:text-zinc-200">Effort</span>
-              <div className="flex items-center gap-1.5 text-slate-500 dark:text-zinc-400">
-                <span className="font-normal text-right">
-                  {formatEffort(reasoningEffort)}
-                </span>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 flex-shrink-0" />
+                {/* Row 2: Effort */}
+                <button
+                  type="button"
+                  onClick={() => setActiveSubmenu("effort")}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] transition cursor-pointer text-slate-700 dark:text-zinc-300 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-950 dark:hover:text-white"
+                >
+                  <span className="font-medium text-slate-800 dark:text-zinc-200">Reasoning Effort</span>
+                  <div className="flex items-center gap-1.5 text-slate-500 dark:text-zinc-400">
+                    <span className="font-normal text-right">
+                      {formatEffort(reasoningEffort)}
+                    </span>
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 flex-shrink-0" />
+                  </div>
+                </button>
               </div>
-            </button>
+            )}
 
-            {/* Submenu 1: Model Selector (Flyout to left on sm:, in-place on xs:) */}
+            {/* VIEW B: Model Selector Drilldown */}
             {activeSubmenu === "model" && (
-              <div
-                className="fixed inset-x-3 bottom-24 sm:absolute sm:inset-auto sm:right-full sm:mr-2 sm:bottom-0 sm:w-80 liquid-glass-popup rounded-2xl p-1.5 z-50 animate-liquid-pop origin-bottom-right"
-                onMouseEnter={() => setActiveSubmenu("model")}
-              >
-                <div className="px-3 py-2 text-[11px] font-mono text-slate-600 dark:text-zinc-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-200/80 dark:border-white/[0.08] mb-1 font-bold">
-                  <span>PILIH MODEL</span>
+              <div className="space-y-1 animate-fadeIn">
+                <div className="px-1 py-1 flex items-center justify-between border-b border-slate-200/80 dark:border-white/[0.08] mb-1.5">
                   <button
                     type="button"
                     onClick={() => setActiveSubmenu(null)}
-                    className="sm:hidden text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white"
+                    className="flex items-center gap-1 text-xs text-slate-600 hover:text-slate-950 dark:text-zinc-300 dark:hover:text-white font-medium cursor-pointer p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition"
                   >
-                    ✕
+                    <ChevronLeft className="w-4 h-4" />
+                    <span>Kembali</span>
                   </button>
+                  <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 dark:text-zinc-500 font-semibold pr-1">
+                    PILIH MODEL
+                  </span>
                 </div>
-                <div className="space-y-0.5 max-h-80 overflow-y-auto px-0.5">
+
+                <div className="space-y-0.5 max-h-72 overflow-y-auto px-0.5 no-scrollbar">
                   {AVAILABLE_MODELS.map((model) => {
                     const isSelected = model.id === currentModel.id;
                     const Icon = model.icon;
@@ -412,6 +409,7 @@ export default function ModelPickerWithEffort({
                     );
                   })}
                 </div>
+
                 <div className="my-1 border-t border-slate-200/60 dark:border-white/[0.08]" />
                 <Link
                   href="/connector"
@@ -427,23 +425,24 @@ export default function ModelPickerWithEffort({
               </div>
             )}
 
-            {/* Submenu 2: Reasoning Effort Selector */}
+            {/* VIEW C: Reasoning Effort Drilldown */}
             {activeSubmenu === "effort" && (
-              <div
-                className="fixed inset-x-3 bottom-24 sm:absolute sm:inset-auto sm:right-full sm:mr-2 sm:bottom-0 sm:w-44 liquid-glass-popup rounded-2xl p-1.5 z-50 animate-liquid-pop origin-bottom-right"
-                onMouseEnter={() => setActiveSubmenu("effort")}
-              >
-                <div className="px-3 py-2 text-[11px] font-mono text-slate-500 dark:text-zinc-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-200/60 dark:border-white/[0.08] mb-1 font-semibold">
-                  <span>Effort</span>
+              <div className="space-y-1 animate-fadeIn">
+                <div className="px-1 py-1 flex items-center justify-between border-b border-slate-200/80 dark:border-white/[0.08] mb-1.5">
                   <button
                     type="button"
                     onClick={() => setActiveSubmenu(null)}
-                    className="sm:hidden text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white"
+                    className="flex items-center gap-1 text-xs text-slate-600 hover:text-slate-950 dark:text-zinc-300 dark:hover:text-white font-medium cursor-pointer p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition"
                   >
-                    ✕
+                    <ChevronLeft className="w-4 h-4" />
+                    <span>Kembali</span>
                   </button>
+                  <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 dark:text-zinc-500 font-semibold pr-1">
+                    REASONING EFFORT
+                  </span>
                 </div>
-                <div className="space-y-0.5">
+
+                <div className="space-y-1 px-0.5">
                   {(["low", "medium", "high"] as ReasoningEffort[]).map((opt) => {
                     const isSelected = opt === reasoningEffort;
                     return (
@@ -451,15 +450,26 @@ export default function ModelPickerWithEffort({
                         key={opt}
                         type="button"
                         onClick={() => handleSelectEffort(opt)}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] transition cursor-pointer text-left ${
+                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition cursor-pointer ${
                           isSelected
-                            ? "bg-slate-100 dark:bg-white/[0.1] text-slate-900 dark:text-white font-medium"
-                            : "text-slate-700 dark:text-zinc-300 hover:bg-slate-100/70 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-white"
+                            ? "bg-slate-900/[0.08] dark:bg-white/[0.12] text-slate-950 dark:text-white font-semibold"
+                            : "text-slate-800 dark:text-zinc-200 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-950 dark:hover:text-white"
                         }`}
                       >
-                        <span>{formatEffort(opt)}</span>
+                        <div className="flex flex-col">
+                          <span className="text-xs font-semibold text-slate-900 dark:text-white">
+                            {formatEffort(opt)}
+                          </span>
+                          <span className="text-[11px] text-slate-500 dark:text-zinc-400 leading-tight mt-0.5">
+                            {opt === "high"
+                              ? "Penalaran bertingkat & verifikasi CAS mendalam"
+                              : opt === "medium"
+                              ? "Keseimbangan kecepatan dan analisis aljabar"
+                              : "Respon cepat untuk pertanyaan langsung"}
+                          </span>
+                        </div>
                         {isSelected && (
-                          <Check className="w-3.5 h-3.5 text-slate-900 dark:text-white flex-shrink-0" />
+                          <Check className="w-4 h-4 text-slate-900 dark:text-white flex-shrink-0 ml-2" />
                         )}
                       </button>
                     );
