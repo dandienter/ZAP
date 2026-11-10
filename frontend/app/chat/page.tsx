@@ -3546,6 +3546,7 @@ export default function ZAPApp() {
                     onInsertPython={insertPythonCasTemplate}
                     onInsertExample={insertExampleProblem}
                     onOpenSmartboard={() => {
+                      setActive3DModel("empty");
                       setShowRightPane(true);
                       setRightPaneTab("canvas");
                     }}
@@ -4032,6 +4033,7 @@ export default function ZAPApp() {
                   onInsertPython={insertPythonCasTemplate}
                   onInsertExample={insertExampleProblem}
                   onOpenSmartboard={() => {
+                    setActive3DModel("empty");
                     setShowRightPane(true);
                     setRightPaneTab("canvas");
                   }}
@@ -4199,7 +4201,10 @@ export default function ZAPApp() {
 
                   {/* Card 3: Papan Tulis Pintar */}
                   <div
-                    onClick={() => setRightPaneTab("canvas")}
+                    onClick={() => {
+                      setActive3DModel("empty");
+                      setRightPaneTab("canvas");
+                    }}
                     className="flex items-center justify-between p-3.5 rounded-xl bg-white dark:bg-[#1b1c21] hover:bg-slate-50 dark:hover:bg-[#21232a] border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] transition cursor-pointer group shadow-sm"
                   >
                     <div className="flex items-center gap-3">
@@ -4569,6 +4574,7 @@ export default function ZAPApp() {
                 type="button"
                 onClick={() => {
                   setShowMoreModal(false);
+                  setActive3DModel("empty");
                   setShowRightPane(true);
                   setRightPaneTab("canvas");
                 }}

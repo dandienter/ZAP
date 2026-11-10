@@ -19,8 +19,15 @@ import {
   Scissors,
   Eye,
   EyeOff,
+  Type,
+  Move,
+  Edit3,
+  Send,
+  Check,
 } from "lucide-react";
 import { useTheme } from "@/utils/theme";
+import MathView from "@/components/MathView";
+import ZapLogo from "@/components/ZapLogo";
 
 export type MathModelType =
   | "empty"
@@ -53,6 +60,55 @@ export type PlaneShapeKind =
   | "jaring_limas"
   | "jaring_balok"
   | "jaring_tabung";
+
+export interface BoardFormulaItem {
+  id: string;
+  latex: string;
+  x: number; // percentage 0-100% dari lebar kanvas
+  y: number; // percentage 0-100% dari tinggi kanvas
+  color?: "default" | "amber" | "emerald" | "blue" | "rose" | "purple";
+  fontSize?: "sm" | "base" | "lg" | "xl";
+}
+
+export const FORMULA_SYMBOLS = [
+  { label: "a/b", insert: "\\frac{a}{b}" },
+  { label: "√x", insert: "\\sqrt{x}" },
+  { label: "x²", insert: "x^2" },
+  { label: "xₙ", insert: "x_n" },
+  { label: "π", insert: "\\pi" },
+  { label: "θ", insert: "\\theta" },
+  { label: "α", insert: "\\alpha" },
+  { label: "β", insert: "\\beta" },
+  { label: "Δ", insert: "\\Delta" },
+  { label: "±", insert: "\\pm" },
+  { label: "×", insert: "\\times" },
+  { label: "÷", insert: "\\div" },
+  { label: "≈", insert: "\\approx" },
+  { label: "≤", insert: "\\le" },
+  { label: "≥", insert: "\\ge" },
+  { label: "≠", insert: "\\neq" },
+  { label: "∫", insert: "\\int_{a}^{b} f(x) \\, dx" },
+  { label: "∑", insert: "\\sum_{i=1}^{n}" },
+  { label: "∞", insert: "\\infty" },
+  { label: "·", insert: "\\cdot" },
+];
+
+export const FORMULA_TEMPLATES = [
+  { name: "Teorema Pythagoras", latex: "a^2 + b^2 = c^2" },
+  { name: "Luas Segitiga", latex: "L = \\frac{1}{2} \\times a \\times t" },
+  { name: "Luas Lingkaran", latex: "L = \\pi r^2" },
+  { name: "Keliling Lingkaran", latex: "K = 2\\pi r" },
+  { name: "Volume Kubus", latex: "V = s^3" },
+  { name: "Luas Permukaan Kubus", latex: "L_p = 6s^2" },
+  { name: "Volume Balok", latex: "V = p \\times l \\times t" },
+  { name: "Volume Prisma Segitiga", latex: "V = L_a \\times t_p = \\left(\\frac{1}{2} a \\cdot t_a\\right) t_p" },
+  { name: "Luas Permukaan Prisma", latex: "L_p = 2L_a + (s_1 + s_2 + s_3) \\times t_p" },
+  { name: "Volume Limas Segi Empat", latex: "V = \\frac{1}{3} \\times L_a \\times t" },
+  { name: "Volume Tabung", latex: "V = \\pi r^2 t" },
+  { name: "Luas Tabung", latex: "L = 2\\pi r (r + t)" },
+  { name: "Rumus Kuadrat ABC", latex: "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}" },
+  { name: "Identitas Trigonometri", latex: "\\sin^2(\\theta) + \\cos^2(\\theta) = 1" },
+];
 
 interface InteractiveCanvas3DProps {
   initialModel?: MathModelType;
@@ -168,7 +224,45 @@ export default function InteractiveCanvas3D({
   // 2D Graph Canvas
   const graph2DCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Formula input bar
+  // Board Workspace Container Ref (for calculating percentage drag coordinates)
+  const boardWorkspaceRef = useRef<HTMLDivElement | null>(null);
+
+  // KaTeX Keyboard Formula Notes on Board
+  const [formulaNotes, setFormulaNotes] = useState<BoardFormulaItem[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = sessionStorage.getItem("zap_board_formulas");
+        if (saved) return JSON.parse(saved);
+      } catch {
+        // ignore
+      }
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem("zap_board_formulas", JSON.stringify(formulaNotes));
+      } catch {
+        // ignore
+      }
+    }
+  }, [formulaNotes]);
+
+  // KaTeX Formula Composer Modal State
+  const [isFormulaModalOpen, setIsFormulaModalOpen] = useState(false);
+  const [editingFormulaId, setEditingFormulaId] = useState<string | null>(null);
+  const [latexDraft, setLatexDraft] = useState("");
+  const [formulaColor, setFormulaColor] = useState<"default" | "amber" | "emerald" | "blue" | "rose" | "purple">("default");
+  const [formulaFontSize, setFormulaFontSize] = useState<"sm" | "base" | "lg" | "xl">("base");
+
+  // Floating ZAP AI Copilot Assistant Widget State (Bottom-Right)
+  const [isAiWidgetOpen, setIsAiWidgetOpen] = useState(false);
+  const [aiWidgetInput, setAiWidgetInput] = useState("");
+  const [aiWidgetFeedback, setAiWidgetFeedback] = useState<string | null>(null);
+
+  // Formula input bar (legacy & synced with AI widget)
   const [formulaInput, setFormulaInput] = useState("");
 
   // 3D Three.js Refs
@@ -691,6 +785,116 @@ export default function InteractiveCanvas3D({
     setSolidKind("kubus");
     setShowSlicePlane(wantsSlice);
     selectModel("solids");
+  };
+
+  // =========================================================================
+  // 3. ZAP AI COPILOT & KATEX FORMULA ANNOTATION HANDLERS
+  // =========================================================================
+  const triggerAiSynthesize = (query: string) => {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    handleSynthesizeFormula(trimmed);
+    setFormulaInput(trimmed);
+    setAiWidgetFeedback(`Berhasil membuat: "${trimmed}"`);
+    setTimeout(() => {
+      setAiWidgetFeedback(null);
+      setIsAiWidgetOpen(false);
+    }, 1200);
+  };
+
+  const handleFormulaPointerDown = (id: string, e: React.PointerEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const boardEl = boardWorkspaceRef.current;
+    if (!boardEl) return;
+    const boardRect = boardEl.getBoundingClientRect();
+
+    const note = formulaNotes.find((n) => n.id === id);
+    if (!note) return;
+
+    const startClientX = e.clientX;
+    const startClientY = e.clientY;
+    const startPercentX = note.x;
+    const startPercentY = note.y;
+
+    const onPointerMove = (moveEvt: PointerEvent) => {
+      const deltaX = moveEvt.clientX - startClientX;
+      const deltaY = moveEvt.clientY - startClientY;
+      const deltaPercentX = (deltaX / boardRect.width) * 100;
+      const deltaPercentY = (deltaY / boardRect.height) * 100;
+
+      const newX = Math.max(1, Math.min(85, startPercentX + deltaPercentX));
+      const newY = Math.max(1, Math.min(85, startPercentY + deltaPercentY));
+
+      setFormulaNotes((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, x: newX, y: newY } : item))
+      );
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+  };
+
+  const handleOpenNewFormula = () => {
+    setEditingFormulaId(null);
+    setLatexDraft("");
+    setFormulaColor("default");
+    setFormulaFontSize("base");
+    setIsFormulaModalOpen(true);
+  };
+
+  const handleOpenEditFormula = (note: BoardFormulaItem) => {
+    setEditingFormulaId(note.id);
+    setLatexDraft(note.latex);
+    setFormulaColor(note.color || "default");
+    setFormulaFontSize(note.fontSize || "base");
+    setIsFormulaModalOpen(true);
+  };
+
+  const handleDeleteFormula = (id: string) => {
+    setFormulaNotes((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  const handleSaveFormula = () => {
+    const trimmed = latexDraft.trim();
+    if (!trimmed) return;
+    if (editingFormulaId) {
+      setFormulaNotes((prev) =>
+        prev.map((item) =>
+          item.id === editingFormulaId
+            ? {
+                ...item,
+                latex: trimmed,
+                color: formulaColor,
+                fontSize: formulaFontSize,
+              }
+            : item
+        )
+      );
+    } else {
+      const offsetIndex = formulaNotes.length % 5;
+      const newNote: BoardFormulaItem = {
+        id: `formula_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        latex: trimmed,
+        x: 8 + offsetIndex * 5,
+        y: 12 + offsetIndex * 12,
+        color: formulaColor,
+        fontSize: formulaFontSize,
+      };
+      setFormulaNotes((prev) => [...prev, newNote]);
+    }
+    setIsFormulaModalOpen(false);
+    setLatexDraft("");
+    setEditingFormulaId(null);
+  };
+
+  const handleInsertSymbol = (symbolStr: string) => {
+    setLatexDraft((prev) => (prev ? `${prev} ${symbolStr}` : symbolStr));
   };
 
   // =========================================================================
@@ -2595,33 +2799,55 @@ export default function InteractiveCanvas3D({
           )}
         </div>
 
-        {/* Center: Command / Formula input bar */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSynthesizeFormula(formulaInput);
-          }}
-          className="flex-1 min-w-0 max-w-xs relative flex items-center"
-        >
-          <Sparkles className="w-3.5 h-3.5 absolute left-2.5 text-slate-400 dark:text-zinc-500 pointer-events-none" />
-          <input
-            type="text"
-            value={formulaInput}
-            onChange={(e) => setFormulaInput(e.target.value)}
-            placeholder="Ketik: cube 10cm, y=x²-3..."
-            className="w-full dark:bg-[#141724] bg-slate-100 border dark:border-white/[0.08] border-slate-200 rounded-xl pl-8 pr-14 py-1 text-xs dark:text-white text-slate-900 dark:placeholder-zinc-500 placeholder-slate-400 focus:outline-none focus:border-slate-400 dark:focus:border-white/30 transition truncate"
-          />
-          <button
-            type="submit"
-            className="absolute right-1 px-2 py-0.5 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-950 text-[11px] font-semibold transition cursor-pointer"
-            title="Render bangun geometri atau rumus"
-          >
-            Gambar
-          </button>
-        </form>
+        {/* Center: Clean Canvas Status Pill */}
+        <div className="flex-1 min-w-0 flex items-center justify-center">
+          <div className="px-3 py-1 rounded-xl bg-slate-100/80 dark:bg-white/[0.04] border border-slate-200/80 dark:border-white/[0.06] flex items-center gap-2 max-w-xs truncate text-xs text-slate-600 dark:text-zinc-300">
+            {activeModel === "empty" ? (
+              <>
+                <Pencil className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 shrink-0" />
+                <span className="truncate font-medium">Papan Tulis Pintar</span>
+                {formulaNotes.length > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 font-mono font-semibold">
+                    {formulaNotes.length} Rumus
+                  </span>
+                )}
+              </>
+            ) : activeModel === "2d_shape" ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 animate-pulse" />
+                <span className="truncate font-medium capitalize">
+                  {planeShapeKind.replace(/_/g, " ")} 2D
+                </span>
+              </>
+            ) : is3DModel ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
+                <span className="truncate font-medium capitalize">
+                  {solidKind} 3D
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="w-2 h-2 rounded-full bg-purple-500 shrink-0 animate-pulse" />
+                <span className="truncate font-medium">Grafik 2D</span>
+              </>
+            )}
+          </div>
+        </div>
 
         {/* Right: Tools Cluster */}
         <div className="flex items-center gap-1 shrink-0">
+          {/* Tombol Tulis Rumus KaTeX Keyboard */}
+          <button
+            type="button"
+            onClick={handleOpenNewFormula}
+            className="p-1.5 px-2 rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer dark:bg-white/[0.04] bg-slate-100 text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white border dark:border-white/[0.06] border-slate-200 hover:border-slate-300 dark:hover:border-white/20 active:scale-95"
+            title="Tulis Rumus Matematika (KaTeX / LaTeX Keyboard)"
+          >
+            <Type className="w-3.5 h-3.5 text-amber-500" />
+            <span className="text-[11px] font-mono font-medium hidden sm:inline">Rumus</span>
+          </button>
+
           <button
             type="button"
             onClick={() => {
@@ -2743,7 +2969,10 @@ export default function InteractiveCanvas3D({
       </div>
 
       {/* 2. MAIN BOARD WORKSPACE */}
-      <div className="flex-1 relative w-full h-full min-h-0 bg-slate-50 dark:bg-[#080a0f] overflow-hidden">
+      <div
+        ref={boardWorkspaceRef}
+        className="flex-1 relative w-full h-full min-h-0 bg-slate-50 dark:bg-[#080a0f] overflow-hidden"
+      >
         {/* A. EMPTY STATE */}
         {activeModel === "empty" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-0 select-none">
@@ -2757,8 +2986,28 @@ export default function InteractiveCanvas3D({
                   Papan Tulis Pintar ZAP
                 </h3>
                 <p className="text-xs text-slate-600 dark:text-zinc-400 max-w-sm mx-auto leading-relaxed">
-                  Papan tulis interaktif untuk simulasi geometri 3D, grafik 2D, dan coretan kapur. Pilih preset di bawah atau ketik perintah di atas.
+                  Papan tulis interaktif untuk simulasi geometri 2D/3D, penulisan rumus KaTeX keyboard rapi tanpa stylus, dan coretan kapur.
                 </p>
+              </div>
+
+              {/* Action shortcuts */}
+              <div className="flex items-center justify-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleOpenNewFormula}
+                  className="px-3.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300/60 dark:border-amber-500/30 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <Type className="w-3.5 h-3.5" />
+                  <span>Tulis Rumus KaTeX</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsAiWidgetOpen(true)}
+                  className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-950 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Buat dengan ZAP AI</span>
+                </button>
               </div>
 
               {/* Quick Preset Buttons */}
@@ -3308,6 +3557,387 @@ export default function InteractiveCanvas3D({
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* E. KATEX FORMULA CARDS OVERLAY (Draggable, Sharp Keyboard Typography) */}
+        {formulaNotes.map((note) => (
+          <div
+            key={note.id}
+            style={{ left: `${note.x}%`, top: `${note.y}%` }}
+            className={`absolute z-20 group rounded-2xl p-3.5 shadow-xl backdrop-blur-md select-none border transition-all duration-150 ${
+              note.color === "amber"
+                ? "bg-amber-500/10 dark:bg-amber-950/40 border-amber-300/80 dark:border-amber-500/30 text-amber-950 dark:text-amber-100"
+                : note.color === "emerald"
+                ? "bg-emerald-500/10 dark:bg-emerald-950/40 border-emerald-300/80 dark:border-emerald-500/30 text-emerald-950 dark:text-emerald-100"
+                : note.color === "blue"
+                ? "bg-blue-500/10 dark:bg-blue-950/40 border-blue-300/80 dark:border-blue-500/30 text-blue-950 dark:text-blue-100"
+                : note.color === "rose"
+                ? "bg-rose-500/10 dark:bg-rose-950/40 border-rose-300/80 dark:border-rose-500/30 text-rose-950 dark:text-rose-100"
+                : note.color === "purple"
+                ? "bg-purple-500/10 dark:bg-purple-950/40 border-purple-300/80 dark:border-purple-500/30 text-purple-950 dark:text-purple-100"
+                : "bg-white/95 dark:bg-[#121520]/95 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white"
+            }`}
+          >
+            {/* Card mini-toolbar */}
+            <div className="flex items-center justify-between gap-3 mb-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
+              <div
+                onPointerDown={(e) => handleFormulaPointerDown(note.id, e)}
+                className="cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-1 text-[10px] font-mono text-slate-500 dark:text-zinc-400"
+                title="Tahan & geser untuk memindahkan posisi rumus di kanvas"
+              >
+                <Move className="w-3 h-3 text-slate-500 dark:text-zinc-400" />
+                <span className="text-[9px] uppercase tracking-wider font-semibold">KaTeX</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => handleOpenEditFormula(note)}
+                  className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
+                  title="Edit Rumus"
+                >
+                  <Edit3 className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteFormula(note.id)}
+                  className="p-1 rounded hover:bg-red-500/10 text-slate-400 hover:text-red-500 transition cursor-pointer"
+                  title="Hapus Rumus"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+
+            {/* Sharp KaTeX Formula Rendering */}
+            <div
+              className={`cursor-pointer overflow-x-auto ${
+                note.fontSize === "sm"
+                  ? "text-xs"
+                  : note.fontSize === "lg"
+                  ? "text-lg font-medium"
+                  : note.fontSize === "xl"
+                  ? "text-2xl font-bold"
+                  : "text-base font-normal"
+              }`}
+              onDoubleClick={() => handleOpenEditFormula(note)}
+              title="Klik dua kali untuk mengedit rumus"
+            >
+              <MathView math={note.latex} block />
+            </div>
+          </div>
+        ))}
+
+        {/* F. FLOATING ZAP AI COPILOT ASSISTANT (Bottom-Right Chatbot Widget) */}
+        <div className="absolute bottom-4 right-4 z-30 flex flex-col items-end">
+          {isAiWidgetOpen ? (
+            <div className="w-[360px] max-w-[calc(100vw-32px)] rounded-2xl liquid-glass-popup border border-slate-200 dark:border-white/10 shadow-2xl p-4 animate-liquid-pop origin-bottom-right space-y-3.5 select-none text-slate-800 dark:text-zinc-200">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-white/[0.08]">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-amber-500/10 dark:bg-amber-400/15 flex items-center justify-center text-amber-500 dark:text-amber-400">
+                    <ZapLogo className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                      ZAP Geometry Copilot
+                      <span className="text-[9px] px-1.5 py-0.2 bg-amber-500/15 text-amber-600 dark:text-amber-300 rounded font-mono font-medium">
+                        AI
+                      </span>
+                    </h4>
+                    <p className="text-[10px] text-slate-500 dark:text-zinc-400">
+                      Sekali minta, langsung digambar di papan
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAiWidgetOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
+                  title="Tutup ZAP AI Copilot"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Suggestion Chips */}
+              <div className="space-y-1.5">
+                <div className="text-[10px] uppercase font-mono tracking-wider text-slate-400 dark:text-zinc-500">
+                  Pilihan Cepat:
+                </div>
+                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto no-scrollbar">
+                  {[
+                    { label: "Prisma Segitiga 3D", query: "prisma segitiga 3d 10cm" },
+                    { label: "Jaring Prisma 2D", query: "jaring-jaring prisma 2d" },
+                    { label: "Kubus 10cm", query: "kubus 10cm" },
+                    { label: "Jaring Kubus 2D", query: "jaring-jaring kubus 2d" },
+                    { label: "Piramida Limas 3D", query: "limas segi empat 3d" },
+                    { label: "Jaring Limas 2D", query: "jaring limas 2d" },
+                    { label: "Lingkaran 2D", query: "lingkaran r=7cm" },
+                    { label: "Persegi Panjang", query: "persegi panjang 14x8" },
+                    { label: "Parabola y=x²-3", query: "y=x^2-3" },
+                    { label: "Tabung Silinder", query: "tabung r=7 t=12" },
+                  ].map((chip) => (
+                    <button
+                      key={chip.label}
+                      type="button"
+                      onClick={() => {
+                        setAiWidgetInput(chip.query);
+                        triggerAiSynthesize(chip.query);
+                      }}
+                      className="px-2 py-1 rounded-lg text-[11px] bg-slate-100 dark:bg-white/[0.06] hover:bg-amber-50 hover:text-amber-700 dark:hover:bg-amber-500/20 dark:hover:text-amber-200 text-slate-700 dark:text-zinc-300 border border-slate-200/80 dark:border-white/[0.06] transition cursor-pointer"
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Input Form */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  triggerAiSynthesize(aiWidgetInput);
+                }}
+                className="space-y-2 pt-1"
+              >
+                <div className="relative flex items-center">
+                  <input
+                    type="text"
+                    value={aiWidgetInput}
+                    onChange={(e) => setAiWidgetInput(e.target.value)}
+                    placeholder="Misal: buatkan prisma segitiga 3d 10cm..."
+                    className="w-full bg-slate-100/90 dark:bg-[#0c0e16] border border-slate-200 dark:border-white/10 rounded-xl pl-3 pr-10 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 dark:focus:border-amber-400 transition"
+                    autoFocus
+                  />
+                  <button
+                    type="submit"
+                    disabled={!aiWidgetInput.trim()}
+                    className="absolute right-1.5 p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-zinc-200 disabled:opacity-30 text-white dark:text-zinc-950 transition cursor-pointer"
+                    title="Kirim dan buat di papan"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                {aiWidgetFeedback && (
+                  <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5 animate-fadeIn">
+                    <Check className="w-3.5 h-3.5" />
+                    <span>{aiWidgetFeedback}</span>
+                  </div>
+                )}
+              </form>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsAiWidgetOpen(true)}
+              className="group flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-white/95 dark:bg-[#121520]/95 hover:bg-white dark:hover:bg-[#181c2b] border border-slate-200 dark:border-white/10 shadow-xl hover:shadow-2xl backdrop-blur-md transition-all duration-200 cursor-pointer active:scale-95"
+              title="Buka ZAP AI Copilot untuk membuat bangun 2D/3D & rumus"
+            >
+              <div className="w-6 h-6 rounded-lg bg-amber-500/10 dark:bg-amber-400/15 flex items-center justify-center text-amber-500 dark:text-amber-400 group-hover:scale-110 transition-transform">
+                <ZapLogo className="w-4 h-4" />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="text-xs font-semibold text-slate-900 dark:text-white leading-tight flex items-center gap-1">
+                  ZAP AI Copilot
+                  <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
+                </span>
+                <span className="text-[10px] text-slate-500 dark:text-zinc-400 leading-tight">
+                  Buat 2D, 3D, atau Rumus
+                </span>
+              </div>
+            </button>
+          )}
+        </div>
+
+        {/* G. KATEX FORMULA COMPOSER MODAL */}
+        {isFormulaModalOpen && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs select-none">
+            <div className="w-full max-w-lg rounded-2xl liquid-glass-popup border border-slate-200 dark:border-white/10 shadow-2xl p-5 space-y-4 animate-liquid-pop text-slate-800 dark:text-zinc-200 max-h-[90vh] overflow-y-auto">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/[0.08]">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-amber-500/10 dark:bg-amber-400/15 flex items-center justify-center text-amber-500 dark:text-amber-400">
+                    <Type className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                      {editingFormulaId ? "Edit Rumus KaTeX" : "Tulis Rumus KaTeX"}
+                    </h3>
+                    <p className="text-[11px] text-slate-500 dark:text-zinc-400">
+                      Ketik rumus rapi menggunakan keyboard tanpa stylus
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsFormulaModalOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Live Rendered KaTeX Preview Box */}
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                  Pratinjau Hasil Rumus:
+                </span>
+                <div className="min-h-[64px] p-4 rounded-xl bg-slate-100/90 dark:bg-[#0c0e16] border border-slate-200/80 dark:border-white/[0.08] flex items-center justify-center text-center overflow-x-auto">
+                  {latexDraft.trim() ? (
+                    <div
+                      className={
+                        formulaFontSize === "sm"
+                          ? "text-xs"
+                          : formulaFontSize === "lg"
+                          ? "text-lg font-medium"
+                          : formulaFontSize === "xl"
+                          ? "text-2xl font-bold"
+                          : "text-base font-normal"
+                      }
+                    >
+                      <MathView math={latexDraft} block />
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-400 dark:text-zinc-500 italic">
+                      Ketik rumus di bawah atau klik simbol/template untuk melihat pratinjau...
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Keyboard LaTeX Input Field */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-mono uppercase tracking-wider text-slate-400 dark:text-zinc-500 flex items-center justify-between">
+                  <span>Kode KaTeX / LaTeX (Ketik via Keyboard):</span>
+                  <span className="text-[10px] lowercase text-slate-400 font-mono">
+                    {"contoh: \\frac{a}{b}, x^2, \\sqrt{x}"}
+                  </span>
+                </label>
+                <textarea
+                  value={latexDraft}
+                  onChange={(e) => setLatexDraft(e.target.value)}
+                  placeholder="Misal: L = \frac{1}{2} \times a \times t atau a^2 + b^2 = c^2"
+                  rows={2}
+                  className="w-full bg-white dark:bg-[#121520] border border-slate-200 dark:border-white/10 rounded-xl p-3 text-xs font-mono text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 dark:focus:border-amber-400 transition resize-none"
+                  autoFocus
+                />
+              </div>
+
+              {/* Quick Math Symbols Palette */}
+              <div className="space-y-1.5">
+                <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                  Simbol Cepat (Klik untuk Sisipkan):
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {FORMULA_SYMBOLS.map((sym) => (
+                    <button
+                      key={sym.label}
+                      type="button"
+                      onClick={() => handleInsertSymbol(sym.insert)}
+                      className="px-2 py-1 rounded-lg text-xs font-mono bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.1] text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-white/[0.06] transition cursor-pointer"
+                      title={`Sisipkan ${sym.insert}`}
+                    >
+                      {sym.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quick Math Formula Templates */}
+              <div className="space-y-1.5">
+                <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                  Template Rumus Populer:
+                </div>
+                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto no-scrollbar">
+                  {FORMULA_TEMPLATES.map((tmpl) => (
+                    <button
+                      key={tmpl.name}
+                      type="button"
+                      onClick={() => setLatexDraft(tmpl.latex)}
+                      className="px-2 py-1 rounded-lg text-[11px] bg-slate-100 hover:bg-amber-50 hover:text-amber-700 dark:bg-white/[0.04] dark:hover:bg-amber-500/15 dark:hover:text-amber-300 text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-white/[0.06] transition cursor-pointer"
+                    >
+                      {tmpl.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Style Controls: Color & Font Size */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-slate-100 dark:border-white/[0.06]">
+                {/* Color Swatches */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-slate-500 dark:text-zinc-400">Warna:</span>
+                  {(
+                    [
+                      { id: "default", bg: "bg-slate-700 dark:bg-zinc-200", label: "Standar" },
+                      { id: "amber", bg: "bg-amber-500", label: "Kuning / Amber" },
+                      { id: "emerald", bg: "bg-emerald-500", label: "Hijau" },
+                      { id: "blue", bg: "bg-blue-500", label: "Biru" },
+                      { id: "rose", bg: "bg-rose-500", label: "Merah" },
+                      { id: "purple", bg: "bg-purple-500", label: "Ungu" },
+                    ] as const
+                  ).map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setFormulaColor(c.id)}
+                      className={`w-5 h-5 rounded-full ${c.bg} transition-all cursor-pointer ${
+                        formulaColor === c.id
+                          ? "ring-2 ring-offset-2 ring-slate-900 dark:ring-white scale-110"
+                          : "opacity-70 hover:opacity-100"
+                      }`}
+                      title={c.label}
+                    />
+                  ))}
+                </div>
+
+                {/* Font Size Selector */}
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/[0.04] p-0.5 rounded-xl border border-slate-200 dark:border-white/[0.06]">
+                  {(
+                    [
+                      { id: "sm", label: "S" },
+                      { id: "base", label: "M" },
+                      { id: "lg", label: "L" },
+                      { id: "xl", label: "XL" },
+                    ] as const
+                  ).map((sz) => (
+                    <button
+                      key={sz.id}
+                      type="button"
+                      onClick={() => setFormulaFontSize(sz.id)}
+                      className={`px-2 py-0.5 rounded-lg text-xs font-mono font-medium transition cursor-pointer ${
+                        formulaFontSize === sz.id
+                          ? "bg-white dark:bg-white/[0.16] text-slate-900 dark:text-white shadow-xs font-bold"
+                          : "text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                    >
+                      {sz.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsFormulaModalOpen(false)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  disabled={!latexDraft.trim()}
+                  onClick={handleSaveFormula}
+                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-zinc-200 disabled:opacity-40 text-white dark:text-zinc-950 text-xs font-semibold shadow-md transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{editingFormulaId ? "Perbarui Rumus" : "Pasang ke Papan"}</span>
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
