@@ -115,7 +115,7 @@ export async function POST(req: Request) {
         message: `Akun ${email} berhasil dipulihkan secara resmi di server!`,
         email,
         recoveryToken,
-        recoveryUrl: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/chat?unban_token=${encodeURIComponent(recoveryToken)}`,
+        recoveryUrl: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/unban?token=${encodeURIComponent(recoveryToken)}`,
       });
     }
 
@@ -127,7 +127,7 @@ export async function POST(req: Request) {
 
       const recoveryToken = createRecoveryToken(email);
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-      const recoveryUrl = `${appUrl}/chat?unban_token=${encodeURIComponent(recoveryToken)}`;
+      const recoveryUrl = `${appUrl}/unban?token=${encodeURIComponent(recoveryToken)}`;
 
       return NextResponse.json({
         success: true,

@@ -1375,6 +1375,7 @@ export default function ZAPApp() {
   const [adminUnbanLoading, setAdminUnbanLoading] = useState<boolean>(false);
   const [adminActionResult, setAdminActionResult] = useState<{ success: boolean; message: string; token?: string; url?: string } | null>(null);
   const [adminCopiedDraft, setAdminCopiedDraft] = useState<boolean>(false);
+  const [adminCopiedLink, setAdminCopiedLink] = useState<boolean>(false);
   const [adminSuspendedList, setAdminSuspendedList] = useState<Array<{ email: string; strikes: number; isSuspended: boolean; reason?: string; suspendedAt?: number; unbannedAt?: number }>>([]);
   const [adminLoadingList, setAdminLoadingList] = useState<boolean>(false);
 
@@ -1575,6 +1576,26 @@ export default function ZAPApp() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
+        // Cek jika terdapat parameter pemulihan di URL (?unban_token=... atau ?unban=... atau ?token=...)
+        const searchParamsUrl = new URLSearchParams(window.location.search);
+        const urlUnbanToken = searchParamsUrl.get("unban_token") || searchParamsUrl.get("unban") || searchParamsUrl.get("token");
+        if (urlUnbanToken) {
+          fetch(`/api/admin/security?token=${encodeURIComponent(urlUnbanToken)}`)
+            .then((r) => r.json())
+            .then((data) => {
+              if (data.success) {
+                setIsAccountSuspended(false);
+                setJailbreakStrikes(0);
+                localStorage.removeItem("zap_account_suspended");
+                localStorage.removeItem("zap_jailbreak_strikes");
+                alert(data.message || "Akun Anda berhasil dipulihkan secara penuh! Selamat datang kembali di ChatZAP.");
+                const cleanPath = window.location.pathname;
+                window.history.replaceState({}, "", cleanPath);
+              }
+            })
+            .catch((e) => console.warn("Unban token check failed:", e));
+        }
+
         const raw = localStorage.getItem("zap_authenticated_user");
         if (raw) {
           const parsed = JSON.parse(raw);
@@ -1586,26 +1607,6 @@ export default function ZAPApp() {
             const lastActiveUser = localStorage.getItem("zap_last_active_user_email")?.toLowerCase().trim();
             const isAccountSwitched = !lastActiveUser || lastActiveUser !== userKey;
             const initialTargetId = getPathConversationId();
-
-            // Cek jika terdapat parameter unban_token dari email siswa (?unban_token=... atau ?unban=...)
-            const searchParamsUrl = new URLSearchParams(window.location.search);
-            const urlUnbanToken = searchParamsUrl.get("unban_token") || searchParamsUrl.get("unban");
-            if (urlUnbanToken) {
-              fetch(`/api/admin/security?token=${encodeURIComponent(urlUnbanToken)}&email=${encodeURIComponent(userKey)}`)
-                .then((r) => r.json())
-                .then((data) => {
-                  if (data.success) {
-                    setIsAccountSuspended(false);
-                    setJailbreakStrikes(0);
-                    localStorage.removeItem("zap_account_suspended");
-                    localStorage.removeItem("zap_jailbreak_strikes");
-                    alert(data.message || "Akun Anda berhasil dipulihkan secara penuh! Selamat datang kembali di ChatZAP.");
-                    const cleanPath = window.location.pathname;
-                    window.history.replaceState({}, "", cleanPath);
-                  }
-                })
-                .catch((e) => console.warn("Unban token check failed:", e));
-            }
 
             // Sinkronisasi status penangguhan / unban dengan database server vault
             if (userKey) {
@@ -2929,11 +2930,13 @@ export default function ZAPApp() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
+        const liveOrigin = typeof window !== "undefined" && window.location.origin ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000");
+        const resolvedUrl = data.recoveryToken ? `${liveOrigin}/unban?token=${encodeURIComponent(data.recoveryToken)}` : (data.recoveryUrl || "");
         setAdminActionResult({
           success: true,
           message: data.message || `Akun ${emailToUnban} berhasil dipulihkan di server!`,
           token: data.recoveryToken,
-          url: data.recoveryUrl,
+          url: resolvedUrl,
         });
         if (targetEmailToUnban) {
           setAdminTargetEmail(targetEmailToUnban);
@@ -5930,17 +5933,31 @@ export default function ZAPApp() {
                                   {adminActionResult.url}
                                 </span>
                               </div>
-                              <div className="pt-1">
+                              <div className="pt-1 flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (adminActionResult.url) {
+                                      navigator.clipboard.writeText(adminActionResult.url);
+                                      setAdminCopiedLink(true);
+                                      setTimeout(() => setAdminCopiedLink(false), 2500);
+                                    }
+                                  }}
+                                  className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 shadow-xs"
+                                >
+                                  {adminCopiedLink ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                                  <span>{adminCopiedLink ? "Tautan Berhasil Disalin!" : "Salin Tautan 1-Klik"}</span>
+                                </button>
                                 <button
                                   type="button"
                                   onClick={() => {
                                     const template = `Halo,\n\nPermohonan pemulihan akun ChatZAP Anda (${adminTargetEmail}) telah disetujui.\n\nKlik tautan berikut untuk langsung membuka blokir akun Anda secara otomatis:\n${adminActionResult.url}\n\nAtau masukkan kode pemulihan ini pada kotak banner ChatZAP:\n${adminActionResult.token}\n\nSalam,\nWakhid Pangestu\nChatZAP Administrator`;
                                     handleAdminCopyDraft(template);
                                   }}
-                                  className="px-3 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 shadow-xs"
+                                  className="px-3 py-1 rounded-lg bg-emerald-800 hover:bg-emerald-900 text-white text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 shadow-xs"
                                 >
                                   {adminCopiedDraft ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                                  <span>{adminCopiedDraft ? "Draf Balasan Email Tersalin!" : "Salin Draf Balasan Email untuk Siswa"}</span>
+                                  <span>{adminCopiedDraft ? "Draf Balasan Tersalin!" : "Salin Draf Balasan Email"}</span>
                                 </button>
                               </div>
                             </div>
