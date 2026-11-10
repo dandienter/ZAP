@@ -4,8 +4,6 @@ import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import {
   ChevronDown,
-  ChevronRight,
-  ChevronLeft,
   Check,
   ExternalLink,
 } from "lucide-react";
@@ -254,9 +252,10 @@ export default function ModelPickerWithEffort({
   dropUp = true,
 }: ModelPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeSubmenu, setActiveSubmenu] = useState<"model" | "effort" | null>(null);
+  const [activeTab, setActiveTab] = useState<"model" | "effort">("model");
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const currentModel =
     AVAILABLE_MODELS.find((m) => m.id === selectedModelId) || AVAILABLE_MODELS[0];
@@ -267,24 +266,24 @@ export default function ModelPickerWithEffort({
     }
     onSelectModel(model);
     setIsOpen(false);
-    setActiveSubmenu(null);
   };
 
   const handleSelectEffort = (effort: ReasoningEffort) => {
     onChangeEffort(effort);
     setIsOpen(false);
-    setActiveSubmenu(null);
   };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
-        setActiveSubmenu(null);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    };
   }, []);
 
   const formatEffort = (eff: ReasoningEffort) => {
@@ -294,17 +293,25 @@ export default function ModelPickerWithEffort({
   };
 
   return (
-    <div className="relative inline-block text-left" ref={containerRef}>
+    <div
+      className="relative inline-block text-left"
+      ref={containerRef}
+      onMouseEnter={() => {
+        if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+        setIsOpen(true);
+      }}
+      onMouseLeave={() => {
+        hoverTimeoutRef.current = setTimeout(() => {
+          setIsOpen(false);
+        }, 260);
+      }}
+    >
       {/* Trigger Button (Clean Harness Aesthetic) */}
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          setIsOpen((prev) => {
-            const next = !prev;
-            if (!next) setActiveSubmenu(null);
-            return next;
-          });
+          setIsOpen((prev) => !prev);
         }}
         title={`Model: ${currentModel.name} • Effort: ${formatEffort(reasoningEffort)}`}
         className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] text-xs text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white transition cursor-pointer select-none"
@@ -322,68 +329,52 @@ export default function ModelPickerWithEffort({
         />
       </button>
 
-      {/* Minimal Context Menu (Liquid Glass Drop Blur - In-Card Drilldown without Horizontal Overflow) */}
+      {/* Minimal Context Menu (Liquid Glass Drop Blur - Single Unified Card Without Horizontal Overflow) */}
       {isOpen && (
         <div
           className={`absolute right-0 z-50 select-none animate-liquid-pop origin-bottom-right ${
             dropUp ? "bottom-full mb-2.5" : "top-full mt-2.5"
           }`}
+          onMouseEnter={() => {
+            if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+          }}
         >
-          {/* Main Context Menu Card (Drilldown in-place so it NEVER overflows screen edges) */}
-          <div className="w-72 sm:w-80 liquid-glass-popup rounded-2xl p-2 relative text-slate-800 dark:text-zinc-200 shadow-2xl border border-slate-200/90 dark:border-white/10">
-            {/* VIEW A: Main Menu (Model + Effort) */}
-            {activeSubmenu === null && (
-              <div className="space-y-1">
-                {/* Row 1: Model */}
+          {/* Main Context Menu Card */}
+          <div className="w-76 sm:w-80 liquid-glass-popup rounded-2xl p-2 relative text-slate-800 dark:text-zinc-200 shadow-2xl border border-slate-200/90 dark:border-white/10 backdrop-blur-2xl">
+            {/* Header: Segmented Switcher between Model & Effort (Instant Hover & Click) */}
+            <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-200/80 dark:border-white/[0.08]">
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/[0.06] p-0.5 rounded-xl border border-slate-200/60 dark:border-white/[0.06] w-full">
                 <button
                   type="button"
-                  onClick={() => setActiveSubmenu("model")}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] transition cursor-pointer text-slate-700 dark:text-zinc-300 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-950 dark:hover:text-white"
+                  onClick={() => setActiveTab("model")}
+                  onMouseEnter={() => setActiveTab("model")}
+                  className={`flex-1 py-1 px-2 rounded-lg text-xs font-medium transition cursor-pointer text-center ${
+                    activeTab === "model"
+                      ? "bg-white dark:bg-white/[0.18] text-slate-950 dark:text-white shadow-xs font-semibold"
+                      : "text-slate-500 dark:text-zinc-400 hover:text-slate-950 dark:hover:text-white"
+                  }`}
                 >
-                  <span className="font-medium text-slate-800 dark:text-zinc-200">Model</span>
-                  <div className="flex items-center gap-1.5 text-slate-500 dark:text-zinc-400">
-                    <span className="truncate max-w-[150px] font-normal text-right">
-                      {currentModel.id.includes("deepseek") ? "DeepSeek-V4.1-Flash" : currentModel.shortName}
-                    </span>
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 flex-shrink-0" />
-                  </div>
+                  Pilih Model
                 </button>
-
-                {/* Row 2: Effort */}
                 <button
                   type="button"
-                  onClick={() => setActiveSubmenu("effort")}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] transition cursor-pointer text-slate-700 dark:text-zinc-300 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-950 dark:hover:text-white"
+                  onClick={() => setActiveTab("effort")}
+                  onMouseEnter={() => setActiveTab("effort")}
+                  className={`flex-1 py-1 px-2 rounded-lg text-xs font-medium transition cursor-pointer text-center ${
+                    activeTab === "effort"
+                      ? "bg-white dark:bg-white/[0.18] text-slate-950 dark:text-white shadow-xs font-semibold"
+                      : "text-slate-500 dark:text-zinc-400 hover:text-slate-950 dark:hover:text-white"
+                  }`}
                 >
-                  <span className="font-medium text-slate-800 dark:text-zinc-200">Reasoning Effort</span>
-                  <div className="flex items-center gap-1.5 text-slate-500 dark:text-zinc-400">
-                    <span className="font-normal text-right">
-                      {formatEffort(reasoningEffort)}
-                    </span>
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 flex-shrink-0" />
-                  </div>
+                  Effort: {formatEffort(reasoningEffort)}
                 </button>
               </div>
-            )}
+            </div>
 
-            {/* VIEW B: Model Selector Drilldown */}
-            {activeSubmenu === "model" && (
+            {/* TAB 1: MODEL SELECTION (Directly active by default - Instant Hover Access) */}
+            {activeTab === "model" && (
               <div className="space-y-1 animate-fadeIn">
-                <div className="px-1 py-1 flex items-center justify-between border-b border-slate-200/80 dark:border-white/[0.08] mb-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setActiveSubmenu(null)}
-                    className="flex items-center gap-1 text-xs text-slate-600 hover:text-slate-950 dark:text-zinc-300 dark:hover:text-white font-medium cursor-pointer p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                    <span>Kembali</span>
-                  </button>
-                  <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 dark:text-zinc-500 font-semibold pr-1">
-                    PILIH MODEL
-                  </span>
-                </div>
-
-                <div className="space-y-0.5 max-h-72 overflow-y-auto px-0.5 no-scrollbar">
+                <div className="space-y-0.5 max-h-76 overflow-y-auto px-0.5 no-scrollbar">
                   {AVAILABLE_MODELS.map((model) => {
                     const isSelected = model.id === currentModel.id;
                     const Icon = model.icon;
@@ -394,7 +385,7 @@ export default function ModelPickerWithEffort({
                         onClick={() => handleSelectModel(model)}
                         className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer text-left ${
                           isSelected
-                            ? "bg-slate-900/[0.08] dark:bg-white/[0.12] text-slate-950 dark:text-white font-semibold"
+                            ? "bg-slate-900/[0.08] dark:bg-white/[0.14] text-slate-950 dark:text-white font-semibold"
                             : "text-slate-800 dark:text-zinc-200 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-950 dark:hover:text-white"
                         }`}
                       >
@@ -413,10 +404,7 @@ export default function ModelPickerWithEffort({
                 <div className="my-1 border-t border-slate-200/60 dark:border-white/[0.08]" />
                 <Link
                   href="/connector"
-                  onClick={() => {
-                    setIsOpen(false);
-                    setActiveSubmenu(null);
-                  }}
+                  onClick={() => setIsOpen(false)}
                   className="flex items-center justify-between px-3 py-2 rounded-xl text-[12px] font-medium text-slate-600 dark:text-zinc-400 hover:text-slate-950 dark:hover:text-white hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] transition"
                 >
                   <span>Kelola API Key &amp; Hub...</span>
@@ -425,56 +413,40 @@ export default function ModelPickerWithEffort({
               </div>
             )}
 
-            {/* VIEW C: Reasoning Effort Drilldown */}
-            {activeSubmenu === "effort" && (
-              <div className="space-y-1 animate-fadeIn">
-                <div className="px-1 py-1 flex items-center justify-between border-b border-slate-200/80 dark:border-white/[0.08] mb-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setActiveSubmenu(null)}
-                    className="flex items-center gap-1 text-xs text-slate-600 hover:text-slate-950 dark:text-zinc-300 dark:hover:text-white font-medium cursor-pointer p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                    <span>Kembali</span>
-                  </button>
-                  <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 dark:text-zinc-500 font-semibold pr-1">
-                    REASONING EFFORT
-                  </span>
-                </div>
-
-                <div className="space-y-1 px-0.5">
-                  {(["low", "medium", "high"] as ReasoningEffort[]).map((opt) => {
-                    const isSelected = opt === reasoningEffort;
-                    return (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() => handleSelectEffort(opt)}
-                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition cursor-pointer ${
-                          isSelected
-                            ? "bg-slate-900/[0.08] dark:bg-white/[0.12] text-slate-950 dark:text-white font-semibold"
-                            : "text-slate-800 dark:text-zinc-200 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-950 dark:hover:text-white"
-                        }`}
-                      >
-                        <div className="flex flex-col">
-                          <span className="text-xs font-semibold text-slate-900 dark:text-white">
-                            {formatEffort(opt)}
-                          </span>
-                          <span className="text-[11px] text-slate-500 dark:text-zinc-400 leading-tight mt-0.5">
-                            {opt === "high"
-                              ? "Penalaran bertingkat & verifikasi CAS mendalam"
-                              : opt === "medium"
-                              ? "Keseimbangan kecepatan dan analisis aljabar"
-                              : "Respon cepat untuk pertanyaan langsung"}
-                          </span>
-                        </div>
-                        {isSelected && (
-                          <Check className="w-4 h-4 text-slate-900 dark:text-white flex-shrink-0 ml-2" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+            {/* TAB 2: REASONING EFFORT SELECTION */}
+            {activeTab === "effort" && (
+              <div className="space-y-1.5 animate-fadeIn px-0.5 py-1">
+                {(["low", "medium", "high"] as ReasoningEffort[]).map((opt) => {
+                  const isSelected = opt === reasoningEffort;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => handleSelectEffort(opt)}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer text-left ${
+                        isSelected
+                          ? "bg-slate-900/[0.08] dark:bg-white/[0.14] text-slate-950 dark:text-white font-semibold"
+                          : "text-slate-800 dark:text-zinc-200 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-950 dark:hover:text-white"
+                      }`}
+                    >
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold text-slate-900 dark:text-white">
+                          {formatEffort(opt)}
+                        </span>
+                        <span className="text-[11px] text-slate-500 dark:text-zinc-400 leading-tight mt-0.5">
+                          {opt === "high"
+                            ? "Penalaran bertingkat & verifikasi CAS mendalam"
+                            : opt === "medium"
+                            ? "Keseimbangan kecepatan dan analisis aljabar"
+                            : "Respon cepat untuk pertanyaan langsung"}
+                        </span>
+                      </div>
+                      {isSelected && (
+                        <Check className="w-4 h-4 text-slate-900 dark:text-white flex-shrink-0 ml-2" />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
