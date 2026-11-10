@@ -252,7 +252,6 @@ export default function ModelPickerWithEffort({
   dropUp = true,
 }: ModelPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"model" | "effort">("model");
 
   const containerRef = useRef<HTMLDivElement>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -265,11 +264,6 @@ export default function ModelPickerWithEffort({
       localStorage.setItem("zap_selected_model_id", model.id);
     }
     onSelectModel(model);
-    setIsOpen(false);
-  };
-
-  const handleSelectEffort = (effort: ReasoningEffort) => {
-    onChangeEffort(effort);
     setIsOpen(false);
   };
 
@@ -329,126 +323,112 @@ export default function ModelPickerWithEffort({
         />
       </button>
 
-      {/* Minimal Context Menu (Liquid Glass Drop Blur - Single Unified Card Without Horizontal Overflow) */}
+      {/* Minimal Context Menu (Liquid Glass Drop Blur - Compact Anti-Clipping Single Unified Card) */}
       {isOpen && (
         <div
           className={`absolute right-0 z-50 select-none animate-liquid-pop origin-bottom-right ${
-            dropUp ? "bottom-full mb-2.5" : "top-full mt-2.5"
+            dropUp ? "bottom-full mb-2" : "top-full mt-2"
           }`}
           onMouseEnter={() => {
             if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
           }}
         >
-          {/* Main Context Menu Card */}
-          <div className="w-76 sm:w-80 liquid-glass-popup rounded-2xl p-2 relative text-slate-800 dark:text-zinc-200 shadow-2xl border border-slate-200/90 dark:border-white/10 backdrop-blur-2xl">
-            {/* Header: Segmented Switcher between Model & Effort (Instant Hover & Click) */}
-            <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-200/80 dark:border-white/[0.08]">
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/[0.06] p-0.5 rounded-xl border border-slate-200/60 dark:border-white/[0.06] w-full">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("model")}
-                  onMouseEnter={() => setActiveTab("model")}
-                  className={`flex-1 py-1 px-2 rounded-lg text-xs font-medium transition cursor-pointer text-center ${
-                    activeTab === "model"
-                      ? "bg-white dark:bg-white/[0.18] text-slate-950 dark:text-white shadow-xs font-semibold"
-                      : "text-slate-500 dark:text-zinc-400 hover:text-slate-950 dark:hover:text-white"
-                  }`}
-                >
-                  Pilih Model
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("effort")}
-                  onMouseEnter={() => setActiveTab("effort")}
-                  className={`flex-1 py-1 px-2 rounded-lg text-xs font-medium transition cursor-pointer text-center ${
-                    activeTab === "effort"
-                      ? "bg-white dark:bg-white/[0.18] text-slate-950 dark:text-white shadow-xs font-semibold"
-                      : "text-slate-500 dark:text-zinc-400 hover:text-slate-950 dark:hover:text-white"
-                  }`}
-                >
-                  Effort: {formatEffort(reasoningEffort)}
-                </button>
-              </div>
-            </div>
-
-            {/* TAB 1: MODEL SELECTION (Directly active by default - Instant Hover Access) */}
-            {activeTab === "model" && (
-              <div className="space-y-1 animate-fadeIn">
-                <div className="space-y-0.5 max-h-76 overflow-y-auto px-0.5 no-scrollbar">
-                  {AVAILABLE_MODELS.map((model) => {
-                    const isSelected = model.id === currentModel.id;
-                    const Icon = model.icon;
-                    return (
-                      <button
-                        key={model.id}
-                        type="button"
-                        onClick={() => handleSelectModel(model)}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer text-left ${
-                          isSelected
-                            ? "bg-slate-900/[0.08] dark:bg-white/[0.14] text-slate-950 dark:text-white font-semibold"
-                            : "text-slate-800 dark:text-zinc-200 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-950 dark:hover:text-white"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <Icon className={`w-4 h-4 flex-shrink-0 ${model.iconColor || "text-slate-500"}`} />
-                          <span className="truncate">{model.name}</span>
-                        </div>
-                        {isSelected && (
-                          <Check className="w-3.5 h-3.5 text-slate-900 dark:text-white flex-shrink-0 ml-1.5" />
-                        )}
-                      </button>
-                    );
-                  })}
+          {/* Main Context Menu Card (Compact Height ~300px - Zero Top Viewport Overflow) */}
+          <div className="w-76 sm:w-80 liquid-glass-popup rounded-2xl p-2.5 relative text-slate-800 dark:text-zinc-200 shadow-2xl border border-slate-200/90 dark:border-white/10 backdrop-blur-2xl max-h-[min(380px,calc(100vh-140px))] flex flex-col overflow-hidden">
+            
+            {/* 1. REASONING EFFORT (Token Saver / Hemat Token - Always Visible) */}
+            <div className="pb-2 mb-2 border-b border-slate-200/80 dark:border-white/[0.08] shrink-0">
+              <div className="flex items-center justify-between mb-1.5 px-0.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-mono uppercase tracking-wider text-slate-500 dark:text-zinc-400 font-bold">
+                    Reasoning Effort
+                  </span>
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 font-mono font-semibold">
+                    Hemat Token
+                  </span>
                 </div>
-
-                <div className="my-1 border-t border-slate-200/60 dark:border-white/[0.08]" />
-                <Link
-                  href="/connector"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center justify-between px-3 py-2 rounded-xl text-[12px] font-medium text-slate-600 dark:text-zinc-400 hover:text-slate-950 dark:hover:text-white hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] transition"
-                >
-                  <span>Kelola API Key &amp; Hub...</span>
-                  <ExternalLink className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
-                </Link>
+                <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono">
+                  {reasoningEffort === "low" ? "⚡ Irit Token" : reasoningEffort === "medium" ? "⚖ Standar" : "🧠 Mendalam"}
+                </span>
               </div>
-            )}
 
-            {/* TAB 2: REASONING EFFORT SELECTION */}
-            {activeTab === "effort" && (
-              <div className="space-y-1.5 animate-fadeIn px-0.5 py-1">
+              {/* 3-Way Instant Toggle: Low, Medium, High */}
+              <div className="grid grid-cols-3 gap-1 bg-slate-100 dark:bg-white/[0.06] p-0.5 rounded-xl border border-slate-200/70 dark:border-white/[0.06]">
                 {(["low", "medium", "high"] as ReasoningEffort[]).map((opt) => {
                   const isSelected = opt === reasoningEffort;
                   return (
                     <button
                       key={opt}
                       type="button"
-                      onClick={() => handleSelectEffort(opt)}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer text-left ${
+                      onClick={() => onChangeEffort(opt)}
+                      className={`py-1 px-1.5 rounded-lg text-xs font-medium transition cursor-pointer text-center flex flex-col items-center justify-center ${
+                        isSelected
+                          ? "bg-white dark:bg-white/[0.18] text-slate-950 dark:text-white shadow-xs font-semibold ring-1 ring-slate-900/10 dark:ring-white/20"
+                          : "text-slate-600 dark:text-zinc-400 hover:text-slate-950 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/[0.04]"
+                      }`}
+                    >
+                      <span className="capitalize text-xs leading-tight font-semibold">
+                        {opt === "low" ? "Low" : opt === "medium" ? "Medium" : "High"}
+                      </span>
+                      <span className="text-[9px] text-slate-400 dark:text-zinc-500 leading-none mt-0.5">
+                        {opt === "low" ? "Hemat" : opt === "medium" ? "Standar" : "Mendalam"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2. DAFTAR MODEL AI (Scrollable dengan max-h terkontrol ~180px agar tidak kepotong di atas) */}
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between pb-1 px-0.5 shrink-0">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 dark:text-zinc-500 font-bold">
+                  Pilih Model AI
+                </span>
+                <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono">
+                  {AVAILABLE_MODELS.length} Model
+                </span>
+              </div>
+
+              <div className="space-y-0.5 max-h-44 overflow-y-auto px-0.5 no-scrollbar flex-1">
+                {AVAILABLE_MODELS.map((model) => {
+                  const isSelected = model.id === currentModel.id;
+                  const Icon = model.icon;
+                  return (
+                    <button
+                      key={model.id}
+                      type="button"
+                      onClick={() => handleSelectModel(model)}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-[12.5px] font-medium transition cursor-pointer text-left ${
                         isSelected
                           ? "bg-slate-900/[0.08] dark:bg-white/[0.14] text-slate-950 dark:text-white font-semibold"
                           : "text-slate-800 dark:text-zinc-200 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-950 dark:hover:text-white"
                       }`}
                     >
-                      <div className="flex flex-col">
-                        <span className="text-xs font-semibold text-slate-900 dark:text-white">
-                          {formatEffort(opt)}
-                        </span>
-                        <span className="text-[11px] text-slate-500 dark:text-zinc-400 leading-tight mt-0.5">
-                          {opt === "high"
-                            ? "Penalaran bertingkat & verifikasi CAS mendalam"
-                            : opt === "medium"
-                            ? "Keseimbangan kecepatan dan analisis aljabar"
-                            : "Respon cepat untuk pertanyaan langsung"}
-                        </span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon className={`w-4 h-4 flex-shrink-0 ${model.iconColor || "text-slate-500"}`} />
+                        <span className="truncate">{model.name}</span>
                       </div>
                       {isSelected && (
-                        <Check className="w-4 h-4 text-slate-900 dark:text-white flex-shrink-0 ml-2" />
+                        <Check className="w-3.5 h-3.5 text-slate-900 dark:text-white flex-shrink-0 ml-1.5" />
                       )}
                     </button>
                   );
                 })}
               </div>
-            )}
+            </div>
+
+            {/* 3. FOOTER: KONEKTOR HUB */}
+            <div className="mt-1.5 pt-1.5 border-t border-slate-200/60 dark:border-white/[0.08] shrink-0">
+              <Link
+                href="/connector"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center justify-between px-2.5 py-1.5 rounded-xl text-[11.5px] font-medium text-slate-500 dark:text-zinc-400 hover:text-slate-950 dark:hover:text-white hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] transition"
+              >
+                <span>Kelola API Key &amp; Hub...</span>
+                <ExternalLink className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
+              </Link>
+            </div>
           </div>
         </div>
       )}
