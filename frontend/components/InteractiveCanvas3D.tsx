@@ -90,13 +90,16 @@ const SOLID_LABELS: Record<SolidKind, string> = {
   bola: "Bola 3D",
   kerucut: "Kerucut 3D",
   prisma: "Prisma Segitiga 3D",
-  limas: "Limas Segi Empat 3D",
+  limas: "Limas Segi Empat 3D (Piramida)",
 };
 
 // Quick formula suggestions
 const SMART_PRESETS = [
   { label: "Persegi Panjang", model: "2d_shape" as MathModelType, planeShape: "persegi_panjang" as PlaneShapeKind, paramA: 14, paramB: 8, unit: "cm", desc: "Persegi panjang p=14, l=8" },
   { label: "Persegi", model: "2d_shape" as MathModelType, planeShape: "persegi" as PlaneShapeKind, paramA: 10, unit: "cm", desc: "Persegi sisi s=10" },
+  { label: "Lingkaran", model: "2d_shape" as MathModelType, planeShape: "lingkaran" as PlaneShapeKind, paramA: 7, unit: "cm", desc: "Lingkaran r=7, diameter=14" },
+  { label: "Belah Ketupat", model: "2d_shape" as MathModelType, planeShape: "belah_ketupat" as PlaneShapeKind, paramA: 12, paramB: 16, unit: "cm", desc: "Belah ketupat d₁=12, d₂=16" },
+  { label: "Layang-Layang", model: "2d_shape" as MathModelType, planeShape: "layang_layang" as PlaneShapeKind, paramA: 12, paramB: 16, unit: "cm", desc: "Layang-layang d₁=12, d₂=16" },
   { label: "Jajar Genjang", model: "2d_shape" as MathModelType, planeShape: "jajar_genjang" as PlaneShapeKind, paramA: 12, paramB: 8, paramC: 10, unit: "cm", desc: "Jajar genjang alas, tinggi & sisi miring" },
   { label: "Trapesium", model: "2d_shape" as MathModelType, planeShape: "trapesium" as PlaneShapeKind, paramA: 8, paramB: 14, paramC: 6, unit: "cm", desc: "Trapesium sisi sejajar & tinggi" },
   { label: "Segitiga", model: "2d_shape" as MathModelType, planeShape: "segitiga" as PlaneShapeKind, paramA: 10, paramB: 8, unit: "cm", desc: "Segitiga alas & tinggi" },
@@ -106,7 +109,7 @@ const SMART_PRESETS = [
   { label: "Kubus + Irisan", model: "solids" as MathModelType, solid: "kubus" as SolidKind, paramA: 10, unit: "cm", hasSlice: true, desc: "Kubus sisi 10 cm dengan bidang irisan" },
   { label: "Balok 10×6×4", model: "solids" as MathModelType, solid: "balok" as SolidKind, paramA: 10, paramB: 6, paramC: 4, unit: "cm", desc: "Balok ruang p×l×t" },
   { label: "Prisma Segitiga", model: "solids" as MathModelType, solid: "prisma" as SolidKind, paramA: 8, paramB: 10, unit: "cm", desc: "Prisma segitiga geometri ruang" },
-  { label: "Limas Segi Empat", model: "solids" as MathModelType, solid: "limas" as SolidKind, paramA: 8, paramB: 10, unit: "cm", desc: "Limas tegak segi empat p×l×t" },
+  { label: "Piramida / Limas", model: "solids" as MathModelType, solid: "limas" as SolidKind, paramA: 8, paramB: 10, unit: "cm", desc: "Limas tegak segi empat (piramida) p×l×t" },
   { label: "Bola r=7", model: "solids" as MathModelType, solid: "bola" as SolidKind, paramA: 7, unit: "cm", desc: "Bola 3D jari-jari 7 cm" },
   { label: "Tabung r=7", model: "cylinder" as MathModelType, paramA: 7, paramB: 12, unit: "cm", desc: "Silinder ruang radius & tinggi" },
   { label: "Irisan Kerucut", model: "conic_slicer" as MathModelType, desc: "Pemotongan elips, parabola & hiperbola" },
@@ -427,6 +430,70 @@ export default function InteractiveCanvas3D({
       return;
     }
 
+    if (raw.includes("lingkaran") || raw.includes("circle")) {
+      const r = parsedA || 7;
+      setParamA(r);
+      setUnit(parsedUnit);
+      setPlaneShapeKind("lingkaran");
+      selectModel("2d_shape");
+      onPlaneShapeChange?.("lingkaran");
+      onParamsChange?.(r, paramB, paramC, parsedUnit);
+      return;
+    }
+
+    if (raw.includes("belah ketupat") || raw.includes("belahketupat") || raw.includes("rhombus")) {
+      const numbers = (raw.match(/\d+(?:[.,]\d+)?/g) || []).map((m) => parseFloat(m.replace(",", ".")));
+      const d1 = numbers[0] || 12;
+      const d2 = numbers[1] || 16;
+      setParamA(d1);
+      setParamB(d2);
+      setUnit(parsedUnit);
+      setPlaneShapeKind("belah_ketupat");
+      selectModel("2d_shape");
+      onPlaneShapeChange?.("belah_ketupat");
+      onParamsChange?.(d1, d2, paramC, parsedUnit);
+      return;
+    }
+
+    if (raw.includes("layang layang") || raw.includes("layang-layang") || raw.includes("layanglayang") || raw.includes("kite")) {
+      const numbers = (raw.match(/\d+(?:[.,]\d+)?/g) || []).map((m) => parseFloat(m.replace(",", ".")));
+      const d1 = numbers[0] || 12;
+      const d2 = numbers[1] || 16;
+      setParamA(d1);
+      setParamB(d2);
+      setUnit(parsedUnit);
+      setPlaneShapeKind("layang_layang");
+      selectModel("2d_shape");
+      onPlaneShapeChange?.("layang_layang");
+      onParamsChange?.(d1, d2, paramC, parsedUnit);
+      return;
+    }
+
+    if (raw.includes("persegi panjang") || raw.includes("persegipanjang") || raw.includes("rectangle")) {
+      const numbers = (raw.match(/\d+(?:[.,]\d+)?/g) || []).map((m) => parseFloat(m.replace(",", ".")));
+      const p = numbers[0] || 14;
+      const l = numbers[1] || 8;
+      setParamA(p);
+      setParamB(l);
+      setUnit(parsedUnit);
+      setPlaneShapeKind("persegi_panjang");
+      selectModel("2d_shape");
+      onPlaneShapeChange?.("persegi_panjang");
+      onParamsChange?.(p, l, paramC, parsedUnit);
+      return;
+    }
+
+    if (raw.includes("persegi") || raw.includes("bujur sangkar") || raw.includes("square")) {
+      const s = parsedA || 10;
+      setParamA(s);
+      setUnit(parsedUnit);
+      setPlaneShapeKind("persegi");
+      selectModel("2d_shape");
+      onPlaneShapeChange?.("persegi");
+      onParamsChange?.(s, paramB, paramC, parsedUnit);
+      return;
+    }
+
     // Detect 2D quadratic / parabola
     if (raw.includes("x^2") || raw.includes("x²") || raw.includes("kuadrat") || raw.includes("parabola")) {
       if (raw.includes("- 3") || raw.includes("-3")) {
@@ -520,7 +587,7 @@ export default function InteractiveCanvas3D({
       return;
     }
 
-    if (raw.includes("limas") || raw.includes("pyramid")) {
+    if (raw.includes("limas") || raw.includes("piramida") || raw.includes("piramid") || raw.includes("pyramid")) {
       const s = parsedA || 8;
       const t = 10;
       setParamA(s);
@@ -1010,6 +1077,218 @@ export default function InteractiveCanvas3D({
           ctx.arc(vx, vy, 2, 0, Math.PI * 2);
           ctx.fill();
         });
+      } else if (planeShapeKind === "lingkaran") {
+        const r = paramA || 7;
+        const sc = Math.min((width * 0.65) / (2 * r), (height * 0.6) / (2 * r));
+        const rPx = r * sc;
+
+        // Fill translucent cyan / sky
+        ctx.fillStyle = isDark ? "rgba(14, 165, 233, 0.14)" : "rgba(14, 165, 233, 0.16)";
+        ctx.beginPath();
+        ctx.arc(originX, originY, rPx, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Stroke outline
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = isDark ? "#38bdf8" : "#0284c7";
+        ctx.stroke();
+
+        // Center dot O
+        ctx.fillStyle = isDark ? "#38bdf8" : "#0284c7";
+        ctx.beginPath();
+        ctx.arc(originX, originY, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.arc(originX, originY, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.font = "bold 13px sans-serif";
+        ctx.fillStyle = isDark ? "#ffffff" : "#0f172a";
+        ctx.fillText("O", originX - 12, originY - 10);
+
+        // Radius line (O to right boundary)
+        ctx.lineWidth = 1.8;
+        ctx.strokeStyle = isDark ? "#38bdf8" : "#0284c7";
+        ctx.setLineDash([5, 3]);
+        ctx.beginPath();
+        ctx.moveTo(originX, originY);
+        ctx.lineTo(originX + rPx, originY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Radius end dot
+        ctx.fillStyle = isDark ? "#38bdf8" : "#0284c7";
+        ctx.beginPath();
+        ctx.arc(originX + rPx, originY, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Labels
+        ctx.font = "bold 12px sans-serif";
+        ctx.fillStyle = isDark ? "#38bdf8" : "#0369a1";
+        ctx.textAlign = "center";
+        ctx.fillText(`jari-jari (r) = ${r} ${u}`, originX + rPx / 2, originY - 10);
+
+        ctx.fillStyle = isDark ? "#94a3b8" : "#64748b";
+        ctx.fillText(`diameter (d) = ${2 * r} ${u}`, originX, originY + rPx + 24);
+      } else if (planeShapeKind === "belah_ketupat") {
+        const d1 = paramA || 12;
+        const d2 = paramB || 16;
+        const sc = Math.min((width * 0.65) / d1, (height * 0.6) / d2);
+        const wHalf = (d1 * sc) / 2;
+        const hHalf = (d2 * sc) / 2;
+
+        const Ax = originX;
+        const Ay = originY + hHalf; // bottom
+        const Bx = originX + wHalf; // right
+        const By = originY;
+        const Cx = originX;
+        const Cy = originY - hHalf; // top
+        const Dx = originX - wHalf; // left
+        const Dy = originY;
+
+        // Fill translucent amber
+        ctx.fillStyle = isDark ? "rgba(245, 158, 11, 0.14)" : "rgba(245, 158, 11, 0.16)";
+        ctx.beginPath();
+        ctx.moveTo(Ax, Ay);
+        ctx.lineTo(Bx, By);
+        ctx.lineTo(Cx, Cy);
+        ctx.lineTo(Dx, Dy);
+        ctx.closePath();
+        ctx.fill();
+
+        // Stroke
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = isDark ? "#fbbf24" : "#d97706";
+        ctx.stroke();
+
+        // Dashed diagonals d1 and d2
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = isDark ? "#fb7185" : "#e11d48";
+        ctx.setLineDash([5, 3]);
+        ctx.beginPath();
+        ctx.moveTo(Dx, Dy);
+        ctx.lineTo(Bx, By);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(Ax, Ay);
+        ctx.lineTo(Cx, Cy);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Right angle at center
+        const sq = 8;
+        ctx.strokeStyle = isDark ? "#fb7185" : "#e11d48";
+        ctx.strokeRect(originX, originY - sq, sq, sq);
+
+        // Vertices
+        ctx.font = "bold 13px sans-serif";
+        ctx.fillStyle = isDark ? "#ffffff" : "#0f172a";
+        ctx.fillText("A", Ax, Ay + 18);
+        ctx.fillText("B", Bx + 14, By + 4);
+        ctx.fillText("C", Cx, Cy - 10);
+        ctx.fillText("D", Dx - 16, Dy + 4);
+
+        // Diagonal labels & side label
+        const s = Math.sqrt(Math.pow(d1 / 2, 2) + Math.pow(d2 / 2, 2)).toFixed(1);
+        ctx.font = "bold 12px sans-serif";
+        ctx.fillStyle = isDark ? "#fb7185" : "#be123c";
+        ctx.textAlign = "center";
+        ctx.fillText(`d₁ = ${d1} ${u}`, (originX + Bx) / 2, originY - 8);
+        ctx.textAlign = "left";
+        ctx.fillText(`d₂ = ${d2} ${u}`, originX + 8, (originY + Cy) / 2);
+
+        ctx.fillStyle = isDark ? "#fbbf24" : "#b45309";
+        ctx.textAlign = "center";
+        ctx.fillText(`s = ${s} ${u}`, (Bx + Cx) / 2 + 16, (By + Cy) / 2 - 4);
+
+        [[Ax, Ay], [Bx, By], [Cx, Cy], [Dx, Dy]].forEach(([vx, vy]) => {
+          ctx.fillStyle = isDark ? "#fbbf24" : "#d97706";
+          ctx.beginPath();
+          ctx.arc(vx, vy, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(vx, vy, 2, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      } else if (planeShapeKind === "layang_layang") {
+        const d1 = paramA || 12;
+        const d2 = paramB || 16;
+        const sc = Math.min((width * 0.65) / d1, (height * 0.6) / d2);
+        const wHalf = (d1 * sc) / 2;
+        const topH = (d2 * sc) * 0.35;
+        const botH = (d2 * sc) * 0.65;
+
+        const Ax = originX;
+        const Ay = originY + botH; // bottom
+        const Bx = originX + wHalf; // right
+        const By = originY;
+        const Cx = originX;
+        const Cy = originY - topH; // top
+        const Dx = originX - wHalf; // left
+        const Dy = originY;
+
+        // Fill translucent violet
+        ctx.fillStyle = isDark ? "rgba(168, 85, 247, 0.14)" : "rgba(168, 85, 247, 0.16)";
+        ctx.beginPath();
+        ctx.moveTo(Ax, Ay);
+        ctx.lineTo(Bx, By);
+        ctx.lineTo(Cx, Cy);
+        ctx.lineTo(Dx, Dy);
+        ctx.closePath();
+        ctx.fill();
+
+        // Stroke
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = isDark ? "#c084fc" : "#9333ea";
+        ctx.stroke();
+
+        // Dashed diagonals
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = isDark ? "#fb7185" : "#e11d48";
+        ctx.setLineDash([5, 3]);
+        ctx.beginPath();
+        ctx.moveTo(Dx, Dy);
+        ctx.lineTo(Bx, By);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(Ax, Ay);
+        ctx.lineTo(Cx, Cy);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Right angle at center
+        const sq = 8;
+        ctx.strokeStyle = isDark ? "#fb7185" : "#e11d48";
+        ctx.strokeRect(originX, originY - sq, sq, sq);
+
+        // Vertices
+        ctx.font = "bold 13px sans-serif";
+        ctx.fillStyle = isDark ? "#ffffff" : "#0f172a";
+        ctx.fillText("A", Ax, Ay + 18);
+        ctx.fillText("B", Bx + 14, By + 4);
+        ctx.fillText("C", Cx, Cy - 10);
+        ctx.fillText("D", Dx - 16, Dy + 4);
+
+        // Labels
+        ctx.font = "bold 12px sans-serif";
+        ctx.fillStyle = isDark ? "#fb7185" : "#be123c";
+        ctx.textAlign = "center";
+        ctx.fillText(`d₁ = ${d1} ${u}`, (originX + Bx) / 2, originY - 8);
+        ctx.textAlign = "left";
+        ctx.fillText(`d₂ = ${d2} ${u}`, originX + 8, (originY + Cy) / 2);
+
+        [[Ax, Ay], [Bx, By], [Cx, Cy], [Dx, Dy]].forEach(([vx, vy]) => {
+          ctx.fillStyle = isDark ? "#c084fc" : "#9333ea";
+          ctx.beginPath();
+          ctx.arc(vx, vy, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(vx, vy, 2, 0, Math.PI * 2);
+          ctx.fill();
+        });
       }
     }
   }, [activeModel, planeShapeKind, paramA, paramB, paramC, unit, isProjectorMode, is2DGraphModel, isDark]);
@@ -1108,6 +1387,51 @@ export default function InteractiveCanvas3D({
             { label: "Luas Persegi", formula: "L = s²", value: `${fmt(luas)} ${u}²` },
             { label: "Keliling Persegi", formula: "K = 4s", value: `${fmt(keliling)} ${u}` },
             { label: "Panjang Diagonal", formula: "d = s√2", value: `${fmt(Number(diagonal.toFixed(2)))} ${u}` },
+          ],
+        };
+      } else if (planeShapeKind === "lingkaran") {
+        const r = paramA !== undefined ? paramA : 7;
+        const luas = Math.PI * r * r;
+        const keliling = 2 * Math.PI * r;
+        const diameter = 2 * r;
+        return {
+          volume: 0,
+          surface: luas,
+          rows: [
+            { label: "Jari-jari (r)", formula: "r", value: `${fmt(r)} ${u}` },
+            { label: "Diameter (d)", formula: "d = 2r", value: `${fmt(diameter)} ${u}` },
+            { label: "Luas Lingkaran", formula: "L = πr²", value: `${fmt(Number(luas.toFixed(2)))} ${u}²` },
+            { label: "Keliling Lingkaran", formula: "K = 2πr", value: `${fmt(Number(keliling.toFixed(2)))} ${u}` },
+          ],
+        };
+      } else if (planeShapeKind === "belah_ketupat") {
+        const d1 = paramA !== undefined ? paramA : 12;
+        const d2 = paramB !== undefined ? paramB : 16;
+        const s = Math.sqrt(Math.pow(d1 / 2, 2) + Math.pow(d2 / 2, 2));
+        const luas = (d1 * d2) / 2;
+        const keliling = 4 * s;
+        return {
+          volume: 0,
+          surface: luas,
+          rows: [
+            { label: "Diagonal 1 (d₁)", formula: "d₁", value: `${fmt(d1)} ${u}` },
+            { label: "Diagonal 2 (d₂)", formula: "d₂", value: `${fmt(d2)} ${u}` },
+            { label: "Sisi Miring (s)", formula: "s = √((d₁/2)² + (d₂/2)²)", value: `${fmt(Number(s.toFixed(2)))} ${u}` },
+            { label: "Luas Belah Ketupat", formula: "L = ½ d₁ · d₂", value: `${fmt(luas)} ${u}²` },
+            { label: "Keliling Belah Ketupat", formula: "K = 4s", value: `${fmt(Number(keliling.toFixed(2)))} ${u}` },
+          ],
+        };
+      } else if (planeShapeKind === "layang_layang") {
+        const d1 = paramA !== undefined ? paramA : 12;
+        const d2 = paramB !== undefined ? paramB : 16;
+        const luas = (d1 * d2) / 2;
+        return {
+          volume: 0,
+          surface: luas,
+          rows: [
+            { label: "Diagonal Utama (d₁)", formula: "d₁", value: `${fmt(d1)} ${u}` },
+            { label: "Diagonal Melintang (d₂)", formula: "d₂", value: `${fmt(d2)} ${u}` },
+            { label: "Luas Layang-Layang", formula: "L = ½ d₁ · d₂", value: `${fmt(luas)} ${u}²` },
           ],
         };
       }
@@ -2206,6 +2530,12 @@ export default function InteractiveCanvas3D({
                       ? `Persegi Panjang (${paramA}×${paramB} ${unit})`
                       : planeShapeKind === "persegi"
                       ? `Persegi (${paramA} ${unit})`
+                      : planeShapeKind === "lingkaran"
+                      ? `Lingkaran (r=${paramA} ${unit})`
+                      : planeShapeKind === "belah_ketupat"
+                      ? `Belah Ketupat (${paramA}×${paramB} ${unit})`
+                      : planeShapeKind === "layang_layang"
+                      ? `Layang-Layang (${paramA}×${paramB} ${unit})`
                       : planeShapeKind === "jajar_genjang"
                       ? `Jajar Genjang (${paramA} ${unit})`
                       : planeShapeKind === "trapesium"
@@ -2234,6 +2564,12 @@ export default function InteractiveCanvas3D({
                       ? "Persegi Panjang 2D"
                       : planeShapeKind === "persegi"
                       ? "Persegi 2D"
+                      : planeShapeKind === "lingkaran"
+                      ? "Lingkaran 2D"
+                      : planeShapeKind === "belah_ketupat"
+                      ? "Belah Ketupat 2D"
+                      : planeShapeKind === "layang_layang"
+                      ? "Layang-Layang 2D"
                       : planeShapeKind === "jajar_genjang"
                       ? "Jajar Genjang 2D"
                       : planeShapeKind === "trapesium"
@@ -2271,6 +2607,13 @@ export default function InteractiveCanvas3D({
                           setParamB(14);
                           setParamC(6);
                           onParamsChange?.(8, 14, 6, unit);
+                        } else if (planeShapeKind === "lingkaran") {
+                          setParamA(7);
+                          onParamsChange?.(7, paramB, paramC, unit);
+                        } else if (planeShapeKind === "belah_ketupat" || planeShapeKind === "layang_layang") {
+                          setParamA(12);
+                          setParamB(16);
+                          onParamsChange?.(12, 16, paramC, unit);
                         } else {
                           setParamA(10);
                           setParamB(8);
@@ -2315,6 +2658,10 @@ export default function InteractiveCanvas3D({
                         ? "Panjang (p):"
                         : planeShapeKind === "persegi"
                         ? "Panjang Sisi (s):"
+                        : planeShapeKind === "lingkaran"
+                        ? "Jari-jari (r):"
+                        : planeShapeKind === "belah_ketupat" || planeShapeKind === "layang_layang"
+                        ? "Diagonal 1 (d₁):"
                         : planeShapeKind === "jajar_genjang" || planeShapeKind === "segitiga"
                         ? "Panjang Alas (a):"
                         : planeShapeKind === "trapesium"
@@ -2353,7 +2700,7 @@ export default function InteractiveCanvas3D({
               </div>
 
               {/* Tinggi / Lebar Slider (Untuk Tabung, Balok, Prisma, Limas, 2D) */}
-              {((activeModel === "2d_shape" && planeShapeKind !== "persegi") || activeModel === "cylinder" || solidKind === "balok" || solidKind === "prisma" || solidKind === "limas") && (
+              {((activeModel === "2d_shape" && planeShapeKind !== "persegi" && planeShapeKind !== "lingkaran") || activeModel === "cylinder" || solidKind === "balok" || solidKind === "prisma" || solidKind === "limas") && (
                 <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-white/[0.06]">
                   <div className="flex justify-between text-slate-700 dark:text-zinc-300 font-medium">
                     <span>
@@ -2362,6 +2709,8 @@ export default function InteractiveCanvas3D({
                           ? "Lebar (l):"
                           : planeShapeKind === "trapesium"
                           ? "Sisi Bawah (b):"
+                          : planeShapeKind === "belah_ketupat" || planeShapeKind === "layang_layang"
+                          ? "Diagonal 2 (d₂):"
                           : "Tinggi Tegak (t):"
                         : activeModel === "cylinder" || solidKind === "prisma" || solidKind === "limas"
                         ? "Tinggi (t):"

@@ -141,7 +141,9 @@ interface DetectedShapeInfo {
     | "trapesium"
     | "segitiga"
     | "persegi_panjang"
-    | "persegi";
+    | "persegi"
+    | "belah_ketupat"
+    | "layang_layang";
   paramA?: number;
   paramB?: number;
   paramC?: number;
@@ -251,14 +253,30 @@ function detectShapeKind(str: string): DetectedShapeInfo | null {
     return { kind: "kerucut", paramA: 5, paramB: 10, unit: "cm" };
   }
 
-  // 5. Prisma
-  if (s.includes("prisma")) {
-    return { kind: "prisma", paramA: 8, unit: "cm" };
+  // 5. Prisma (Triangular Prism)
+  if (s.includes("prisma") || s.includes("prism")) {
+    const sMatch = s.match(/(?:s|alas|rusuk)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const tMatch = s.match(/(?:t|tinggi)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const nums = (s.match(/\d+(?:[.,]\d+)?/g) || []).map((m) => parseFloat(m.replace(",", ".")));
+    return {
+      kind: "prisma",
+      paramA: sMatch ? parseFloat(sMatch[1].replace(",", ".")) : nums[0] || 8,
+      paramB: tMatch ? parseFloat(tMatch[1].replace(",", ".")) : nums[1] || 10,
+      unit: "cm",
+    };
   }
 
-  // 6. Limas
-  if (s.includes("limas")) {
-    return { kind: "limas", paramA: 8, unit: "cm" };
+  // 6. Limas / Piramida (Square Pyramid 3D)
+  if (s.includes("limas") || s.includes("piramida") || s.includes("piramid") || s.includes("pyramid")) {
+    const sMatch = s.match(/(?:s|alas|sisi|rusuk)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const tMatch = s.match(/(?:t|tinggi)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const nums = (s.match(/\d+(?:[.,]\d+)?/g) || []).map((m) => parseFloat(m.replace(",", ".")));
+    return {
+      kind: "limas",
+      paramA: sMatch ? parseFloat(sMatch[1].replace(",", ".")) : nums[0] || 8,
+      paramB: tMatch ? parseFloat(tMatch[1].replace(",", ".")) : nums[1] || 10,
+      unit: "cm",
+    };
   }
 
   // 7. Pelana Kuda / Saddle
@@ -282,16 +300,48 @@ function detectShapeKind(str: string): DetectedShapeInfo | null {
   }
 
   // 11. 2D Lingkaran
-  if (s.includes("lingkaran") || s.includes("circle")) {
-    return { kind: "circle" };
+  if ((s.includes("lingkaran") || s.includes("circle")) && !s.includes("bola") && !s.includes("tabung") && !s.includes("silinder")) {
+    const rMatch = s.match(/(?:r|jari-jari|jari)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const dMatch = s.match(/(?:d|diameter)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const nums = (s.match(/\d+(?:[.,]\d+)?/g) || []).map((m) => parseFloat(m.replace(",", ".")));
+    const r = rMatch ? parseFloat(rMatch[1].replace(",", ".")) : dMatch ? parseFloat(dMatch[1].replace(",", ".")) / 2 : nums[0] || 7;
+    return { kind: "circle", paramA: r, unit: "cm", planeShapeKind: "lingkaran" };
   }
 
-  // 12. Balok Hitung
+  // 12. 2D Belah Ketupat
+  if (s.includes("belah ketupat") || s.includes("belahketupat") || s.includes("rhombus")) {
+    const d1Match = s.match(/(?:d1|diagonal\s*1)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const d2Match = s.match(/(?:d2|diagonal\s*2)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const nums = (s.match(/\d+(?:[.,]\d+)?/g) || []).map((m) => parseFloat(m.replace(",", ".")));
+    return {
+      kind: "belah_ketupat",
+      paramA: d1Match ? parseFloat(d1Match[1].replace(",", ".")) : nums[0] || 12,
+      paramB: d2Match ? parseFloat(d2Match[1].replace(",", ".")) : nums[1] || 16,
+      unit: "cm",
+      planeShapeKind: "belah_ketupat",
+    };
+  }
+
+  // 13. 2D Layang-Layang
+  if (s.includes("layang layang") || s.includes("layang-layang") || s.includes("layanglayang") || s.includes("kite")) {
+    const d1Match = s.match(/(?:d1|diagonal\s*1)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const d2Match = s.match(/(?:d2|diagonal\s*2)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
+    const nums = (s.match(/\d+(?:[.,]\d+)?/g) || []).map((m) => parseFloat(m.replace(",", ".")));
+    return {
+      kind: "layang_layang",
+      paramA: d1Match ? parseFloat(d1Match[1].replace(",", ".")) : nums[0] || 12,
+      paramB: d2Match ? parseFloat(d2Match[1].replace(",", ".")) : nums[1] || 16,
+      unit: "cm",
+      planeShapeKind: "layang_layang",
+    };
+  }
+
+  // 14. Balok Hitung
   if (s.includes("balok hitung") || s.includes("counting block")) {
     return { kind: "counting_blocks" };
   }
 
-  // 13. Kubus (Cube)
+  // 15. Kubus (Cube)
   if (s.includes("kubus") || s.includes("cube") || s.includes("kotak 3d") || s.includes("kotak")) {
     const sMatch = s.match(/(?:s|rusuk|sisi|panjang|ukuran)\s*(?:=|:|\s)\s*(\d+(?:[.,]\d+)?)/i);
     const sz = sMatch ? parseFloat(sMatch[1].replace(",", ".")) : undefined;
@@ -355,7 +405,7 @@ function detectSmartboardItem(
     hasExplicitCommand ||
     has3DIntent ||
     has3DWord ||
-    /\b(cube|kubus|balok|tabung|cylinder|silinder|kerucut|cone|bola|sphere|prisma|limas|parabola|pelana|jajar genjang|jajargenjang|parallelogram|trapesium|trapezoid|segitiga|triangle|persegi panjang|persegipanjang|rectangle|persegi|bujur sangkar|square|lingkaran|circle)\b/i.test(
+    /\b(cube|kubus|balok|tabung|cylinder|silinder|kerucut|cone|bola|sphere|prisma|prism|limas|piramida|piramid|pyramid|parabola|pelana|jajar genjang|jajargenjang|parallelogram|trapesium|trapezoid|segitiga|triangle|persegi panjang|persegipanjang|rectangle|persegi|bujur sangkar|square|lingkaran|circle|belah ketupat|belahketupat|rhombus|layang layang|layang-layang|layanglayang|kite)\b/i.test(
       t
     );
 
@@ -397,7 +447,7 @@ function detectSmartboardItem(
   // Langkah A: Cari langsung di kalimat saat ini
   let shape = detectShapeKind(t);
 
-  // Langkah B: Jika kalimat adalah permintaan 3D tanpa menyebut ulang nama bangun (misal: "bisakah buatkan dalam bentuk 3d"),
+  // Langkah B: Jika kalimat adalah permintaan 3D/2D tanpa menyebut ulang nama bangun (misal: "bisakah buatkan dalam bentuk 3d"),
   // telusuri riwayat percakapan sebelumnya untuk mewarisi bangun yang sedang dibahas
   if (!shape && (has3DIntent || hasExplicitCommand) && conversationHistory && conversationHistory.length > 0) {
     for (let i = conversationHistory.length - 1; i >= 0; i--) {
@@ -405,7 +455,37 @@ function detectSmartboardItem(
       const histText = `${hist.rawText || ""} ${hist.replyText || ""}`;
       const foundInHistory = detectShapeKind(histText);
       if (foundInHistory) {
-        shape = foundInHistory;
+        if (has3DIntent) {
+          // Jika pengguna meminta bentuk 3D namun di riwayat adalah bangun 2D, konversikan ke padanan 3D:
+          if (foundInHistory.kind === "segitiga") {
+            shape = { kind: "limas", paramA: foundInHistory.paramA || 8, paramB: 10, unit: parsedUnit };
+          } else if (foundInHistory.kind === "persegi") {
+            shape = { kind: "kubus", paramA: foundInHistory.paramA || 10, unit: parsedUnit };
+          } else if (foundInHistory.kind === "persegi_panjang") {
+            shape = { kind: "balok", paramA: foundInHistory.paramA || 10, paramB: foundInHistory.paramB || 6, paramC: 4, unit: parsedUnit };
+          } else if (foundInHistory.kind === "circle") {
+            shape = { kind: "tabung", paramA: foundInHistory.paramA || 7, paramB: 12, unit: parsedUnit };
+          } else if (foundInHistory.kind === "jajar_genjang" || foundInHistory.kind === "trapesium" || foundInHistory.kind === "belah_ketupat" || foundInHistory.kind === "layang_layang") {
+            shape = { kind: "prisma", paramA: foundInHistory.paramA || 8, paramB: 10, unit: parsedUnit };
+          } else {
+            shape = foundInHistory;
+          }
+        } else if (/\b(2d|2-d|dua dimensi|bangun datar)\b/i.test(t)) {
+          // Jika pengguna meminta bentuk 2D namun di riwayat adalah bangun ruang 3D, konversikan ke padanan 2D:
+          if (foundInHistory.kind === "kubus") {
+            shape = { kind: "persegi", paramA: foundInHistory.paramA || 10, unit: parsedUnit, planeShapeKind: "persegi" };
+          } else if (foundInHistory.kind === "balok") {
+            shape = { kind: "persegi_panjang", paramA: foundInHistory.paramA || 14, paramB: foundInHistory.paramB || 8, unit: parsedUnit, planeShapeKind: "persegi_panjang" };
+          } else if (foundInHistory.kind === "tabung" || foundInHistory.kind === "bola") {
+            shape = { kind: "circle", paramA: foundInHistory.paramA || 7, unit: parsedUnit, planeShapeKind: "lingkaran" };
+          } else if (foundInHistory.kind === "limas" || foundInHistory.kind === "prisma") {
+            shape = { kind: "segitiga", paramA: foundInHistory.paramA || 10, paramB: 8, unit: parsedUnit, planeShapeKind: "segitiga" };
+          } else {
+            shape = foundInHistory;
+          }
+        } else {
+          shape = foundInHistory;
+        }
         break;
       }
     }
@@ -513,14 +593,17 @@ function detectSmartboardItem(
       };
     }
     case "limas": {
+      const s = shape.paramA || 8;
+      const t = shape.paramB || 10;
       return {
         model: "solids",
         solidKind: "limas",
-        label: "Limas 3D",
+        label: `Limas Segi Empat 3D (Piramida)`,
         desc: wantsSlice
-          ? "Limas segi empat beraturan dengan bidang penampang irisan"
-          : "Limas segi empat beraturan geometri ruang",
-        paramA: shape.paramA || 8,
+          ? `Limas segi empat beraturan (piramida) alas ${s} ${parsedUnit}, tinggi ${t} ${parsedUnit} dengan bidang penampang irisan`
+          : `Limas segi empat beraturan (piramida) alas ${s} ${parsedUnit}, tinggi ${t} ${parsedUnit}`,
+        paramA: s,
+        paramB: t,
         unit: parsedUnit,
         hasSlice: wantsSlice,
       };
@@ -562,10 +645,40 @@ function detectSmartboardItem(
       };
     }
     case "circle": {
+      const r = shape.paramA || 7;
       return {
-        model: "2d_circle",
-        label: "Lingkaran 2D",
-        desc: "Persamaan lingkaran x² + y² = r²",
+        model: "2d_shape",
+        planeShapeKind: "lingkaran",
+        label: `Lingkaran 2D (r=${r})`,
+        desc: `Bangun datar lingkaran dengan jari-jari ${r} ${parsedUnit}`,
+        paramA: r,
+        unit: parsedUnit,
+      };
+    }
+    case "belah_ketupat": {
+      const d1 = shape.paramA || 12;
+      const d2 = shape.paramB || 16;
+      return {
+        model: "2d_shape",
+        planeShapeKind: "belah_ketupat",
+        label: `Belah Ketupat 2D (d1=${d1}, d2=${d2})`,
+        desc: `Bangun datar belah ketupat diagonal ${d1} & ${d2} ${parsedUnit}`,
+        paramA: d1,
+        paramB: d2,
+        unit: parsedUnit,
+      };
+    }
+    case "layang_layang": {
+      const d1 = shape.paramA || 12;
+      const d2 = shape.paramB || 16;
+      return {
+        model: "2d_shape",
+        planeShapeKind: "layang_layang",
+        label: `Layang-Layang 2D (d1=${d1}, d2=${d2})`,
+        desc: `Bangun datar layang-layang diagonal ${d1} & ${d2} ${parsedUnit}`,
+        paramA: d1,
+        paramB: d2,
+        unit: parsedUnit,
       };
     }
     case "counting_blocks": {
@@ -2124,6 +2237,66 @@ export default function ZAPApp() {
                 paramA: shapeFromReply.paramA || 7,
                 unit: "cm",
                 hasSlice: false,
+              };
+            } else if (shapeFromReply.kind === "limas") {
+              const s = shapeFromReply.paramA || 8;
+              const t = shapeFromReply.paramB || 10;
+              responseGeometry = {
+                model: "solids",
+                solidKind: "limas",
+                label: `Limas Segi Empat 3D (Piramida)`,
+                desc: `Limas segi empat beraturan (piramida) alas ${s} cm, tinggi ${t} cm`,
+                paramA: s,
+                paramB: t,
+                unit: "cm",
+                hasSlice: false,
+              };
+            } else if (shapeFromReply.kind === "prisma") {
+              const s = shapeFromReply.paramA || 8;
+              const t = shapeFromReply.paramB || 10;
+              responseGeometry = {
+                model: "solids",
+                solidKind: "prisma",
+                label: `Prisma Segitiga 3D`,
+                desc: `Prisma segitiga beraturan alas ${s} cm, tinggi ${t} cm`,
+                paramA: s,
+                paramB: t,
+                unit: "cm",
+                hasSlice: false,
+              };
+            } else if (shapeFromReply.kind === "circle") {
+              const r = shapeFromReply.paramA || 7;
+              responseGeometry = {
+                model: "2d_shape",
+                planeShapeKind: "lingkaran",
+                label: `Lingkaran 2D (r=${r})`,
+                desc: `Bangun datar lingkaran dengan jari-jari ${r} cm`,
+                paramA: r,
+                unit: "cm",
+              };
+            } else if (shapeFromReply.kind === "belah_ketupat") {
+              const d1 = shapeFromReply.paramA || 12;
+              const d2 = shapeFromReply.paramB || 16;
+              responseGeometry = {
+                model: "2d_shape",
+                planeShapeKind: "belah_ketupat",
+                label: `Belah Ketupat 2D (d1=${d1}, d2=${d2})`,
+                desc: `Bangun datar belah ketupat diagonal ${d1} & ${d2} cm`,
+                paramA: d1,
+                paramB: d2,
+                unit: "cm",
+              };
+            } else if (shapeFromReply.kind === "layang_layang") {
+              const d1 = shapeFromReply.paramA || 12;
+              const d2 = shapeFromReply.paramB || 16;
+              responseGeometry = {
+                model: "2d_shape",
+                planeShapeKind: "layang_layang",
+                label: `Layang-Layang 2D (d1=${d1}, d2=${d2})`,
+                desc: `Bangun datar layang-layang diagonal ${d1} & ${d2} cm`,
+                paramA: d1,
+                paramB: d2,
+                unit: "cm",
               };
             } else {
               responseGeometry = {
