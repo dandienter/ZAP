@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { useRouter, useParams, usePathname } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import MathView from "@/components/MathView";
 import RichChatText from "@/components/RichChatText";
 import ZapLogo from "@/components/ZapLogo";
@@ -85,7 +85,6 @@ import {
   Settings,
   Sun,
   Moon,
-  SunMoon,
   Palette,
   Laptop,
   Cloud,
@@ -122,36 +121,6 @@ interface WorkspaceItem {
   description?: string;
   createdAt: number;
 }
-
-const DEFAULT_WORKSPACE_FILES: UploadedFile[] = [
-  {
-    id: "sys_engine",
-    name: "engine.py",
-    size: 8940,
-    type: "text/x-python",
-    uploadedAt: Date.now() - 86400000,
-    workspaceId: "default",
-    content: `# ZAP CFL Engine — Core Computer Algebra System\n# Deterministik SymPy verifikasi langkah aljabar dan reduksi akar\n\nimport sympy as sp\nfrom cfl.parser import parse_side\n\nclass CoreFaultLocalizer:\n    """Menganalisis baris penurunan aljabar siswa tanpa membocorkan jawaban."""\n    def __init__(self, confirmed_steps, target_var='x'):\n        self.steps = confirmed_steps\n        self.target_var = sp.Symbol(target_var)\n`,
-  },
-  {
-    id: "sys_parser",
-    name: "parser.py",
-    size: 6120,
-    type: "text/x-python",
-    uploadedAt: Date.now() - 86400000,
-    workspaceId: "default",
-    content: `# ZAP Algebraic Parser & Whitelist Invariant Enforcement\n# Anti-RCE, Safe Degree Exponents, dan Sanitasi Masukan Siswa\n\nimport re\nimport sympy as sp\nfrom sympy.parsing.sympy_parser import parse_expr\n\nSAFE_ALGEBRA_WHITELIST = r"^[0-9a-zA-Z\\s\\+\\-\\*/\\^\\(\\)\\[\\]\\{\\}\\=\\<\\>\\_\\\\\\.,]+$"\n`,
-  },
-  {
-    id: "sys_formulas",
-    name: "rumus_geometri_3d.md",
-    size: 2450,
-    type: "text/markdown",
-    uploadedAt: Date.now() - 86400000,
-    workspaceId: "default",
-    content: `# Ringkasan Rumus Geometri Ruang & Irisan Papan Tulis 3D\n\n## 1. Kubus (Cube)\n- Volume: $V = s^3$\n- Luas Permukaan: $L = 6s^2$\n- Diagonal Bidang: $d_b = s\\sqrt{2}$\n- Diagonal Ruang: $d_r = s\\sqrt{3}$\n\n## 2. Balok (Cuboid)\n- Volume: $V = p \\times l \\times t$\n- Luas Permukaan: $L = 2(pl + pt + lt)$\n\n## 3. Tabung (Cylinder)\n- Volume: $V = \\pi r^2 t$\n- Luas Selimut: $L_s = 2\\pi r t$\n\n## 4. Irisan Kerucut & Permukaan Kuadrik\n- Parabola: $y = ax^2 + bx + c$\n- Hiperbolik Paraboloid (Pelana Kuda): $z = \\frac{x^2}{a^2} - \\frac{y^2}{b^2}$\n`,
-  },
-];
 
 interface DetectedShapeInfo {
   kind:
@@ -747,8 +716,8 @@ interface PromptActionBarLeftProps {
   onInsertExample: () => void;
   onOpenSmartboard: () => void;
   onOpenWorkspaceFiles: () => void;
-  attachMenuRef: React.RefObject<any>;
-  workspaceMenuRef: React.RefObject<any>;
+  attachMenuRef: React.RefObject<HTMLDivElement>;
+  workspaceMenuRef: React.RefObject<HTMLDivElement>;
 }
 
 function PromptActionBarLeft({
@@ -1135,7 +1104,6 @@ function PromptActionBarLeft({
 export default function ZAPApp() {
   const router = useRouter();
   const routeParams = useParams();
-  const currentPath = usePathname();
 
   // Helper untuk mendapatkan ID sesi percakapan dari URL path (/c/<id> atau /chat/<id>)
   const getPathConversationId = useCallback(() => {
@@ -1221,7 +1189,7 @@ export default function ZAPApp() {
   const [isProjectorMode, setIsProjectorMode] = useState<boolean>(false);
 
   // Theme & Settings modal
-  const { theme, resolvedTheme, setTheme, isDark } = useTheme();
+  const { theme, setTheme } = useTheme();
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
   const [settingsTab, setSettingsTab] = useState<"appearance" | "general" | "sync" | "models">("appearance");
   const [syncSuccessToast, setSyncSuccessToast] = useState<boolean>(false);
@@ -1275,8 +1243,10 @@ export default function ZAPApp() {
   // Pedagogical interaction mode
   const [interactionMode, setInteractionMode] = useState<"standard" | "strict" | "visual" | "cas">(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("zap_interaction_mode") as any;
-      if (saved) return saved;
+      const saved = localStorage.getItem("zap_interaction_mode");
+      if (saved === "standard" || saved === "strict" || saved === "visual" || saved === "cas") {
+        return saved;
+      }
     }
     return "standard";
   });
@@ -2302,7 +2272,9 @@ export default function ZAPApp() {
     window.speechSynthesis.speak(utterance);
   };
 
-  const handleShareMessage = async (_text: string, _msgId: string) => {
+  const handleShareMessage = async (_text: string, msgId: string) => {
+    setSharedMsgId(msgId);
+    setTimeout(() => setSharedMsgId(null), 2500);
     handleOpenShareModal();
   };
 

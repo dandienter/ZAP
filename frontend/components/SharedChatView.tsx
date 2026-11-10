@@ -13,7 +13,6 @@ import {
   Sparkles,
   User,
   Clock,
-  Layers,
   Box,
   Copy,
   Sun,
@@ -28,11 +27,11 @@ interface ShareMessage {
   sender: "user" | "assistant";
   steps?: string[];
   rawText?: string;
-  diagnosis?: any;
+  diagnosis?: Record<string, unknown>;
   replyText?: string;
   modelName?: string;
   timestamp: string;
-  smartboardItem?: any;
+  smartboardItem?: Record<string, unknown>;
   feedback?: "up" | "down" | null;
   attachedFiles?: Array<{ name: string; size: number; type: string }>;
 }
@@ -77,8 +76,9 @@ export default function SharedChatView({ shareId }: { shareId: string }) {
         } else {
           throw new Error(json.error || "Data percakapan tidak valid.");
         }
-      } catch (err: any) {
-        if (isMounted) setError(err.message || "Terjadi kesalahan saat memuat tautan.");
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Terjadi kesalahan saat memuat tautan.";
+        if (isMounted) setError(msg);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -314,7 +314,7 @@ export default function SharedChatView({ shareId }: { shareId: string }) {
                             <div className="text-xs font-semibold text-zinc-200 flex items-center gap-1.5">
                               Papan Tulis Virtual 3D
                               <span className="px-1.5 py-0.5 rounded text-[10px] bg-white/[0.08] text-zinc-300 font-mono">
-                                {msg.smartboardItem.solidKind || msg.smartboardItem.model || "Geometri 3D"}
+                                {String(msg.smartboardItem.solidKind || msg.smartboardItem.model || "Geometri 3D")}
                               </span>
                             </div>
                             <div className="text-[11px] text-zinc-400 mt-0.5">

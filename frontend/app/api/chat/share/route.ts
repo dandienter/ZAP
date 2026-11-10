@@ -177,18 +177,18 @@ export async function POST(req: Request) {
     const finalAuthor = includeAuthor ? (authorName || "Pengguna ZAP").toString().trim() : "Anonim";
 
     // Bersihkan pesan dari data privat yang tidak relevan
-    const sanitizedMessages: ShareMessage[] = messages.map((m: any) => ({
-      id: m.id || crypto.randomUUID(),
+    const sanitizedMessages: ShareMessage[] = messages.map((m: Record<string, unknown>) => ({
+      id: (m.id as string) || crypto.randomUUID(),
       sender: m.sender === "user" ? "user" : "assistant",
-      steps: Array.isArray(m.steps) ? m.steps : undefined,
+      steps: Array.isArray(m.steps) ? (m.steps as string[]) : undefined,
       rawText: typeof m.rawText === "string" ? m.rawText : undefined,
-      diagnosis: m.diagnosis || undefined,
+      diagnosis: m.diagnosis as ShareMessage["diagnosis"],
       replyText: typeof m.replyText === "string" ? m.replyText : undefined,
       modelName: typeof m.modelName === "string" ? m.modelName : undefined,
-      timestamp: m.timestamp || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      smartboardItem: m.smartboardItem || undefined,
-      feedback: m.feedback || null,
-      attachedFiles: Array.isArray(m.attachedFiles) ? m.attachedFiles : undefined,
+      timestamp: (m.timestamp as string) || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      smartboardItem: m.smartboardItem as ShareMessage["smartboardItem"],
+      feedback: (m.feedback as "up" | "down" | null) || null,
+      attachedFiles: Array.isArray(m.attachedFiles) ? (m.attachedFiles as ShareMessage["attachedFiles"]) : undefined,
     }));
 
     const payload: SharedConversationPayload = {

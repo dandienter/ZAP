@@ -171,13 +171,19 @@ export async function POST(req: Request) {
       workspaces && Array.isArray(workspaces)
         ? workspaces
         : existingData.workspaces || []
-    ).filter((w: any) => w && w.id !== "default" && w.name !== "Default workspace");
+    ).filter((w: unknown) => {
+      const item = w as Record<string, unknown> | null;
+      return item && item.id !== "default" && item.name !== "Default workspace";
+    });
 
     const mergedFiles = (
       workspaceFiles && Array.isArray(workspaceFiles)
         ? workspaceFiles
         : existingData.workspaceFiles || []
-    ).filter((f: any) => f && f.workspaceId !== "default");
+    ).filter((f: unknown) => {
+      const file = f as Record<string, unknown> | null;
+      return file && file.workspaceId !== "default";
+    });
 
     const isGuest = user.isGuest === true || (user.provider === "zap" && (user.email?.includes("@student.zap") || user.name?.toLowerCase().includes("tamu")));
 

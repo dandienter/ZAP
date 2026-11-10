@@ -22,7 +22,7 @@ interface ShareModalProps {
   conversation: {
     id: string;
     title: string;
-    messages: any[];
+    messages: Array<unknown>;
     createdAt?: number;
     updatedAt?: number;
     targetVar?: string;
@@ -83,9 +83,10 @@ export default function ShareModal({
         } else {
           throw new Error(json.error || "Gagal membuat tautan percakapan");
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (isMounted) {
-          setError(err.message || "Terjadi kesalahan saat membagikan percakapan.");
+          const msg = err instanceof Error ? err.message : "Terjadi kesalahan saat membagikan percakapan.";
+          setError(msg);
           const origin = typeof window !== "undefined" ? window.location.origin : "";
           setShareUrl(`${origin}/a/chat/s/${conversation?.id || "conv"}`);
         }
@@ -129,8 +130,9 @@ export default function ShareModal({
       } else {
         throw new Error(json.error || "Gagal memperbarui status publik tautan.");
       }
-    } catch (err: any) {
-      setError(err.message || "Gagal mengubah status publik tautan.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal mengubah status publik tautan.";
+      setError(msg);
     } finally {
       setIsGenerating(false);
     }
