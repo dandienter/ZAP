@@ -3056,6 +3056,16 @@ export default function InteractiveCanvas3D({
     setInlineComposer({ x: Math.max(2, Math.min(75, pctX)), y: Math.max(2, Math.min(75, pctY)), text: "" });
   };
 
+  // Status apakah teks sambutan & preset papan kosong boleh ditampilkan:
+  // Hilang secara otomatis jika pengguna mulai mencoret kanvas, mengetik rumus, atau mengaktifkan alat pena/ketik
+  const showEmptyBoardPlaceholder =
+    activeModel === "empty" &&
+    !hasDrawings &&
+    formulaNotes.length === 0 &&
+    !inlineComposer &&
+    !isTypingToolActive &&
+    !(isDrawingToolActive && drawingMode === "pen");
+
   // =========================================================================
   // RENDER PANDANGAN UTAMA PAPAN TULIS VIRTUAL
   // =========================================================================
@@ -3105,12 +3115,20 @@ export default function InteractiveCanvas3D({
             </button>
           </div>
 
-          {activeModel !== "empty" && (
+          {(activeModel !== "empty" || hasDrawings || formulaNotes.length > 0) && (
             <button
               type="button"
-              onClick={() => selectModel("empty")}
+              onClick={() => {
+                clearDrawCanvas();
+                setFormulaNotes([]);
+                setSelectedFormulaId(null);
+                setInlineComposer(null);
+                setIsTypingToolActive(false);
+                setIsDrawingToolActive(false);
+                selectModel("empty");
+              }}
               className="p-1.5 rounded-xl dark:bg-white/[0.04] bg-slate-100 hover:bg-slate-200 dark:hover:bg-white/[0.08] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border dark:border-white/[0.08] border-slate-200 transition cursor-pointer"
-              title="Reset / Bersihkan Kanvas"
+              title="Reset / Bersihkan Seluruh Kanvas"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
@@ -3276,9 +3294,9 @@ export default function InteractiveCanvas3D({
           isTypingToolActive ? "cursor-text" : ""
         }`}
       >
-        {/* A. EMPTY STATE */}
-        {activeModel === "empty" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-0 select-none">
+        {/* A. EMPTY STATE (Otomatis hilang jika pengguna mencoret kanvas, mengetik rumus, atau mengaktifkan pena/ketik) */}
+        {showEmptyBoardPlaceholder && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-0 select-none animate-fadeIn pointer-events-auto">
             <div className="w-full max-w-md space-y-4">
               <div className="w-12 h-12 rounded-2xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] flex items-center justify-center mx-auto text-slate-700 dark:text-zinc-300 shadow-sm">
                 <Pencil className="w-6 h-6" />
