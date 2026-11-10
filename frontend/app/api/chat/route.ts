@@ -33,9 +33,12 @@ interface ChatRequestBody {
   customModelName?: string;
   customApiKey?: string;
   userName?: string;
+  jailbreakStrikes?: number;
+  isSuspended?: boolean;
+  userEmail?: string;
 }
 
-export interface AttachedImageItem {
+interface AttachedImageItem {
   name: string;
   dataUrl: string;
   mimeType: string;
@@ -136,6 +139,80 @@ function sanitizeZeroAnswer(text: string): string {
     result = result.replace(item.regex, item.replacement);
   }
   return result;
+}
+
+/**
+ * Mendeteksi upaya manipulasi prompt, prompt injection, atau jailbreak
+ * yang berusaha membobol identitas model, aturan ZAP, atau mengeksploitasi tokenizer.
+ */
+function detectJailbreakAttempt(text: string): { isJailbreak: boolean; reason: string } {
+  if (!text || typeof text !== "string") return { isJailbreak: false, reason: "" };
+
+  const clean = text.toLowerCase();
+
+  // 1. Serangan berbasis kata kunci / instruksi override
+  const promptInjectionPatterns: Array<{ pattern: RegExp; reason: string }> = [
+    {
+      pattern: /\b(?:ignore|forget|disregard|override)\s+(?:all\s+)?(?:previous|prior|above|system)?\s*(?:instructions|prompts|rules|guidelines|directives|constraints)\b/i,
+      reason: "Instruksi pengabaian/override aturan sistem",
+    },
+    {
+      pattern: /\b(?:abaikan|lupakan|hapus)\s+(?:semua|seluruh|sebelumnya)?\s*(?:instruksi|perintah|aturan|pedoman|batasan)\b/i,
+      reason: "Instruksi pengabaian aturan sistem",
+    },
+    {
+      pattern: /\b(?:you are now|pretend you are|act as)\s+(?:in\s+developer\s+mode|unrestricted|dan|aim|stan|jailbroken|an ai without rules)\b/i,
+      reason: "Manipulasi peran/mode developer tanpa batas",
+    },
+    {
+      pattern: /\b(?:kamu sekarang|bertindaklah sebagai)\s+(?:dalam mode developer|mode pengembang|tanpa batas|tanpa aturan|ai tanpa batasan)\b/i,
+      reason: "Manipulasi peran/mode pengembang tanpa batas",
+    },
+    {
+      pattern: /\b(?:bocorkan|tampilkan|sebutkan)\s+(?:system\s+prompt|instruksi\s+sistem|prompt\s+awal|instruksi\s+rahasia)\b/i,
+      reason: "Percobaan ekstraksi instruksi rahasia sistem",
+    },
+    {
+      pattern: /\b(?:reveal|show|display|leak)\s+(?:your\s+)?(?:system\s+prompt|system\s+instructions|initial\s+prompt|developer\s+mode)\b/i,
+      reason: "Percobaan ekstraksi system prompt",
+    },
+    {
+      pattern: /\b(?:bypass|disable|matikan)\s+(?:zero\s*answer\s*policy|zap|guardrails?|safety\s*filters?|filter\s*keamanan)\b/i,
+      reason: "Percobaan mematikan Zero Answer Policy atau filter keamanan",
+    },
+    {
+      pattern: /\b(?:jailbreak|jailbroken|prompt\s*injection|jailbreak\s*mode)\b/i,
+      reason: "Kata kunci jailbreak terdeteksi",
+    },
+    {
+      pattern: /<\|im_start\|>system|<system>|\[INST\]\s*<<SYS>>|<\/system>/i,
+      reason: "Injeksi token kontrol sistem LLM",
+    },
+  ];
+
+  for (const item of promptInjectionPatterns) {
+    if (item.pattern.test(text)) {
+      return { isJailbreak: true, reason: item.reason };
+    }
+  }
+
+  // 2. ASCII Box Art banner tebal dikombinasikan dengan string biner panjang atau obfuscation
+  const hasLongBinary = /[01]{32,}/.test(text);
+  const hasAsciiBoxDisguise = /[═─━│┃█]{8,}|={10,}\+/i.test(text);
+
+  if (hasLongBinary && hasAsciiBoxDisguise) {
+    return { isJailbreak: true, reason: "Payload biner terselubung dalam ASCII art box" };
+  }
+
+  if (hasLongBinary && (clean.includes("00110011") || text.split(/[01]/).length > 50)) {
+    return { isJailbreak: true, reason: "Injeksi sekuens biner terkompresi tanpa spasi" };
+  }
+
+  if (/[01]{64,}/.test(text)) {
+    return { isJailbreak: true, reason: "Payload biner panjang tanpa pemisah (>64 bit)" };
+  }
+
+  return { isJailbreak: false, reason: "" };
 }
 
 /**
@@ -366,6 +443,49 @@ export async function POST(req: Request) {
 
     if (!rawMessage || typeof rawMessage !== "string") {
       return NextResponse.json({ error: "Pesan tidak boleh kosong" }, { status: 400 });
+    }
+
+    // 0. VERIFIKASI KEAMANAN: Cek Status Penangguhan Akun (Suspension Check)
+    if (body.isSuspended) {
+      return NextResponse.json(
+        {
+          isJailbreak: true,
+          strikeCount: 2,
+          isSuspended: true,
+          reply: `⛔ **AKUN ANDA SEDANG DALAM STATUS DITANGGUHKAN.**\n\nSeluruh hak akses percakapan ke ChatZAP telah dibekukan secara permanen akibat pelanggaran berulang terhadap kebijakan keamanan (percobaan jailbreak/prompt injection).\n\nUntuk pengajuan banding atau permohonan pemulihan akun, silakan hubungi tim administrator melalui email resmi:\n✉️ **wakhidpangestu1@gmail.com**`,
+          model: "ChatZAP Security Sentinel (Akun Ditangguhkan)",
+          source: "jailbreak-suspended",
+        },
+        { status: 403 }
+      );
+    }
+
+    // 0b. VERIFIKASI KEAMANAN: Deteksi Percobaan Jailbreak & Prompt Injection
+    const jailbreakCheck = detectJailbreakAttempt(rawMessage);
+    if (jailbreakCheck.isJailbreak) {
+      const currentStrikes = typeof body.jailbreakStrikes === "number" ? body.jailbreakStrikes : 0;
+
+      if (currentStrikes === 0) {
+        // STRIKE 1: Peringatan Keras Resmi (Pelanggaran 1/2)
+        return NextResponse.json({
+          isJailbreak: true,
+          strikeCount: 1,
+          isSuspended: false,
+          reply: `⚠️ **PERINGATAN KEAMANAN CHATZAP (Pelanggaran 1/2):**\n\nSistem kami mendeteksi adanya upaya **manipulasi instruksi / prompt injection (jailbreak)** pada pesan yang Anda kirimkan (*${jailbreakCheck.reason}*).\n\n**Ketentuan Layanan ChatZAP:**\n- ChatZAP beroperasi di bawah prinsip integritas edukasi dan **Zero-Answer Policy (ZAP)**.\n- Segala bentuk usaha override sistem, manipulasi peran, atau penyelundupan payload biner/art dilarang keras.\n\n🛑 **PERINGATAN KRITIS:** Akun Anda **TIDAK AKAN DAPAT DIAKSES LAGI (DITANGGUHKAN / SUSPENDED SECARA PERMANEN)** jika terdeteksi melakukan percobaan jailbreak **1 KALI LAGI**!\n\nSilakan gunakan ChatZAP sesuai etika pembelajaran matematika dan konsultasi konsep secara sehat.`,
+          model: "ChatZAP Security Sentinel (Peringatan 1/2)",
+          source: "jailbreak-warning",
+        });
+      } else {
+        // STRIKE 2: Akun Ditangguhkan Permanen (Pelanggaran 2/2)
+        return NextResponse.json({
+          isJailbreak: true,
+          strikeCount: 2,
+          isSuspended: true,
+          reply: `⛔ **AKSES AKUN DITANGGUHKAN PERMANEN (ACCOUNT SUSPENDED)**\n\nAkun Anda telah dinonaktifkan dan seluruh hak akses percakapan ke ChatZAP telah **DIBEKUKAN** karena terdeteksi melakukan pelanggaran keamanan berulang (jailbreak/prompt injection).\n\n- **Status Akun:** Ditangguhkan (Suspended)\n- **Pelanggaran:** Percobaan manipulasi sistem / jailbreak untuk kedua kalinya (*${jailbreakCheck.reason}*).\n- **Dampak:** Kolom obrolan ChatZAP telah dikunci dan dinonaktifkan.\n\n**Prosedur Laporan & Pemulihan Akun:**\nJika Anda meyakini ini adalah sebuah kekeliruan atau ingin mengajukan permohonan pemulihan akun, silakan hubungi administrator resmi kami melalui email:\n✉️ **wakhidpangestu1@gmail.com**\n*(Sertakan Nama Lengkap, Alamat Email terdaftar, dan penjelasan permohonan banding).*`,
+          model: "ChatZAP Security Sentinel (Akun Ditangguhkan)",
+          source: "jailbreak-suspended",
+        });
+      }
     }
 
     let message = rawMessage;

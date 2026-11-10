@@ -96,7 +96,7 @@ export default function RichChatText({ content, className = "" }: RichChatTextPr
   const lines = content.split("\n");
 
   return (
-    <div className={`space-y-2.5 text-[15.5px] leading-relaxed text-slate-800 dark:text-zinc-200 ${className}`}>
+    <div className={`space-y-2.5 text-[15.5px] leading-relaxed text-slate-800 dark:text-zinc-200 break-words [overflow-wrap:anywhere] max-w-full ${className}`}>
       {lines.map((rawLine, index) => {
         const line = rawLine.trim();
 

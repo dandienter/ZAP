@@ -91,6 +91,7 @@ import {
   Laptop,
   Cloud,
   ShieldCheck,
+  AlertTriangle,
 } from "lucide-react";
 
 interface DetectedSmartboardItem {
@@ -1348,6 +1349,21 @@ export default function ZAPApp() {
   const [showFaultComparison, setShowFaultComparison] = useState<boolean>(false);
   const [isProjectorMode, setIsProjectorMode] = useState<boolean>(false);
 
+  // Jailbreak & Security Suspension State
+  const [jailbreakStrikes, setJailbreakStrikes] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = parseInt(localStorage.getItem("zap_jailbreak_strikes") || "0", 10);
+      return isNaN(saved) ? 0 : saved;
+    }
+    return 0;
+  });
+  const [isAccountSuspended, setIsAccountSuspended] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("zap_account_suspended") === "true";
+    }
+    return false;
+  });
+
   // Theme & Settings modal
   const { theme, setTheme } = useTheme();
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
@@ -1997,6 +2013,11 @@ export default function ZAPApp() {
 
     if (!textToProcess.trim() || loading) return;
 
+    if (isAccountSuspended) {
+      alert("Akun Anda telah ditangguhkan secara permanen karena pelanggaran keamanan berulang. Silakan hubungi wakhidpangestu1@gmail.com untuk permohonan pemulihan akses.");
+      return;
+    }
+
     const lines = textToProcess
       .split("\n")
       .map((l) => l.trim())
@@ -2129,16 +2150,45 @@ export default function ZAPApp() {
             customModelName: savedCustomModelName,
             customApiKey: savedCustomApiKey,
             userName: currentUser?.name || "Pengguna ChatZAP",
+            jailbreakStrikes: jailbreakStrikes,
+            isSuspended: isAccountSuspended,
+            userEmail: currentUser?.email || "anonymous",
           }),
         });
 
+        const chatData = await res.json().catch(() => null);
+
         if (!res.ok) {
-          throw new Error(`Chat HTTP ${res.status}`);
+          if (res.status === 403 && chatData?.isSuspended) {
+            setIsAccountSuspended(true);
+            setJailbreakStrikes(2);
+            if (typeof window !== "undefined") {
+              localStorage.setItem("zap_jailbreak_strikes", "2");
+              localStorage.setItem("zap_account_suspended", "true");
+            }
+          } else {
+            throw new Error(`Chat HTTP ${res.status}`);
+          }
         }
 
-        const chatData = await res.json();
+        if (chatData?.isJailbreak) {
+          if (chatData.strikeCount === 1) {
+            setJailbreakStrikes(1);
+            if (typeof window !== "undefined") {
+              localStorage.setItem("zap_jailbreak_strikes", "1");
+            }
+          } else if (chatData.isSuspended || chatData.strikeCount >= 2) {
+            setJailbreakStrikes(2);
+            setIsAccountSuspended(true);
+            if (typeof window !== "undefined") {
+              localStorage.setItem("zap_jailbreak_strikes", "2");
+              localStorage.setItem("zap_account_suspended", "true");
+            }
+          }
+        }
+
         const replyText =
-          chatData.reply ||
+          chatData?.reply ||
           "Halo! Saya asisten ChatZAP. Tuliskan langkah aljabar yang ingin kamu uji, atau mintalah visualisasi 3D geometri.";
 
         // Gunakan smartboardItem resmi dari ZAP Universal Geometry Engine (backend API)
@@ -3600,6 +3650,38 @@ export default function ZAPApp() {
                   </div>
                 )}
 
+                {/* Security Warning / Account Suspension Indicator */}
+                {isAccountSuspended ? (
+                  <div className="flex items-start justify-between p-3.5 mb-2.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-xs text-rose-800 dark:text-rose-300 animate-fade-in select-none">
+                    <div className="flex items-start gap-2.5">
+                      <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                      <div className="space-y-0.5">
+                        <div className="font-bold text-rose-900 dark:text-rose-200">
+                          Akses ChatZAP Ditangguhkan Permanen
+                        </div>
+                        <p className="text-[11px] text-rose-700 dark:text-rose-300/90 leading-relaxed">
+                          Akun Anda dibekukan akibat percobaan jailbreak berulang. Untuk permohonan pemulihan akses, silakan email:{" "}
+                          <a href="mailto:wakhidpangestu1@gmail.com" className="font-mono font-semibold underline text-rose-800 dark:text-rose-100 hover:opacity-80">
+                            wakhidpangestu1@gmail.com
+                          </a>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : jailbreakStrikes === 1 ? (
+                  <div className="flex items-center justify-between p-2.5 mb-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-800 dark:text-amber-300 animate-fade-in select-none">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                      <span className="text-[11px] font-medium">
+                        <strong>Peringatan Keamanan:</strong> Terdeteksi 1x percobaan jailbreak. ChatZAP tidak akan dapat diakses jika jailbreak 1 kali lagi.
+                      </span>
+                    </div>
+                    <span className="font-mono font-bold text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 shrink-0">
+                      Strike 1/2
+                    </span>
+                  </div>
+                ) : null}
+
                 {/* Editing Message Indicator */}
                 {editingMsgId && (
                   <div className="flex items-center justify-between px-3.5 py-2 mb-2.5 rounded-2xl bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/25 dark:border-amber-400/20 text-xs text-amber-700 dark:text-amber-300 animate-fade-in select-none">
@@ -3676,12 +3758,17 @@ export default function ZAPApp() {
                 <textarea
                   ref={textareaRef}
                   value={inputText}
+                  disabled={loading || isAccountSuspended}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyDown={handleKeyDown}
                   onPaste={handlePaste}
                   rows={2}
-                  placeholder="Describe what you want to build, / commands, @ files or sessions (atau paste/drag gambar ke sini)"
-                  className="w-full bg-transparent text-[15px] sm:text-base text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none resize-none font-sans leading-relaxed"
+                  placeholder={
+                    isAccountSuspended
+                      ? "Akun Anda telah ditangguhkan. Hubungi wakhidpangestu1@gmail.com untuk permohonan pemulihan akses."
+                      : "Describe what you want to build, / commands, @ files or sessions (atau paste/drag gambar ke sini)"
+                  }
+                  className="w-full bg-transparent text-[15px] sm:text-base text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none resize-none font-sans leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed"
                 />
 
                 <div className="flex items-center justify-between pt-2">
@@ -3731,9 +3818,9 @@ export default function ZAPApp() {
                     <button
                       type="button"
                       onClick={() => handleSend()}
-                      disabled={loading || !inputText.trim()}
+                      disabled={loading || isAccountSuspended || !inputText.trim()}
                       className={`w-7 h-7 rounded-full flex items-center justify-center transition cursor-pointer ${
-                        inputText.trim() && !loading
+                        inputText.trim() && !loading && !isAccountSuspended
                           ? "bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-zinc-200"
                           : "bg-slate-200 dark:bg-[#282a32] text-slate-400 dark:text-zinc-500 cursor-not-allowed"
                       }`}
@@ -3755,27 +3842,27 @@ export default function ZAPApp() {
                 <div key={msg.id} className="space-y-3">
                   {/* User Message */}
                   {msg.sender === "user" && (
-                    <div className="flex flex-col items-end group py-1.5 max-w-[85%] sm:max-w-[75%] ml-auto">
+                    <div className="flex flex-col items-end group py-1.5 max-w-[85%] sm:max-w-[75%] ml-auto min-w-0">
                       {/* Glass Rounded Bubble */}
-                      <div className="w-fit max-w-full rounded-[22px] bg-slate-200/70 dark:bg-white/[0.07] backdrop-blur-xl border border-slate-300/60 dark:border-white/[0.09] px-5 py-3 shadow-sm text-slate-900 dark:text-zinc-100 text-[15px] sm:text-base leading-relaxed transition-all">
+                      <div className="w-fit max-w-full rounded-[22px] bg-slate-200/70 dark:bg-white/[0.07] backdrop-blur-xl border border-slate-300/60 dark:border-white/[0.09] px-5 py-3 shadow-sm text-slate-900 dark:text-zinc-100 text-[15px] sm:text-base leading-relaxed transition-all overflow-hidden break-words [overflow-wrap:anywhere]">
                         {msg.steps ? (
-                          <div className="space-y-1.5 font-mono pt-0.5">
+                          <div className="space-y-1.5 font-mono pt-0.5 max-w-full overflow-hidden">
                             {msg.steps.map((st, i) => (
                               <div
                                 key={i}
-                                className="flex items-center gap-2 bg-white/60 dark:bg-black/30 px-3 py-1.5 rounded-xl border border-slate-200/60 dark:border-white/[0.06]"
+                                className="flex items-center gap-2 bg-white/60 dark:bg-black/30 px-3 py-1.5 rounded-xl border border-slate-200/60 dark:border-white/[0.06] overflow-x-auto max-w-full"
                               >
-                                <span className="text-slate-400 dark:text-zinc-500 text-xs w-4">#{i + 1}</span>
-                                <div className="text-slate-900 dark:text-zinc-100 overflow-x-auto py-0.5 text-[15px]">
+                                <span className="text-slate-400 dark:text-zinc-500 text-xs w-4 shrink-0">#{i + 1}</span>
+                                <div className="text-slate-900 dark:text-zinc-100 overflow-x-auto py-0.5 text-[15px] min-w-0">
                                   <MathView math={st} />
                                 </div>
                               </div>
                             ))}
                           </div>
                         ) : msg.rawText ? (
-                          <p className="text-[15px] sm:text-base text-slate-900 dark:text-zinc-100 leading-relaxed font-sans whitespace-pre-wrap selection:bg-slate-300 dark:selection:bg-white/20">
+                          <div className="text-[15px] sm:text-base text-slate-900 dark:text-zinc-100 leading-relaxed font-sans whitespace-pre-wrap selection:bg-slate-300 dark:selection:bg-white/20 break-words [overflow-wrap:anywhere] break-all max-w-full overflow-x-auto">
                             {msg.rawText}
-                          </p>
+                          </div>
                         ) : null}
 
                         {/* Attached files pills in user bubble if any */}
@@ -3867,7 +3954,7 @@ export default function ZAPApp() {
                       </div>
 
                         {msg.replyText && (
-                          <div className="text-slate-800 dark:text-zinc-100 text-[15.5px] leading-relaxed pt-0.5">
+                          <div className="text-slate-800 dark:text-zinc-100 text-[15.5px] leading-relaxed pt-0.5 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]">
                             <RichChatText content={msg.replyText} />
                           </div>
                         )}
@@ -4154,6 +4241,38 @@ export default function ZAPApp() {
                   </div>
                 )}
 
+                {/* Security Warning / Account Suspension Indicator */}
+                {isAccountSuspended ? (
+                  <div className="flex items-start justify-between p-3.5 mb-2.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-xs text-rose-800 dark:text-rose-300 animate-fade-in select-none">
+                    <div className="flex items-start gap-2.5">
+                      <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                      <div className="space-y-0.5">
+                        <div className="font-bold text-rose-900 dark:text-rose-200">
+                          Akses ChatZAP Ditangguhkan Permanen
+                        </div>
+                        <p className="text-[11px] text-rose-700 dark:text-rose-300/90 leading-relaxed">
+                          Akun Anda dibekukan akibat percobaan jailbreak berulang. Untuk permohonan pemulihan akses, silakan email:{" "}
+                          <a href="mailto:wakhidpangestu1@gmail.com" className="font-mono font-semibold underline text-rose-800 dark:text-rose-100 hover:opacity-80">
+                            wakhidpangestu1@gmail.com
+                          </a>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : jailbreakStrikes === 1 ? (
+                  <div className="flex items-center justify-between p-2.5 mb-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-800 dark:text-amber-300 animate-fade-in select-none">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                      <span className="text-[11px] font-medium">
+                        <strong>Peringatan Keamanan:</strong> Terdeteksi 1x percobaan jailbreak. ChatZAP tidak akan dapat diakses jika jailbreak 1 kali lagi.
+                      </span>
+                    </div>
+                    <span className="font-mono font-bold text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 shrink-0">
+                      Strike 1/2
+                    </span>
+                  </div>
+                ) : null}
+
                 {/* Editing Message Indicator */}
                 {editingMsgId && (
                   <div className="flex items-center justify-between px-3.5 py-2 mb-2.5 rounded-2xl bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/25 dark:border-amber-400/20 text-xs text-amber-700 dark:text-amber-300 animate-fade-in select-none">
@@ -4230,12 +4349,17 @@ export default function ZAPApp() {
                 <textarea
                   ref={textareaRef}
                   value={inputText}
+                  disabled={loading || isAccountSuspended}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyDown={handleKeyDown}
                   onPaste={handlePaste}
                   rows={2}
-                  placeholder="Describe what you want to build, / commands, @ files or sessions (atau paste/drag gambar ke sini)"
-                className="w-full bg-transparent text-[15px] sm:text-base text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none resize-none font-sans leading-relaxed"
+                  placeholder={
+                    isAccountSuspended
+                      ? "Akun Anda telah ditangguhkan. Hubungi wakhidpangestu1@gmail.com untuk permohonan pemulihan akses."
+                      : "Describe what you want to build, / commands, @ files or sessions (atau paste/drag gambar ke sini)"
+                  }
+                className="w-full bg-transparent text-[15px] sm:text-base text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none resize-none font-sans leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed"
               />
 
               <div className="flex items-center justify-between pt-2">
@@ -4283,9 +4407,9 @@ export default function ZAPApp() {
                   <button
                     type="button"
                     onClick={() => handleSend()}
-                    disabled={loading || !inputText.trim()}
+                    disabled={loading || isAccountSuspended || !inputText.trim()}
                     className={`w-7 h-7 rounded-full flex items-center justify-center transition cursor-pointer ${
-                      inputText.trim() && !loading
+                      inputText.trim() && !loading && !isAccountSuspended
                         ? "bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-zinc-200"
                         : "bg-slate-200 dark:bg-[#282a32] text-slate-400 dark:text-zinc-500 cursor-not-allowed"
                     }`}
