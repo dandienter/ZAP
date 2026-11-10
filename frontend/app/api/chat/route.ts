@@ -20,7 +20,7 @@ interface ChatRequestBody {
   message: string;
   conversationHistory?: { role: "user" | "assistant"; content: string }[];
   activeProblem?: ActiveProblemContext | null;
-  attachedFiles?: Array<{ name: string; content?: string }>;
+  attachedFiles?: Array<{ name: string; content?: string; type?: string; dataUrl?: string }>;
   workspaceMode?: "write" | "read";
   modelId?: string;
   apiKey?: string;
@@ -34,6 +34,51 @@ interface ChatRequestBody {
   customApiKey?: string;
   userName?: string;
 }
+
+export interface AttachedImageItem {
+  name: string;
+  dataUrl: string;
+  mimeType: string;
+  pureBase64: string;
+}
+
+interface GeminiPart {
+  text?: string;
+  inline_data?: {
+    mime_type: string;
+    data: string;
+  };
+}
+
+interface ClaudeImageBlock {
+  type: "image";
+  source: {
+    type: "base64";
+    media_type: string;
+    data: string;
+  };
+}
+
+interface ClaudeTextBlock {
+  type: "text";
+  text: string;
+}
+
+type ClaudeContent = string | Array<ClaudeTextBlock | ClaudeImageBlock>;
+
+interface OpenAITextPart {
+  type: "text";
+  text: string;
+}
+
+interface OpenAIImagePart {
+  type: "image_url";
+  image_url: {
+    url: string;
+  };
+}
+
+type OpenAIMessageContent = string | Array<OpenAITextPart | OpenAIImagePart>;
 
 interface UniversalCallResult {
   text?: string;
@@ -277,15 +322,60 @@ export async function POST(req: Request) {
     }
 
     let message = rawMessage;
+    const textAttachments: Array<{ name: string; content: string }> = [];
+    const imageAttachments: AttachedImageItem[] = [];
+
     if (attachedFiles && Array.isArray(attachedFiles) && attachedFiles.length > 0) {
-      const fileContext = attachedFiles
-        .filter((f) => f && f.name)
-        .map((f) => `--- BERKAS TERLAMPIR: ${f.name} ---\n${(f.content || "").slice(0, 4000)}`)
-        .join("\n\n");
-      if (fileContext) {
-        message = `${fileContext}\n\n--- PERINTAH PENGGUNA ---\n${rawMessage}`;
+      for (const f of attachedFiles) {
+        if (!f) continue;
+        const rawContent = f.dataUrl || f.content || "";
+        const isImage =
+          Boolean(f.type?.startsWith("image/")) ||
+          rawContent.startsWith("data:image/") ||
+          /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(f.name);
+
+        if (isImage && rawContent.startsWith("data:image/")) {
+          const mimeMatch = rawContent.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,/);
+          const mimeType = mimeMatch ? mimeMatch[1] : (f.type || "image/png");
+          const pureBase64 = rawContent.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "");
+          imageAttachments.push({
+            name: f.name,
+            dataUrl: rawContent,
+            mimeType,
+            pureBase64,
+          });
+        } else {
+          textAttachments.push({
+            name: f.name,
+            content: rawContent.slice(0, 4000),
+          });
+        }
+      }
+
+      const contexts: string[] = [];
+      if (textAttachments.length > 0) {
+        contexts.push(
+          textAttachments
+            .map((f) => `--- BERKAS TERLAMPIR: ${f.name} ---\n${f.content}`)
+            .join("\n\n")
+        );
+      }
+      if (imageAttachments.length > 0) {
+        contexts.push(
+          `[INFO LAMPIRAN GAMBAR/SOAL]: Pengguna melampirkan ${imageAttachments.length} gambar (${imageAttachments.map((i) => i.name).join(", ")}). Analisis aljabar, coretan matematika, atau geometri pada gambar secara teliti.`
+        );
+      }
+      if (contexts.length > 0) {
+        message = `${contexts.join("\n\n")}\n\n--- PERINTAH PENGGUNA ---\n${rawMessage}`;
       }
     }
+
+    // Kunci API efektif untuk model Gemini & Multimodal Vision
+    const effectiveGeminiKey =
+      apiKey?.trim() ||
+      process.env.GEMINI_API_KEY?.trim() ||
+      process.env.GOOGLE_API_KEY?.trim() ||
+      "";
 
     // Deteksi Bahasa Acuan Sesi Percakapan (Anchor Language) dari 2 sampai 3 pesan awal
     const sessionLanguage = detectSessionLanguage(conversationHistory, message);
@@ -337,8 +427,8 @@ export async function POST(req: Request) {
       // Fallback ke NVIDIA NIM jika BazaarLink tidak tersedia
       const nvidiaKey =
         nvidiaApiKey?.trim() ||
-        process.env.NVIDIA_API_KEY ||
-        "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";
+        process.env.NVIDIA_API_KEY?.trim() ||
+        "";
       try {
         const nvidiaRes = await callCustomOpenAIAPI(
           message,
@@ -350,7 +440,8 @@ export async function POST(req: Request) {
           userName,
           8000,
           sessionLanguage,
-          "DeepSeek V4.1 Flash"
+          "DeepSeek V4.1 Flash",
+          imageAttachments
         );
         if (nvidiaRes.text) {
           return NextResponse.json({
@@ -380,15 +471,43 @@ export async function POST(req: Request) {
       modelId === "gpt-oss-20b" ||
       modelId === "gemma-4-31b-it"
     ) {
-      const DEFAULT_NVIDIA_API_KEY =
-        "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";
+      const systemNvidiaKey = process.env.NVIDIA_API_KEY?.trim() || "";
       const targetBase = "https://integrate.api.nvidia.com/v1";
       let targetModel = "nvidia/nemotron-3.5-bolt-e4b";
       let targetFriendlyName = "Auto-Agent (Nemotron-3.5 Bolt Tutor)";
 
       if (!modelId || modelId === "auto-agent") {
-        targetModel = "nvidia/nemotron-3.5-bolt-e4b";
-        targetFriendlyName = "Auto-Agent (Nemotron-3.5 Bolt Tutor)";
+        if (imageAttachments.length > 0) {
+          // ROUTING CERDAS MULTIMODAL: Jika user melampirkan foto/video/gambar, arahkan ke model Vision
+          if (effectiveGeminiKey) {
+            try {
+              const geminiVisionRes = await callGeminiAPI(
+                message,
+                effectiveGeminiKey,
+                conversationHistory,
+                activeProblem,
+                "gemini-2.0-flash",
+                userName,
+                sessionLanguage,
+                imageAttachments
+              );
+              if (geminiVisionRes.text) {
+                return NextResponse.json({
+                  reply: sanitizeZeroAnswer(geminiVisionRes.text),
+                  model: "Auto-Agent (Gemini 2.0 Flash Vision)",
+                  source: "auto-agent-vision",
+                });
+              }
+            } catch (vErr) {
+              console.warn("Gemini vision router attempt failed, falling back to Super-VL:", vErr);
+            }
+          }
+          targetModel = "nvidia/nemotron-3.5-super-vl-120b-a12b";
+          targetFriendlyName = "Auto-Agent (Nemotron-3.5 Super-VL Vision)";
+        } else {
+          targetModel = "nvidia/nemotron-3.5-bolt-e4b";
+          targetFriendlyName = "Auto-Agent (Nemotron-3.5 Bolt Tutor)";
+        }
       } else if (modelId === "nvidia-bolt" || modelId === "nvidia-nemotron-bolt") {
         targetModel = "nvidia/nemotron-3.5-bolt-e4b";
         targetFriendlyName = "Nemotron-3.5 Bolt Tutor";
@@ -412,14 +531,14 @@ export async function POST(req: Request) {
         targetFriendlyName = "GPT-OSS 20B";
       }
 
-      // Pastikan hanya menggunakan kunci valid berformat 'nvapi-', fallback ke sistem jika kosong/salah
+      // Pastikan hanya menggunakan kunci valid berformat 'nvapi-', fallback ke sistem env jika kosong/salah
       let effectiveKey = "";
       if (nvidiaApiKey && typeof nvidiaApiKey === "string" && nvidiaApiKey.trim().startsWith("nvapi-")) {
         effectiveKey = nvidiaApiKey.trim();
       } else if (process.env.NVIDIA_API_KEY && process.env.NVIDIA_API_KEY.trim().startsWith("nvapi-")) {
         effectiveKey = process.env.NVIDIA_API_KEY.trim();
       } else {
-        effectiveKey = DEFAULT_NVIDIA_API_KEY;
+        effectiveKey = systemNvidiaKey;
       }
 
       try {
@@ -433,13 +552,14 @@ export async function POST(req: Request) {
           userName,
           22000,
           sessionLanguage,
-          targetFriendlyName
+          targetFriendlyName,
+          imageAttachments
         );
 
-        // Jika kunci pengguna menghasilkan 401 atau gagal, otomatis coba dengan kunci sistem terverifikasi
-        if ((!nvidiaRes.text || nvidiaRes.status === 401) && effectiveKey !== DEFAULT_NVIDIA_API_KEY) {
-          console.warn("Kunci kustom NVIDIA tidak valid atau 401, mencoba dengan kunci sistem terverifikasi...");
-          effectiveKey = DEFAULT_NVIDIA_API_KEY;
+        // Jika kunci pengguna menghasilkan 401 atau gagal, otomatis coba dengan kunci sistem env
+        if ((!nvidiaRes.text || nvidiaRes.status === 401) && effectiveKey !== systemNvidiaKey && systemNvidiaKey) {
+          console.warn("Kunci kustom NVIDIA tidak valid atau 401, mencoba dengan kunci sistem env...");
+          effectiveKey = systemNvidiaKey;
           nvidiaRes = await callCustomOpenAIAPI(
             message,
             targetBase,
@@ -450,7 +570,8 @@ export async function POST(req: Request) {
             userName,
             22000,
             sessionLanguage,
-            targetFriendlyName
+            targetFriendlyName,
+            imageAttachments
           );
         }
 
@@ -467,7 +588,8 @@ export async function POST(req: Request) {
             userName,
             12000,
             sessionLanguage,
-            "Nemotron-3.5 Bolt (Fast Fallback)"
+            "Nemotron-3.5 Bolt (Fast Fallback)",
+            imageAttachments
           );
           if (nvidiaRes.text) {
             targetFriendlyName = "Nemotron-3.5 Bolt (Fast Fallback)";
@@ -548,7 +670,8 @@ export async function POST(req: Request) {
             activeProblem,
             modelId,
             userName,
-            sessionLanguage
+            sessionLanguage,
+            imageAttachments
           );
           if (claudeRes.text) {
             return NextResponse.json({
@@ -600,7 +723,8 @@ export async function POST(req: Request) {
             activeProblem,
             modelId,
             userName,
-            sessionLanguage
+            sessionLanguage,
+            imageAttachments
           );
           if (openaiRes.text) {
             return NextResponse.json({
@@ -761,24 +885,19 @@ export async function POST(req: Request) {
       }
     }
 
-    const effectiveApiKey =
-      apiKey?.trim() ||
-      process.env.GEMINI_API_KEY?.trim() ||
-      process.env.GOOGLE_API_KEY?.trim() ||
-      "";
-
     // 2. Panggil Google Gemini API jika model Gemini dipilih
     if (modelId?.startsWith("gemini")) {
-      if (effectiveApiKey) {
+      if (effectiveGeminiKey) {
         try {
           const geminiResult = await callGeminiAPI(
             message,
-            effectiveApiKey,
+            effectiveGeminiKey,
             conversationHistory,
             activeProblem,
             modelId,
             userName,
-            sessionLanguage
+            sessionLanguage,
+            imageAttachments
           );
           
           if (geminiResult.text) {
@@ -889,7 +1008,8 @@ async function callGeminiAPI(
   activeProblem?: ActiveProblemContext | null,
   modelId?: string,
   userName?: string,
-  sessionLanguage: string = "Bahasa Indonesia"
+  sessionLanguage: string = "Bahasa Indonesia",
+  images: AttachedImageItem[] = []
 ): Promise<GeminiCallResult> {
   const studentName = userName?.trim() || "Siswa";
   const systemInstructionText = buildZAPSystemPrompt(
@@ -900,7 +1020,7 @@ async function callGeminiAPI(
   );
 
   // 1. Konstruksi Riwayat Percakapan (Memory) Sesuai Spesifikasi Google Gemini API
-  const contents: Array<{ role: "user" | "model"; parts: [{ text: string }] }> = [];
+  const contents: Array<{ role: "user" | "model"; parts: GeminiPart[] }> = [];
 
   if (conversationHistory && conversationHistory.length > 0) {
     // Ambil hingga 20 turn terakhir untuk keseimbangan konteks & kecepatan
@@ -912,18 +1032,40 @@ async function callGeminiAPI(
 
       if (contents.length > 0 && contents[contents.length - 1].role === geminiRole) {
         // Gabungkan pesan berurutan dengan role sama
-        contents[contents.length - 1].parts[0].text += "\n" + text;
+        const currentText = contents[contents.length - 1].parts[0]?.text || "";
+        contents[contents.length - 1].parts[0] = { text: currentText + "\n" + text };
       } else {
         contents.push({ role: geminiRole, parts: [{ text }] });
       }
     }
   }
 
-  // Tambahkan userMessage terakhir
+  // Tambahkan userMessage terakhir beserta gambar multimodal jika ada
+  const userParts: GeminiPart[] = [{ text: userMessage }];
+  for (const img of images) {
+    userParts.push({
+      inline_data: {
+        mime_type: img.mimeType,
+        data: img.pureBase64,
+      },
+    });
+  }
+
   if (contents.length > 0 && contents[contents.length - 1].role === "user") {
-    contents[contents.length - 1].parts[0].text += "\n" + userMessage;
+    const lastParts = contents[contents.length - 1].parts;
+    if (lastParts[0] && typeof lastParts[0].text === "string") {
+      lastParts[0].text += "\n" + userMessage;
+    }
+    for (const img of images) {
+      lastParts.push({
+        inline_data: {
+          mime_type: img.mimeType,
+          data: img.pureBase64,
+        },
+      });
+    }
   } else {
-    contents.push({ role: "user", parts: [{ text: userMessage }] });
+    contents.push({ role: "user", parts: userParts });
   }
 
   // Gemini API mewajibkan pesan pertama selalu ber-role 'user'
@@ -984,9 +1126,11 @@ async function callGeminiAPI(
   const fastCandidate =
     modelId === "gemini-1.5-pro"
       ? "gemini-1.5-pro"
+      : modelId === "gemini-2.0-flash" || modelId === "gemini-2.0-flash-vision" || modelId === "gemini-vision"
+      ? "gemini-2.0-flash"
       : modelId === "gemini-1.5-flash"
       ? "gemini-1.5-flash"
-      : cachedWorkingModel || (modelId === "gemini-2.0-flash" ? "gemini-2.0-flash" : "gemini-1.5-flash");
+      : cachedWorkingModel || "gemini-2.0-flash";
 
   const fastAttempt = await invokeModel(fastCandidate);
   if (fastAttempt.success && fastAttempt.text) {
@@ -1282,7 +1426,8 @@ async function callClaudeAPI(
   activeProblem?: ActiveProblemContext | null,
   modelId?: string,
   userName?: string,
-  sessionLanguage: string = "Bahasa Indonesia"
+  sessionLanguage: string = "Bahasa Indonesia",
+  images: AttachedImageItem[] = []
 ): Promise<UniversalCallResult> {
   const studentName = userName?.trim() || "Siswa";
   const targetModel =
@@ -1298,7 +1443,7 @@ async function callClaudeAPI(
     sessionLanguage
   );
 
-  const messages: Array<{ role: "user" | "assistant"; content: string }> = [];
+  const messages: Array<{ role: "user" | "assistant"; content: ClaudeContent }> = [];
   if (conversationHistory && conversationHistory.length > 0) {
     for (const turn of conversationHistory.slice(-20)) {
       if (turn.content?.trim()) {
@@ -1306,7 +1451,23 @@ async function callClaudeAPI(
       }
     }
   }
-  messages.push({ role: "user", content: userMessage });
+
+  if (images && images.length > 0) {
+    const claudeContent: Array<ClaudeTextBlock | ClaudeImageBlock> = [
+      ...images.map((img) => ({
+        type: "image" as const,
+        source: {
+          type: "base64" as const,
+          media_type: img.mimeType,
+          data: img.pureBase64,
+        },
+      })),
+      { type: "text" as const, text: userMessage },
+    ];
+    messages.push({ role: "user", content: claudeContent });
+  } else {
+    messages.push({ role: "user", content: userMessage });
+  }
 
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -1355,7 +1516,8 @@ async function callOpenAIAPI(
   activeProblem?: ActiveProblemContext | null,
   modelId?: string,
   userName?: string,
-  sessionLanguage: string = "Bahasa Indonesia"
+  sessionLanguage: string = "Bahasa Indonesia",
+  images: AttachedImageItem[] = []
 ): Promise<UniversalCallResult> {
   const studentName = userName?.trim() || "Siswa";
   const targetModel = modelId === "gpt-4o-mini" ? "gpt-4o-mini" : "gpt-4o";
@@ -1368,7 +1530,7 @@ async function callOpenAIAPI(
     sessionLanguage
   );
 
-  const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+  const messages: Array<{ role: "system" | "user" | "assistant"; content: OpenAIMessageContent }> = [
     { role: "system", content: systemInstructionText },
   ];
   if (conversationHistory && conversationHistory.length > 0) {
@@ -1378,7 +1540,19 @@ async function callOpenAIAPI(
       }
     }
   }
-  messages.push({ role: "user", content: userMessage });
+
+  if (images && images.length > 0) {
+    const multiContent: Array<OpenAITextPart | OpenAIImagePart> = [
+      { type: "text" as const, text: userMessage },
+      ...images.map((img) => ({
+        type: "image_url" as const,
+        image_url: { url: img.dataUrl },
+      })),
+    ];
+    messages.push({ role: "user", content: multiContent });
+  } else {
+    messages.push({ role: "user", content: userMessage });
+  }
 
   try {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -1428,7 +1602,8 @@ async function callCustomOpenAIAPI(
   userName?: string,
   timeoutMs: number = 12000,
   sessionLanguage: string = "Bahasa Indonesia",
-  displayName?: string
+  displayName?: string,
+  images: AttachedImageItem[] = []
 ): Promise<UniversalCallResult> {
   const studentName = userName?.trim() || "Siswa";
   const cleanBase = (baseUrl || "http://localhost:11434/v1").replace(/\/+$/, "");
@@ -1442,7 +1617,7 @@ async function callCustomOpenAIAPI(
     sessionLanguage
   );
 
-  const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+  const messages: Array<{ role: "system" | "user" | "assistant"; content: OpenAIMessageContent }> = [
     { role: "system", content: systemInstructionText },
   ];
   if (conversationHistory && conversationHistory.length > 0) {
@@ -1452,7 +1627,19 @@ async function callCustomOpenAIAPI(
       }
     }
   }
-  messages.push({ role: "user", content: userMessage });
+
+  if (images && images.length > 0) {
+    const multiContent: Array<OpenAITextPart | OpenAIImagePart> = [
+      { type: "text" as const, text: userMessage },
+      ...images.map((img) => ({
+        type: "image_url" as const,
+        image_url: { url: img.dataUrl },
+      })),
+    ];
+    messages.push({ role: "user", content: multiContent });
+  } else {
+    messages.push({ role: "user", content: userMessage });
+  }
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (apiKey?.trim()) {

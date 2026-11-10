@@ -48,7 +48,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     costInput: "Siap Pakai",
     contextWindow: "128k tokens",
     latency: "< 200ms",
-    description: "Orkestrator pintar otomatis: mengarahkan ke Nemotron-3.5 Bolt (Sokrates kilat), Nemotron-3 Omni (Matematika), dan Nemotron-3.5 Super-VL (Geometri 3D).",
+    description: "Orkestrator pintar otomatis: mengarahkan ke Gemini 2.0 Flash Vision (Foto & Video), Nemotron-3.5 Bolt (Sokrates kilat), dan Nemotron-3 Omni (Matematika).",
     icon: ZapLogo,
     iconColor: "text-amber-500 dark:text-amber-400",
   },
@@ -133,7 +133,20 @@ export const AVAILABLE_MODELS: AIModel[] = [
     iconColor: "text-[#1E88E5] dark:text-[#42A5F5]",
   },
 
-  // 2. Google Gemini (Default Auto Cloud)
+  // 2. Google Gemini (Default Auto Cloud & Multimodal)
+  {
+    id: "gemini-2.0-flash-vision",
+    name: "Gemini 2.0 Flash (Multimodal Foto, Video & PDF)",
+    shortName: "Gemini Vision & Media",
+    provider: "Google DeepMind",
+    badge: "Foto, Video & Dokumen",
+    costInput: "Gratis (Backend Pool)",
+    contextWindow: "1M tokens",
+    latency: "< 350ms",
+    description: "Model spesialis bervisi cerdas untuk memindai foto rumus coretan tangan, foto soal ujian matematika, dokumen PDF, dan video.",
+    icon: GeminiLogo,
+    iconColor: "text-[#4E8BF5]",
+  },
   {
     id: "gemini-2.0-flash",
     name: "Gemini 2.0 Flash",

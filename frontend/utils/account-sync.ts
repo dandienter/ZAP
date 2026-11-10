@@ -307,7 +307,11 @@ export async function restoreAccountData<M = unknown, C = unknown, W = unknown, 
         c.userEmail.toLowerCase().trim() === userEmail
       ) {
         const existing = convMap.get(c.id);
-        if (!existing || (c.updatedAt || 0) >= (existing.updatedAt || 0)) {
+        const existingCount = Array.isArray(existing?.messages) ? existing.messages.length : 0;
+        const localCount = Array.isArray(c.messages) ? c.messages.length : 0;
+        if (!existing || localCount > existingCount) {
+          convMap.set(c.id, { ...c, userEmail });
+        } else if (localCount === existingCount && (c.updatedAt || 0) >= (existing.updatedAt || 0)) {
           convMap.set(c.id, { ...c, userEmail });
         }
       }

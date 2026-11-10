@@ -44,18 +44,30 @@ interface SyncRequestBody {
   replaceConversations?: boolean;
 }
 
+// Serverless-safe fallback in-memory store for environments with read-only filesystems (Vercel, Cloudflare, Lambda)
+const memoryVault = new Map<string, VaultData>();
+
 function getVaultDir(): string {
-  const dir = path.join(process.cwd(), ".zap_vault", "users");
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  try {
+    const dir = path.join(process.cwd(), ".zap_vault", "users");
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    return dir;
+  } catch {
+    return "";
   }
-  return dir;
+}
+
+function getVaultSafeKey(email: string, userId: string): string {
+  const rawKey = (email || userId || "anonymous").trim().toLowerCase();
+  return rawKey.replace(/[^a-z0-9._-]/g, "_");
 }
 
 function getVaultFilePath(email: string, userId: string): string {
-  const rawKey = (email || userId || "anonymous").trim().toLowerCase();
-  const safeKey = rawKey.replace(/[^a-z0-9._-]/g, "_");
-  return path.join(getVaultDir(), `${safeKey}.json`);
+  const safeKey = getVaultSafeKey(email, userId);
+  const dir = getVaultDir();
+  return dir ? path.join(dir, `${safeKey}.json`) : "";
 }
 
 // GET: Ambil backup data pengguna berdasarkan email / userId
@@ -69,13 +81,24 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Email atau userId diperlukan" }, { status: 400 });
     }
 
+    const safeKey = getVaultSafeKey(email, userId);
     const filePath = getVaultFilePath(email, userId);
-    if (!fs.existsSync(filePath)) {
+    let data: VaultData | null = memoryVault.get(safeKey) || null;
+
+    if (!data && filePath && fs.existsSync(filePath)) {
+      try {
+        const raw = fs.readFileSync(filePath, "utf-8");
+        data = JSON.parse(raw);
+        if (data) memoryVault.set(safeKey, data);
+      } catch (err) {
+        console.warn("Gagal membaca file vault:", err);
+      }
+    }
+
+    if (!data) {
       return NextResponse.json({ exists: false, message: "Belum ada backup untuk akun ini" });
     }
 
-    const raw = fs.readFileSync(filePath, "utf-8");
-    const data: VaultData = JSON.parse(raw);
     return NextResponse.json({
       exists: true,
       data,
@@ -104,10 +127,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Data pengguna tidak valid" }, { status: 400 });
     }
 
+    const safeKey = getVaultSafeKey(user.email, user.id);
     const filePath = getVaultFilePath(user.email, user.id);
-    let existingData: VaultData = {};
+    let existingData: VaultData = memoryVault.get(safeKey) || {};
 
-    if (fs.existsSync(filePath)) {
+    if ((!existingData || Object.keys(existingData).length === 0) && filePath && fs.existsSync(filePath)) {
       try {
         const raw = fs.readFileSync(filePath, "utf-8");
         existingData = JSON.parse(raw);
@@ -144,7 +168,14 @@ export async function POST(req: Request) {
       for (const c of incomingConvs) {
         if (c && c.id) {
           const prev = convMap.get(c.id);
-          if (!prev || (c.updatedAt || 0) >= (prev.updatedAt || 0)) {
+          // Selalu pertahankan percakapan dengan jumlah pesan terbanyak untuk mencegah race condition
+          const prevCount = Array.isArray(prev?.messages) ? prev.messages.length : 0;
+          const incomingCount = Array.isArray(c.messages) ? c.messages.length : 0;
+          if (!prev) {
+            convMap.set(c.id, c);
+          } else if (incomingCount > prevCount) {
+            convMap.set(c.id, c);
+          } else if (incomingCount === prevCount && (c.updatedAt || 0) >= (prev.updatedAt || 0)) {
             convMap.set(c.id, c);
           }
         }
@@ -205,7 +236,15 @@ export async function POST(req: Request) {
       updatedAt: Date.now(),
     };
 
-    fs.writeFileSync(filePath, JSON.stringify(payloadToSave, null, 2), "utf-8");
+    memoryVault.set(safeKey, payloadToSave);
+
+    if (filePath) {
+      try {
+        fs.writeFileSync(filePath, JSON.stringify(payloadToSave, null, 2), "utf-8");
+      } catch (fsErr) {
+        console.warn("Serverless environment: disk write skipped, saved to memory vault:", fsErr);
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -241,8 +280,16 @@ export async function DELETE(req: Request) {
       );
     }
 
+    const safeKey = getVaultSafeKey(email, userId);
+    const memData = memoryVault.get(safeKey);
+    if (memData && Array.isArray(memData.conversations)) {
+      memData.conversations = memData.conversations.filter((c) => c.id !== convId);
+      memData.updatedAt = Date.now();
+      memoryVault.set(safeKey, memData);
+    }
+
     const filePath = getVaultFilePath(email, userId);
-    if (fs.existsSync(filePath)) {
+    if (filePath && fs.existsSync(filePath)) {
       try {
         const raw = fs.readFileSync(filePath, "utf-8");
         const data: VaultData = JSON.parse(raw);

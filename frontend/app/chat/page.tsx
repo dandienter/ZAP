@@ -73,6 +73,7 @@ import {
   Share2,
   Pencil,
   FileText,
+  FileUp,
   Upload,
   Download,
   ArrowUpRight,
@@ -784,40 +785,6 @@ function detectSmartboardItem(
   }
 }
 
-function isDerivationStep(text: string): boolean {
-  const trimmed = text.trim();
-  if (!trimmed) return false;
-
-  // 1. Kata-kata perintah bahasa Indonesia / Inggris atau interaksi visual/geometri/3D
-  const CONVERSATIONAL_REGEX =
-    /\b(buatkan|buat|bikin|tampilkan|render|lukis|lukiskan|gambar|gambarkan|visualisasikan|cube|kubus|balok|silinder|tabung|kerucut|bola|prisma|limas|parabola|pelana|grafik|graf|bangun|ruang|3d|2d|hitung|hitunglah|tolong|bantu|bantu\s+saya|jelaskan|terangkan|halo|hai|hello|hi|hei|kak|kakak|bg|bang|min|admin|kenapa|mengapa|apa|apakah|bagaimana|gimana|kok|bisakah|bisa|dapatkah|coba|show|plot|draw|create|make|generate|explain|help|please|tuliskan|berikan|sebutkan|soal|rumus|teori|definisi|makna|maksud|arti|siapa|kamu|anda|papan\s+tulis|smartboard|canvas|virtual|simulasi|animasi|video|cara)\b/i;
-
-  if (CONVERSATIONAL_REGEX.test(trimmed)) {
-    return false;
-  }
-
-  // 2. Jika ada tanda tanya atau seru: percakapan
-  if (trimmed.includes("?") || trimmed.endsWith("!")) {
-    return false;
-  }
-
-  // 3. Cek kata-kata teks umum (>= 3 karakter). Langkah aljabar CAS jarang mengandung >1 kata non-matematika
-  const words = trimmed.match(/[a-zA-Z]{3,}/g) || [];
-  const mathKeywords = new Set([
-    "sin", "cos", "tan", "sec", "csc", "cot", "log", "exp", "sqrt", 
-    "lim", "mod", "det", "gcd", "lcm", "frac", "cdot", "times", "pm"
-  ]);
-  const nonMathWords = words.filter((w) => !mathKeywords.has(w.toLowerCase()));
-  if (nonMathWords.length >= 2) {
-    return false;
-  }
-
-  // 4. Operator aljabar dan karakter yang valid
-  const hasAlgebraOps = /[=\+\-\*\/\^]/.test(trimmed);
-  const isOnlyAlgebraChars = /^[0-9a-zA-Z\s\+\-\*\/\^\(\)\[\]\{\}\=\<\>\_\,\.\\\:]+$/.test(trimmed);
-
-  return hasAlgebraOps && isOnlyAlgebraChars;
-}
 
 interface LineTranscription {
   line_number: number;
@@ -1396,10 +1363,10 @@ export default function ZAPApp() {
   // State untuk edit dan salin pesan pengguna
   const [copiedUserMsgId, setCopiedUserMsgId] = useState<string | null>(null);
   const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
-  const [editingContent, setEditingContent] = useState<string>("");
 
   // File upload state (lampiran di input dan berkas workspace)
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
+  const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false);
   const [workspaceFiles, setWorkspaceFiles] = useState<UploadedFile[]>([]);
   const [previewFile, setPreviewFile] = useState<UploadedFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1497,6 +1464,7 @@ export default function ZAPApp() {
   const activeConversationUpdatedAtRef = useRef<number>(0);
   const messagesRef = useRef<Message[]>(messages);
   const activeConversationIdRef = useRef<string>(activeConversationId);
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Sinkronkan ref percakapan setiap kali state conversations berubah
   useEffect(() => {
@@ -1686,7 +1654,13 @@ export default function ZAPApp() {
 
                 if (found) {
                   // Jangan reset jika percakapan ini sudah aktif dan sedang memiliki pesan di memori
-                  if (activeConversationIdRef.current !== initialTargetId || messagesRef.current.length === 0) {
+                  const currentMemoryCount = messagesRef.current.length;
+                  const foundCount = found.messages?.length || 0;
+                  if (activeConversationIdRef.current === initialTargetId && currentMemoryCount > 0) {
+                    if (foundCount > currentMemoryCount) {
+                      activateConversation(found);
+                    }
+                  } else if (activeConversationIdRef.current !== initialTargetId || currentMemoryCount === 0) {
                     activateConversation(found);
                   }
                 } else {
@@ -1877,8 +1851,11 @@ export default function ZAPApp() {
       conversationsRef.current = next;
       const userKey = (currentUser.email || currentUser.id || "").toLowerCase().trim();
       saveConversations(next, userKey);
-      // Auto-backup percakapan akun Google ke cloud
-      syncAccountBackup(currentUser, { conversations: next });
+      // Debounce auto-backup percakapan akun Google ke cloud (1500ms) untuk mencegah race condition
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+      syncTimeoutRef.current = setTimeout(() => {
+        syncAccountBackup(currentUser, { conversations: next });
+      }, 1500);
 
       // Sinkronkan URL browser ke path bersih /c/<uuid> (seperti ChatGPT)
       if (typeof window !== "undefined") {
@@ -2026,9 +2003,22 @@ export default function ZAPApp() {
       .filter((l) => l.length > 0);
 
     // Bedakan antara langkah penurunan aljabar CAS murni vs perintah percakapan Sokratik / visualisasi 3D
-    const isDerivation = customSteps ? true : isDerivationStep(textToProcess);
+    // HANYA jika customSteps eksplisit dikirim (misal tombol 'Uji Bukti / Verifikasi' di Scratchpad)
+    // Semua input teks bebas & rumus sebaris dari chat bar selalu dikelola oleh LLM/Auto-Agent terlebih dahulu
+    const isDerivation = Boolean(customSteps && customSteps.length > 0);
     const isConversational = !isDerivation;
-    const baseHistory = historySnapshot || messages;
+    let baseHistory = historySnapshot || messages;
+
+    // Jika sedang dalam mode edit pesan dari kolom chat bawah:
+    if (editingMsgId) {
+      const editIdx = messages.findIndex((m) => m.id === editingMsgId);
+      if (editIdx !== -1) {
+        baseHistory = messages.slice(0, editIdx);
+        setMessages(baseHistory);
+      }
+      setEditingMsgId(null);
+    }
+
     const detectedGeometry = detectSmartboardItem(textToProcess, baseHistory);
 
     // JALUR 1: PERCAKAPAN SOKRATIK & VISUALISASI
@@ -2448,19 +2438,15 @@ export default function ZAPApp() {
 
   const startEditingMessage = (msgId: string, currentText: string) => {
     setEditingMsgId(msgId);
-    setEditingContent(currentText);
-  };
-
-  const handleSaveAndResend = (msgId: string) => {
-    if (!editingContent.trim()) return;
-    const targetIdx = messages.findIndex((m) => m.id === msgId);
-    if (targetIdx === -1) return;
-
-    const remainingMessages = messages.slice(0, targetIdx);
-    setMessages(remainingMessages);
-    setEditingMsgId(null);
-
-    handleSend(undefined, undefined, editingContent.trim(), false, remainingMessages);
+    setInputText(currentText);
+    const targetMsg = messages.find((m) => m.id === msgId);
+    if (targetMsg?.attachedFiles && targetMsg.attachedFiles.length > 0) {
+      setAttachedFiles(targetMsg.attachedFiles);
+    }
+    setTimeout(() => {
+      textareaRef.current?.focus();
+      textareaRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 50);
   };
 
   const insertLatexTemplate = () => {
@@ -2488,15 +2474,12 @@ export default function ZAPApp() {
     setTimeout(() => textareaRef.current?.focus(), 50);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
+  const processFileList = useCallback((files: FileList | File[]) => {
     Array.from(files).forEach((file) => {
       const isText =
         file.type.startsWith("text/") ||
         /\.(txt|py|js|ts|tsx|jsx|json|md|csv|html|css|yaml|yml|log|sh|tex|latex)$/i.test(file.name);
-      const isImg = file.type.startsWith("image/");
+      const isImg = file.type.startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(file.name);
       const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
 
       const reader = new FileReader();
@@ -2505,7 +2488,7 @@ export default function ZAPApp() {
           const content = ev.target?.result as string;
           const newFile: UploadedFile = {
             id: "file_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
-            name: file.name,
+            name: file.name || `file_${Date.now()}.txt`,
             size: file.size,
             type: file.type || "text/plain",
             content: content,
@@ -2529,10 +2512,11 @@ export default function ZAPApp() {
           const dataUrl = ev.target?.result as string;
           const newFile: UploadedFile = {
             id: "file_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
-            name: file.name,
+            name: file.name || `image_${Date.now()}.${isPdf ? "pdf" : "png"}`,
             size: file.size,
             type: file.type || (isPdf ? "application/pdf" : "image/png"),
             dataUrl: dataUrl,
+            content: dataUrl,
             uploadedAt: Date.now(),
             workspaceId: activeWorkspaceId,
           };
@@ -2551,7 +2535,7 @@ export default function ZAPApp() {
       } else {
         const newFile: UploadedFile = {
           id: "file_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
-          name: file.name,
+          name: file.name || `file_${Date.now()}`,
           size: file.size,
           type: file.type || "application/octet-stream",
           uploadedAt: Date.now(),
@@ -2569,9 +2553,109 @@ export default function ZAPApp() {
         });
       }
     });
+  }, [activeWorkspaceId]);
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    processFileList(files);
     e.target.value = "";
   };
+
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement | HTMLDivElement>) => {
+    const clipboardData = e.clipboardData;
+    if (!clipboardData) return;
+
+    const items = clipboardData.items;
+    const imageFiles: File[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.indexOf("image") !== -1) {
+        const file = item.getAsFile();
+        if (file) {
+          const namedFile = new File(
+            [file],
+            file.name && file.name !== "image.png" ? file.name : `screenshot_${Date.now()}.png`,
+            { type: file.type || "image/png" }
+          );
+          imageFiles.push(namedFile);
+        }
+      }
+    }
+
+    if (imageFiles.length > 0) {
+      const hasText = clipboardData.getData("text/plain");
+      if (!hasText) {
+        e.preventDefault();
+      }
+      processFileList(imageFiles);
+    }
+  }, [processFileList]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(true);
+  }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setIsDraggingOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFileList(e.dataTransfer.files);
+    }
+  }, [processFileList]);
+
+  // Window-level Paste listener for direct screenshot paste (Ctrl+V) anywhere on the page
+  useEffect(() => {
+    const handleWindowPaste = (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || (target.tagName === "TEXTAREA" && target !== textareaRef.current))) {
+        return;
+      }
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      const imageFiles: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.indexOf("image") !== -1) {
+          const file = item.getAsFile();
+          if (file) {
+            const namedFile = new File(
+              [file],
+              file.name && file.name !== "image.png" ? file.name : `screenshot_${Date.now()}.png`,
+              { type: file.type || "image/png" }
+            );
+            imageFiles.push(namedFile);
+          }
+        }
+      }
+
+      if (imageFiles.length > 0) {
+        processFileList(imageFiles);
+        textareaRef.current?.focus();
+      }
+    };
+
+    window.addEventListener("paste", handleWindowPaste);
+    return () => window.removeEventListener("paste", handleWindowPaste);
+  }, [processFileList]);
 
   const handleCreateWorkspace = () => {
     const name = newWorkspaceName.trim();
@@ -3490,28 +3574,102 @@ export default function ZAPApp() {
               </div>
 
               {/* Floating Prompt Box (Screenshot 0 & 1) */}
-              <div className="w-full max-w-3xl lg:max-w-4xl bg-white/80 dark:bg-[#14161f]/80 backdrop-blur-xl border border-slate-200/80 dark:border-white/[0.09] focus-within:border-slate-400 dark:focus-within:border-white/20 rounded-3xl p-3.5 sm:p-4 shadow-2xl transition-all text-left">
-                {/* Attached File Chips */}
+              <div
+                onDragOver={handleDragOver}
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`w-full max-w-3xl lg:max-w-4xl bg-white/80 dark:bg-[#14161f]/80 backdrop-blur-xl border ${
+                  isDraggingOver
+                    ? "border-amber-500 ring-2 ring-amber-500/30 bg-amber-500/[0.04]"
+                    : "border-slate-200/80 dark:border-white/[0.09] focus-within:border-slate-400 dark:focus-within:border-white/20"
+                } rounded-3xl p-3.5 sm:p-4 shadow-2xl transition-all text-left relative`}
+              >
+                {/* Drag & Drop Visual Overlay */}
+                {isDraggingOver && (
+                  <div className="absolute inset-0 z-20 rounded-3xl bg-amber-500/10 dark:bg-amber-400/10 backdrop-blur-sm border-2 border-dashed border-amber-500 dark:border-amber-400 flex flex-col items-center justify-center pointer-events-none animate-fade-in text-center p-4">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-1.5 shadow-md">
+                      <FileUp className="w-5 h-5 animate-bounce" />
+                    </div>
+                    <span className="text-xs font-semibold text-slate-900 dark:text-white">
+                      Lepaskan gambar atau dokumen di sini
+                    </span>
+                    <span className="text-[10px] text-slate-500 dark:text-zinc-400 mt-0.5">
+                      Mendukung tangkapan layar, JPG, PNG, PDF, atau teks aljabar
+                    </span>
+                  </div>
+                )}
+
+                {/* Editing Message Indicator */}
+                {editingMsgId && (
+                  <div className="flex items-center justify-between px-3.5 py-2 mb-2.5 rounded-2xl bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/25 dark:border-amber-400/20 text-xs text-amber-700 dark:text-amber-300 animate-fade-in select-none">
+                    <div className="flex items-center gap-2 font-medium">
+                      <Pencil className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 animate-pulse" />
+                      <span>Mengedit pesan sebelumnya — Tekan Enter atau Kirim untuk memperbarui</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingMsgId(null);
+                        setInputText("");
+                      }}
+                      className="px-2 py-0.5 rounded-md hover:bg-amber-500/20 text-xs font-semibold cursor-pointer transition text-amber-800 dark:text-amber-200"
+                    >
+                      Batal Edit
+                    </button>
+                  </div>
+                )}
+
+                {/* Attached File Chips with Image Previews */}
                 {attachedFiles.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pb-2">
-                    {attachedFiles.map((f) => (
-                      <div
-                        key={f.id}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-[#22252c] border border-slate-200 dark:border-white/[0.1] text-xs text-slate-800 dark:text-zinc-200"
-                      >
-                        <FileText className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
-                        <span className="font-medium max-w-[140px] truncate">{f.name}</span>
-                        <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono">({Math.round(f.size / 1024) || 1}KB)</span>
-                        <button
-                          type="button"
-                          onClick={() => setAttachedFiles((prev) => prev.filter((item) => item.id !== f.id))}
-                          className="text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-white cursor-pointer ml-0.5"
-                          title="Hapus lampiran"
+                  <div className="flex flex-wrap gap-2 pb-2">
+                    {attachedFiles.map((f) => {
+                      const isImg = f.type.startsWith("image/") || (f.dataUrl && f.dataUrl.startsWith("data:image/"));
+                      return (
+                        <div
+                          key={f.id}
+                          className={`group relative flex items-center gap-2 rounded-xl border transition-all ${
+                            isImg
+                              ? "p-1.5 bg-slate-100/90 dark:bg-zinc-800/80 border-slate-300 dark:border-white/10"
+                              : "px-2.5 py-1 bg-slate-100 dark:bg-[#22252c] border-slate-200 dark:border-white/[0.1] text-xs text-slate-800 dark:text-zinc-200"
+                          }`}
                         >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
+                          <div
+                            onClick={() => setPreviewFile(f)}
+                            className="flex items-center gap-2 cursor-pointer hover:opacity-90 transition min-w-0"
+                            title="Klik untuk pratinjau penuh"
+                          >
+                            {isImg && f.dataUrl ? (
+                              <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-slate-200 dark:bg-zinc-900 shrink-0 border border-black/5 dark:border-white/10">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={f.dataUrl} alt={f.name} className="w-full h-full object-cover" />
+                              </div>
+                            ) : (
+                              <FileText className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 shrink-0" />
+                            )}
+                            <div className="flex flex-col min-w-0 pr-1">
+                              <span className="font-medium max-w-[130px] truncate text-xs text-slate-800 dark:text-zinc-200">
+                                {f.name}
+                              </span>
+                              <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono">
+                                {Math.round(f.size / 1024) || 1} KB
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAttachedFiles((prev) => prev.filter((item) => item.id !== f.id));
+                            }}
+                            className="p-1 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition cursor-pointer"
+                            title="Hapus lampiran"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -3520,8 +3678,9 @@ export default function ZAPApp() {
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
                   rows={2}
-                  placeholder="Describe what you want to build, / commands, @ files or sessions"
+                  placeholder="Describe what you want to build, / commands, @ files or sessions (atau paste/drag gambar ke sini)"
                   className="w-full bg-transparent text-[15px] sm:text-base text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none resize-none font-sans leading-relaxed"
                 />
 
@@ -3599,71 +3758,62 @@ export default function ZAPApp() {
                     <div className="flex flex-col items-end group py-1.5 max-w-[85%] sm:max-w-[75%] ml-auto">
                       {/* Glass Rounded Bubble */}
                       <div className="w-fit max-w-full rounded-[22px] bg-slate-200/70 dark:bg-white/[0.07] backdrop-blur-xl border border-slate-300/60 dark:border-white/[0.09] px-5 py-3 shadow-sm text-slate-900 dark:text-zinc-100 text-[15px] sm:text-base leading-relaxed transition-all">
-                        {/* If this user message is being edited: */}
-                        {editingMsgId === msg.id ? (
-                          <div className="space-y-2 min-w-[260px] sm:min-w-[340px]">
-                            <textarea
-                              value={editingContent}
-                              onChange={(e) => setEditingContent(e.target.value)}
-                              rows={2}
-                              className="w-full bg-white dark:bg-[#131418] border border-slate-400 dark:border-white/[0.2] rounded-xl p-2.5 text-[15px] text-slate-900 dark:text-white focus:outline-none resize-none font-sans"
-                              autoFocus
-                            />
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => setEditingMsgId(null)}
-                                className="px-2.5 py-1 rounded-lg text-xs text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
+                        {msg.steps ? (
+                          <div className="space-y-1.5 font-mono pt-0.5">
+                            {msg.steps.map((st, i) => (
+                              <div
+                                key={i}
+                                className="flex items-center gap-2 bg-white/60 dark:bg-black/30 px-3 py-1.5 rounded-xl border border-slate-200/60 dark:border-white/[0.06]"
                               >
-                                Batal
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleSaveAndResend(msg.id)}
-                                className="px-3 py-1 rounded-lg text-xs font-medium bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-zinc-200 transition flex items-center gap-1 cursor-pointer"
-                              >
-                                <span>Kirim Ulang</span>
-                                <ArrowUp className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
+                                <span className="text-slate-400 dark:text-zinc-500 text-xs w-4">#{i + 1}</span>
+                                <div className="text-slate-900 dark:text-zinc-100 overflow-x-auto py-0.5 text-[15px]">
+                                  <MathView math={st} />
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        ) : (
-                          <>
-                            {msg.steps ? (
-                              <div className="space-y-1.5 font-mono pt-0.5">
-                                {msg.steps.map((st, i) => (
-                                  <div
-                                    key={i}
-                                    className="flex items-center gap-2 bg-white/60 dark:bg-black/30 px-3 py-1.5 rounded-xl border border-slate-200/60 dark:border-white/[0.06]"
-                                  >
-                                    <span className="text-slate-400 dark:text-zinc-500 text-xs w-4">#{i + 1}</span>
-                                    <div className="text-slate-900 dark:text-zinc-100 overflow-x-auto py-0.5 text-[15px]">
-                                      <MathView math={st} />
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : msg.rawText ? (
-                              <p className="text-[15px] sm:text-base text-slate-900 dark:text-zinc-100 leading-relaxed font-sans whitespace-pre-wrap selection:bg-slate-300 dark:selection:bg-white/20">
-                                {msg.rawText}
-                              </p>
-                            ) : null}
+                        ) : msg.rawText ? (
+                          <p className="text-[15px] sm:text-base text-slate-900 dark:text-zinc-100 leading-relaxed font-sans whitespace-pre-wrap selection:bg-slate-300 dark:selection:bg-white/20">
+                            {msg.rawText}
+                          </p>
+                        ) : null}
 
-                            {/* Attached files pills in user bubble if any */}
-                            {msg.attachedFiles && msg.attachedFiles.length > 0 && (
-                              <div className="flex flex-wrap gap-1.5 pt-2 border-t border-slate-200/80 dark:border-white/[0.08]">
-                                {msg.attachedFiles.map((file) => (
-                                  <div
-                                    key={file.id}
-                                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/80 dark:bg-black/40 text-xs text-slate-700 dark:text-zinc-300 font-mono border border-slate-200 dark:border-white/[0.08]"
-                                  >
-                                    <FileText className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
-                                    <span className="truncate max-w-[160px]">{file.name}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </>
+                        {/* Attached files pills in user bubble if any */}
+                        {msg.attachedFiles && msg.attachedFiles.length > 0 && (
+                          <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-200/80 dark:border-white/[0.08]">
+                            {msg.attachedFiles.map((file) => {
+                              const isImg =
+                                file.type.startsWith("image/") ||
+                                (file.dataUrl && file.dataUrl.startsWith("data:image/")) ||
+                                (file.content && file.content.startsWith("data:image/"));
+                              const imgSource = file.dataUrl || file.content;
+                              return isImg && imgSource ? (
+                                <div
+                                  key={file.id}
+                                  onClick={() => setPreviewFile(file)}
+                                  className="relative rounded-xl overflow-hidden border border-slate-300 dark:border-white/10 max-w-[260px] max-h-[190px] my-1 shadow-sm group bg-slate-100 dark:bg-zinc-800 cursor-pointer hover:ring-2 hover:ring-amber-500/50 transition"
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={imgSource}
+                                    alt={file.name}
+                                    className="w-full h-full object-cover max-h-[190px] rounded-xl hover:opacity-95 transition"
+                                    title="Klik untuk membuka pratinjau penuh"
+                                  />
+                                </div>
+                              ) : (
+                                <div
+                                  key={file.id}
+                                  onClick={() => setPreviewFile(file)}
+                                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/80 dark:bg-black/40 text-xs text-slate-700 dark:text-zinc-300 font-mono border border-slate-200 dark:border-white/[0.08] cursor-pointer hover:bg-slate-100 dark:hover:bg-white/[0.08] transition"
+                                  title="Klik untuk pratinjau berkas"
+                                >
+                                  <FileText className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
+                                  <span className="truncate max-w-[160px]">{file.name}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
                         )}
                       </div>
 
@@ -3978,38 +4128,113 @@ export default function ZAPApp() {
           {/* 2. FIXED BOTTOM COMPOSER (Stays strictly fixed at bottom when scrolling messages) */}
           <div className="w-full flex-shrink-0 z-10 bg-[#f8fafc]/90 dark:bg-[#0e0f12]/90 backdrop-blur-md">
             <div className="w-full max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 pb-4 pt-2">
-              <div className="w-full bg-white/80 dark:bg-[#14161f]/80 backdrop-blur-xl border border-slate-200/80 dark:border-white/[0.09] focus-within:border-slate-400 dark:focus-within:border-white/20 rounded-3xl p-3.5 sm:p-4 shadow-2xl transition-all text-left">
-              {/* Attached File Chips */}
-              {attachedFiles.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pb-2">
-                  {attachedFiles.map((f) => (
-                    <div
-                      key={f.id}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-[#22252c] border border-slate-200 dark:border-white/[0.1] text-xs text-slate-800 dark:text-zinc-200"
-                    >
-                      <FileText className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
-                      <span className="font-medium max-w-[140px] truncate">{f.name}</span>
-                      <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono">({Math.round(f.size / 1024) || 1}KB)</span>
-                      <button
-                        type="button"
-                        onClick={() => setAttachedFiles((prev) => prev.filter((item) => item.id !== f.id))}
-                        className="text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-white cursor-pointer ml-0.5"
-                        title="Hapus lampiran"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
+              <div
+                onDragOver={handleDragOver}
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`w-full bg-white/80 dark:bg-[#14161f]/80 backdrop-blur-xl border ${
+                  isDraggingOver
+                    ? "border-amber-500 ring-2 ring-amber-500/30 bg-amber-500/[0.04]"
+                    : "border-slate-200/80 dark:border-white/[0.09] focus-within:border-slate-400 dark:focus-within:border-white/20"
+                } rounded-3xl p-3.5 sm:p-4 shadow-2xl transition-all text-left relative`}
+              >
+                {/* Drag & Drop Visual Overlay */}
+                {isDraggingOver && (
+                  <div className="absolute inset-0 z-20 rounded-3xl bg-amber-500/10 dark:bg-amber-400/10 backdrop-blur-sm border-2 border-dashed border-amber-500 dark:border-amber-400 flex flex-col items-center justify-center pointer-events-none animate-fade-in text-center p-4">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-1.5 shadow-md">
+                      <FileUp className="w-5 h-5 animate-bounce" />
                     </div>
-                  ))}
-                </div>
-              )}
+                    <span className="text-xs font-semibold text-slate-900 dark:text-white">
+                      Lepaskan gambar atau dokumen di sini
+                    </span>
+                    <span className="text-[10px] text-slate-500 dark:text-zinc-400 mt-0.5">
+                      Mendukung tangkapan layar, JPG, PNG, PDF, atau teks aljabar
+                    </span>
+                  </div>
+                )}
 
-              <textarea
-                ref={textareaRef}
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                rows={2}
-                placeholder="Describe what you want to build, / commands, @ files or sessions"
+                {/* Editing Message Indicator */}
+                {editingMsgId && (
+                  <div className="flex items-center justify-between px-3.5 py-2 mb-2.5 rounded-2xl bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/25 dark:border-amber-400/20 text-xs text-amber-700 dark:text-amber-300 animate-fade-in select-none">
+                    <div className="flex items-center gap-2 font-medium">
+                      <Pencil className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 animate-pulse" />
+                      <span>Mengedit pesan sebelumnya — Tekan Enter atau Kirim untuk memperbarui</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingMsgId(null);
+                        setInputText("");
+                      }}
+                      className="px-2 py-0.5 rounded-md hover:bg-amber-500/20 text-xs font-semibold cursor-pointer transition text-amber-800 dark:text-amber-200"
+                    >
+                      Batal Edit
+                    </button>
+                  </div>
+                )}
+
+                {/* Attached File Chips with Image Previews */}
+                {attachedFiles.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pb-2">
+                    {attachedFiles.map((f) => {
+                      const isImg = f.type.startsWith("image/") || (f.dataUrl && f.dataUrl.startsWith("data:image/"));
+                      return (
+                        <div
+                          key={f.id}
+                          className={`group relative flex items-center gap-2 rounded-xl border transition-all ${
+                            isImg
+                              ? "p-1.5 bg-slate-100/90 dark:bg-zinc-800/80 border-slate-300 dark:border-white/10"
+                              : "px-2.5 py-1 bg-slate-100 dark:bg-[#22252c] border-slate-200 dark:border-white/[0.1] text-xs text-slate-800 dark:text-zinc-200"
+                          }`}
+                        >
+                          <div
+                            onClick={() => setPreviewFile(f)}
+                            className="flex items-center gap-2 cursor-pointer hover:opacity-90 transition min-w-0"
+                            title="Klik untuk pratinjau penuh"
+                          >
+                            {isImg && f.dataUrl ? (
+                              <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-slate-200 dark:bg-zinc-900 shrink-0 border border-black/5 dark:border-white/10">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={f.dataUrl} alt={f.name} className="w-full h-full object-cover" />
+                              </div>
+                            ) : (
+                              <FileText className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 shrink-0" />
+                            )}
+                            <div className="flex flex-col min-w-0 pr-1">
+                              <span className="font-medium max-w-[130px] truncate text-xs text-slate-800 dark:text-zinc-200">
+                                {f.name}
+                              </span>
+                              <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono">
+                                {Math.round(f.size / 1024) || 1} KB
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAttachedFiles((prev) => prev.filter((item) => item.id !== f.id));
+                            }}
+                            className="p-1 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition cursor-pointer"
+                            title="Hapus lampiran"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <textarea
+                  ref={textareaRef}
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
+                  rows={2}
+                  placeholder="Describe what you want to build, / commands, @ files or sessions (atau paste/drag gambar ke sini)"
                 className="w-full bg-transparent text-[15px] sm:text-base text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none resize-none font-sans leading-relaxed"
               />
 
@@ -4672,7 +4897,7 @@ export default function ZAPApp() {
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                {previewFile.content && (
+                {previewFile.content && !previewFile.content.startsWith("data:") && (
                   <button
                     type="button"
                     onClick={() => {
@@ -4688,13 +4913,21 @@ export default function ZAPApp() {
                 <button
                   type="button"
                   onClick={() => {
-                    const blob = new Blob([previewFile.content || ""], { type: previewFile.type });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = previewFile.name;
-                    a.click();
-                    URL.revokeObjectURL(url);
+                    const mediaSource = previewFile.dataUrl || previewFile.content || "";
+                    if (mediaSource.startsWith("data:")) {
+                      const a = document.createElement("a");
+                      a.href = mediaSource;
+                      a.download = previewFile.name;
+                      a.click();
+                    } else {
+                      const blob = new Blob([previewFile.content || ""], { type: previewFile.type || "text/plain" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = previewFile.name;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }
                   }}
                   className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
                   title="Unduh berkas"
@@ -4732,15 +4965,81 @@ export default function ZAPApp() {
               </div>
             </div>
             {/* Content Display */}
-            <div className="p-4 overflow-y-auto flex-1 font-mono text-xs bg-slate-50 dark:bg-[#0b0c10] text-slate-800 dark:text-zinc-300 leading-relaxed select-text">
-              {previewFile.content ? (
-                <pre className="whitespace-pre-wrap">{previewFile.content}</pre>
-              ) : previewFile.dataUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={previewFile.dataUrl} alt={previewFile.name} className="max-w-full rounded-lg mx-auto" />
-              ) : (
-                <p className="text-slate-400 dark:text-zinc-500 italic">File biner tidak dapat ditampilkan langsung.</p>
-              )}
+            <div className="p-4 overflow-y-auto flex-1 bg-slate-50 dark:bg-[#0b0c10] text-slate-800 dark:text-zinc-300 leading-relaxed select-text flex items-center justify-center">
+              {(() => {
+                const isImg =
+                  previewFile.type.startsWith("image/") ||
+                  previewFile.dataUrl?.startsWith("data:image/") ||
+                  previewFile.content?.startsWith("data:image/") ||
+                  /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(previewFile.name);
+                const isPdf =
+                  previewFile.type === "application/pdf" ||
+                  previewFile.dataUrl?.startsWith("data:application/pdf") ||
+                  previewFile.content?.startsWith("data:application/pdf") ||
+                  /\.pdf$/i.test(previewFile.name);
+                const isVideo =
+                  previewFile.type.startsWith("video/") ||
+                  previewFile.dataUrl?.startsWith("data:video/") ||
+                  previewFile.content?.startsWith("data:video/") ||
+                  /\.(mp4|webm|mov|mkv|ogg)$/i.test(previewFile.name);
+                const mediaSource = previewFile.dataUrl || previewFile.content || "";
+
+                if (isImg && mediaSource) {
+                  return (
+                    <div className="w-full flex items-center justify-center p-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={mediaSource}
+                        alt={previewFile.name}
+                        className="max-h-[72vh] max-w-full rounded-2xl object-contain shadow-md border border-black/5 dark:border-white/10"
+                      />
+                    </div>
+                  );
+                }
+
+                if (isPdf && mediaSource) {
+                  return (
+                    <div className="w-full h-[72vh] rounded-2xl overflow-hidden border border-black/5 dark:border-white/10 bg-white">
+                      <iframe
+                        src={mediaSource}
+                        title={previewFile.name}
+                        className="w-full h-full border-0"
+                      />
+                    </div>
+                  );
+                }
+
+                if (isVideo && mediaSource) {
+                  return (
+                    <div className="w-full flex items-center justify-center p-2">
+                      <video
+                        src={mediaSource}
+                        controls
+                        autoPlay
+                        className="max-h-[72vh] max-w-full rounded-2xl shadow-md border border-black/5 dark:border-white/10"
+                      />
+                    </div>
+                  );
+                }
+
+                if (previewFile.content && !previewFile.content.startsWith("data:")) {
+                  return (
+                    <div className="w-full h-full text-left font-mono text-xs">
+                      <pre className="whitespace-pre-wrap p-4 rounded-2xl bg-white dark:bg-[#121318] border border-slate-200 dark:border-white/[0.08] overflow-x-auto selection:bg-amber-500/20">
+                        {previewFile.content}
+                      </pre>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="text-center py-12 text-slate-400 dark:text-zinc-500">
+                    <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm font-medium text-slate-700 dark:text-zinc-300">{previewFile.name}</p>
+                    <p className="text-xs mt-1">Pratinjau langsung tidak tersedia untuk format biner ini.</p>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
