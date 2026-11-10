@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { resolveGeometricIntent } from "@/data/geometry-database";
+import { getUserSecurityStatus, recordUserSecurityViolation } from "@/utils/security-vault";
 
 interface ActiveProblemContext {
   steps?: string[];
@@ -445,7 +446,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Pesan tidak boleh kosong" }, { status: 400 });
     }
 
-    // 0. VERIFIKASI KEAMANAN: Cek Status Penangguhan Akun (Suspension Check)
+    // 0. VERIFIKASI KEAMANAN: Cek Status Penangguhan Akun & Sinkronisasi Server
+    const userEmail = (body.userEmail || "").trim().toLowerCase();
+    if (userEmail) {
+      const serverSec = getUserSecurityStatus(userEmail);
+      if (serverSec.unbannedAt && (!serverSec.isSuspended || serverSec.unbannedAt > (serverSec.suspendedAt || 0))) {
+        // Akun telah dipulihkan secara resmi oleh Admin Wakhid di server
+        body.isSuspended = false;
+        body.jailbreakStrikes = 0;
+      } else if (serverSec.isSuspended) {
+        body.isSuspended = true;
+      }
+    }
+
     if (body.isSuspended) {
       return NextResponse.json(
         {
@@ -467,6 +480,9 @@ export async function POST(req: Request) {
 
       if (currentStrikes === 0) {
         // STRIKE 1: Peringatan Keras Resmi (Pelanggaran 1/2)
+        if (userEmail) {
+          recordUserSecurityViolation(userEmail, 1, false, jailbreakCheck.reason);
+        }
         return NextResponse.json({
           isJailbreak: true,
           strikeCount: 1,
@@ -477,6 +493,9 @@ export async function POST(req: Request) {
         });
       } else {
         // STRIKE 2: Akun Ditangguhkan Permanen (Pelanggaran 2/2)
+        if (userEmail) {
+          recordUserSecurityViolation(userEmail, 2, true, jailbreakCheck.reason);
+        }
         return NextResponse.json({
           isJailbreak: true,
           strikeCount: 2,

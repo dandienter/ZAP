@@ -91,6 +91,7 @@ import {
   Laptop,
   Cloud,
   ShieldCheck,
+  ShieldAlert,
   AlertTriangle,
 } from "lucide-react";
 
@@ -1364,10 +1365,23 @@ export default function ZAPApp() {
     return false;
   });
 
+  // User Recovery & Admin Security State
+  const [userRecoveryCodeInput, setUserRecoveryCodeInput] = useState<string>("");
+  const [userRecoveryLoading, setUserRecoveryLoading] = useState<boolean>(false);
+  const [userRecoveryMessage, setUserRecoveryMessage] = useState<{ text: string; error?: boolean } | null>(null);
+
+  // Admin Security Management State (Superadmin: wakhidpangestu1@gmail.com)
+  const [adminTargetEmail, setAdminTargetEmail] = useState<string>("");
+  const [adminUnbanLoading, setAdminUnbanLoading] = useState<boolean>(false);
+  const [adminActionResult, setAdminActionResult] = useState<{ success: boolean; message: string; token?: string; url?: string } | null>(null);
+  const [adminCopiedDraft, setAdminCopiedDraft] = useState<boolean>(false);
+  const [adminSuspendedList, setAdminSuspendedList] = useState<Array<{ email: string; strikes: number; isSuspended: boolean; reason?: string; suspendedAt?: number; unbannedAt?: number }>>([]);
+  const [adminLoadingList, setAdminLoadingList] = useState<boolean>(false);
+
   // Theme & Settings modal
   const { theme, setTheme } = useTheme();
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
-  const [settingsTab, setSettingsTab] = useState<"appearance" | "general" | "sync" | "models">("appearance");
+  const [settingsTab, setSettingsTab] = useState<"appearance" | "general" | "sync" | "models" | "admin">("appearance");
   const [syncSuccessToast, setSyncSuccessToast] = useState<boolean>(false);
   const [autoScrollChat, setAutoScrollChat] = useState<boolean>(true);
 
@@ -1572,6 +1586,47 @@ export default function ZAPApp() {
             const lastActiveUser = localStorage.getItem("zap_last_active_user_email")?.toLowerCase().trim();
             const isAccountSwitched = !lastActiveUser || lastActiveUser !== userKey;
             const initialTargetId = getPathConversationId();
+
+            // Cek jika terdapat parameter unban_token dari email siswa (?unban_token=... atau ?unban=...)
+            const searchParamsUrl = new URLSearchParams(window.location.search);
+            const urlUnbanToken = searchParamsUrl.get("unban_token") || searchParamsUrl.get("unban");
+            if (urlUnbanToken) {
+              fetch(`/api/admin/security?token=${encodeURIComponent(urlUnbanToken)}&email=${encodeURIComponent(userKey)}`)
+                .then((r) => r.json())
+                .then((data) => {
+                  if (data.success) {
+                    setIsAccountSuspended(false);
+                    setJailbreakStrikes(0);
+                    localStorage.removeItem("zap_account_suspended");
+                    localStorage.removeItem("zap_jailbreak_strikes");
+                    alert(data.message || "Akun Anda berhasil dipulihkan secara penuh! Selamat datang kembali di ChatZAP.");
+                    const cleanPath = window.location.pathname;
+                    window.history.replaceState({}, "", cleanPath);
+                  }
+                })
+                .catch((e) => console.warn("Unban token check failed:", e));
+            }
+
+            // Sinkronisasi status penangguhan / unban dengan database server vault
+            if (userKey) {
+              fetch(`/api/admin/security?action=check&email=${encodeURIComponent(userKey)}`)
+                .then((r) => r.json())
+                .then((sec) => {
+                  if (sec && sec.unbannedAt && (!sec.isSuspended || sec.unbannedAt > (sec.suspendedAt || 0))) {
+                    // Admin Wakhid telah membuka blokir akun di server!
+                    setIsAccountSuspended(false);
+                    setJailbreakStrikes(0);
+                    localStorage.removeItem("zap_account_suspended");
+                    localStorage.removeItem("zap_jailbreak_strikes");
+                  } else if (sec && sec.isSuspended) {
+                    setIsAccountSuspended(true);
+                    setJailbreakStrikes(2);
+                    localStorage.setItem("zap_account_suspended", "true");
+                    localStorage.setItem("zap_jailbreak_strikes", "2");
+                  }
+                })
+                .catch(() => {});
+            }
 
             // Jika akun berganti dari sesi sebelumnya:
             // Segera reset state percakapan agar sesi akun lama tidak bocor ke akun baru
@@ -2768,6 +2823,13 @@ export default function ZAPApp() {
         localStorage.removeItem("zap_account_suspended");
         localStorage.removeItem("zap_jailbreak_strikes");
       }
+      if (currentUser?.email) {
+        fetch("/api/admin/security", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "unban", email: currentUser.email, adminEmail: "wakhidpangestu1@gmail.com" }),
+        }).catch(() => {});
+      }
       out = "✅ Status penangguhan akun berhasil dicabut! Strike keamanan direset ke 0.";
     } else if (cmd === "status") {
       out = `CAS Engine: ${backendStatus}\nActive Model: ${selectedModel.name}\nEffort: ${reasoningEffort}`;
@@ -2786,6 +2848,127 @@ export default function ZAPApp() {
     setTerminalHistory((prev) => [...prev, { cmd, out }]);
     setTerminalInput("");
   };
+
+  // Handler siswa untuk menukarkan Token/Kode Pemulihan dari Admin
+  const handleRedeemUserRecoveryCode = async () => {
+    const code = userRecoveryCodeInput.trim();
+    if (!code) {
+      alert("Silakan masukkan kode pemulihan yang Anda terima dari Admin.");
+      return;
+    }
+    setUserRecoveryLoading(true);
+    setUserRecoveryMessage(null);
+    try {
+      const res = await fetch("/api/admin/security", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "verify_token",
+          token: code,
+          email: currentUser?.email || "",
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setIsAccountSuspended(false);
+        setJailbreakStrikes(0);
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("zap_account_suspended");
+          localStorage.removeItem("zap_jailbreak_strikes");
+        }
+        setUserRecoveryCodeInput("");
+        setUserRecoveryMessage({ text: data.message || "Akun berhasil dipulihkan secara penuh!", error: false });
+        alert(data.message || "Akun Anda berhasil dipulihkan secara penuh! Selamat belajar kembali di ChatZAP.");
+      } else {
+        const errMsg = data.message || data.error || "Kode pemulihan tidak valid atau sudah kedaluwarsa.";
+        setUserRecoveryMessage({ text: errMsg, error: true });
+        alert(errMsg);
+      }
+    } catch (e) {
+      setUserRecoveryMessage({ text: "Gagal memproses kode pemulihan: " + String(e), error: true });
+    } finally {
+      setUserRecoveryLoading(false);
+    }
+  };
+
+  // Handler Superadmin (Wakhid Pangestu) untuk mengambil daftar akun yang terkena flag/suspensi
+  const fetchAdminSuspendedList = useCallback(async () => {
+    if (currentUser?.email?.toLowerCase().trim() !== "wakhidpangestu1@gmail.com") return;
+    setAdminLoadingList(true);
+    try {
+      const res = await fetch(`/api/admin/security?action=list&email=${encodeURIComponent(currentUser.email)}`);
+      const data = await res.json();
+      if (res.ok && Array.isArray(data.list)) {
+        setAdminSuspendedList(data.list);
+      }
+    } catch (e) {
+      console.warn("Gagal memuat daftar status keamanan:", e);
+    } finally {
+      setAdminLoadingList(false);
+    }
+  }, [currentUser?.email]);
+
+  // Handler Superadmin untuk memulihkan akun pengguna tertentu secara instan
+  const handleAdminUnbanUser = async (targetEmailToUnban?: string) => {
+    const emailToUnban = (targetEmailToUnban || adminTargetEmail).trim().toLowerCase();
+    if (!emailToUnban) {
+      alert("Masukkan alamat email pengguna yang ingin dipulihkan.");
+      return;
+    }
+    setAdminUnbanLoading(true);
+    setAdminActionResult(null);
+    try {
+      const res = await fetch("/api/admin/security", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "unban",
+          email: emailToUnban,
+          adminEmail: currentUser?.email || "wakhidpangestu1@gmail.com",
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAdminActionResult({
+          success: true,
+          message: data.message || `Akun ${emailToUnban} berhasil dipulihkan di server!`,
+          token: data.recoveryToken,
+          url: data.recoveryUrl,
+        });
+        if (targetEmailToUnban) {
+          setAdminTargetEmail(targetEmailToUnban);
+        }
+        fetchAdminSuspendedList();
+      } else {
+        setAdminActionResult({
+          success: false,
+          message: data.error || data.message || "Gagal memulihkan akun pengguna.",
+        });
+      }
+    } catch (e) {
+      setAdminActionResult({
+        success: false,
+        message: "Kesalahan jaringan saat memproses unsuspend: " + String(e),
+      });
+    } finally {
+      setAdminUnbanLoading(false);
+    }
+  };
+
+  // Handler untuk menyalin tautan atau draf balasan email ke clipboard
+  const handleAdminCopyDraft = (textToCopy: string) => {
+    if (!textToCopy) return;
+    navigator.clipboard.writeText(textToCopy);
+    setAdminCopiedDraft(true);
+    setTimeout(() => setAdminCopiedDraft(false), 2500);
+  };
+
+  // Sinkronkan daftar rekam keamanan saat Superadmin membuka modal pengaturan
+  useEffect(() => {
+    if (showSettingsModal && settingsTab === "admin" && currentUser?.email?.toLowerCase().trim() === "wakhidpangestu1@gmail.com") {
+      fetchAdminSuspendedList();
+    }
+  }, [showSettingsModal, settingsTab, currentUser?.email, fetchAdminSuspendedList]);
 
   // Handler untuk menjalankan Audit Integritas SymPy CAS secara realtime
   const handleRunCasAudit = async () => {
@@ -3660,7 +3843,7 @@ export default function ZAPApp() {
 
                 {/* Security Warning / Account Suspension Indicator */}
                 {isAccountSuspended ? (
-                  <div className="flex items-start justify-between p-3.5 mb-2.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-xs text-rose-800 dark:text-rose-300 animate-fade-in select-none">
+                  <div className="flex flex-col gap-2.5 p-3.5 mb-2.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-xs text-rose-800 dark:text-rose-300 animate-fade-in select-none">
                     <div className="flex items-start gap-2.5">
                       <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
                       <div className="space-y-0.5">
@@ -3668,13 +3851,36 @@ export default function ZAPApp() {
                           Akses ChatZAP Ditangguhkan Permanen
                         </div>
                         <p className="text-[11px] text-rose-700 dark:text-rose-300/90 leading-relaxed">
-                          Akun Anda dibekukan akibat percobaan jailbreak berulang. Untuk permohonan pemulihan akses, silakan email:{" "}
+                          Akun Anda dibekukan akibat percobaan manipulasi instruksi (jailbreak) berulang. Untuk permohonan pemulihan akses, silakan email:{" "}
                           <a href="mailto:wakhidpangestu1@gmail.com" className="font-mono font-semibold underline text-rose-800 dark:text-rose-100 hover:opacity-80">
                             wakhidpangestu1@gmail.com
                           </a>
                         </p>
                       </div>
                     </div>
+                    {/* Form Input Kode Pemulihan jika pengguna menerima balasan email dari Admin */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-rose-500/20">
+                      <input
+                        type="text"
+                        placeholder="Punya Kode Pemulihan dari Admin? (Contoh: ZAP-...)"
+                        value={userRecoveryCodeInput}
+                        onChange={(e) => setUserRecoveryCodeInput(e.target.value)}
+                        className="flex-1 px-3 py-1.5 text-[11px] rounded-lg bg-white/70 dark:bg-black/40 border border-rose-500/30 text-rose-900 dark:text-rose-100 placeholder:text-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-500 font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRedeemUserRecoveryCode}
+                        disabled={userRecoveryLoading || !userRecoveryCodeInput.trim()}
+                        className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-medium text-[11px] cursor-pointer transition whitespace-nowrap shadow-xs"
+                      >
+                        {userRecoveryLoading ? "Memeriksa..." : "Pulihkan Akun"}
+                      </button>
+                    </div>
+                    {userRecoveryMessage && (
+                      <p className={`text-[10px] ${userRecoveryMessage.error ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                        {userRecoveryMessage.text}
+                      </p>
+                    )}
                   </div>
                 ) : jailbreakStrikes === 1 ? (
                   <div className="flex items-center justify-between p-2.5 mb-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-800 dark:text-amber-300 animate-fade-in select-none">
@@ -4251,7 +4457,7 @@ export default function ZAPApp() {
 
                 {/* Security Warning / Account Suspension Indicator */}
                 {isAccountSuspended ? (
-                  <div className="flex items-start justify-between p-3.5 mb-2.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-xs text-rose-800 dark:text-rose-300 animate-fade-in select-none">
+                  <div className="flex flex-col gap-2.5 p-3.5 mb-2.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-xs text-rose-800 dark:text-rose-300 animate-fade-in select-none">
                     <div className="flex items-start gap-2.5">
                       <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
                       <div className="space-y-0.5">
@@ -4259,13 +4465,36 @@ export default function ZAPApp() {
                           Akses ChatZAP Ditangguhkan Permanen
                         </div>
                         <p className="text-[11px] text-rose-700 dark:text-rose-300/90 leading-relaxed">
-                          Akun Anda dibekukan akibat percobaan jailbreak berulang. Untuk permohonan pemulihan akses, silakan email:{" "}
+                          Akun Anda dibekukan akibat percobaan manipulasi instruksi (jailbreak) berulang. Untuk permohonan pemulihan akses, silakan email:{" "}
                           <a href="mailto:wakhidpangestu1@gmail.com" className="font-mono font-semibold underline text-rose-800 dark:text-rose-100 hover:opacity-80">
                             wakhidpangestu1@gmail.com
                           </a>
                         </p>
                       </div>
                     </div>
+                    {/* Form Input Kode Pemulihan jika pengguna menerima balasan email dari Admin */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-rose-500/20">
+                      <input
+                        type="text"
+                        placeholder="Punya Kode Pemulihan dari Admin? (Contoh: ZAP-...)"
+                        value={userRecoveryCodeInput}
+                        onChange={(e) => setUserRecoveryCodeInput(e.target.value)}
+                        className="flex-1 px-3 py-1.5 text-[11px] rounded-lg bg-white/70 dark:bg-black/40 border border-rose-500/30 text-rose-900 dark:text-rose-100 placeholder:text-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-500 font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRedeemUserRecoveryCode}
+                        disabled={userRecoveryLoading || !userRecoveryCodeInput.trim()}
+                        className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-medium text-[11px] cursor-pointer transition whitespace-nowrap shadow-xs"
+                      >
+                        {userRecoveryLoading ? "Memeriksa..." : "Pulihkan Akun"}
+                      </button>
+                    </div>
+                    {userRecoveryMessage && (
+                      <p className={`text-[10px] ${userRecoveryMessage.error ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                        {userRecoveryMessage.text}
+                      </p>
+                    )}
                   </div>
                 ) : jailbreakStrikes === 1 ? (
                   <div className="flex items-center justify-between p-2.5 mb-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-800 dark:text-amber-300 animate-fade-in select-none">
@@ -5253,6 +5482,20 @@ export default function ZAPApp() {
                   <ShieldCheck className="w-3.5 h-3.5" />
                   <span>Invarian CAS &amp; AI</span>
                 </button>
+                {currentUser?.email?.toLowerCase().trim() === "wakhidpangestu1@gmail.com" && (
+                  <button
+                    type="button"
+                    onClick={() => setSettingsTab("admin")}
+                    className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold border-b-2 transition cursor-pointer whitespace-nowrap ${
+                      settingsTab === "admin"
+                        ? "border-rose-600 text-rose-600 dark:border-rose-400 dark:text-rose-400"
+                        : "border-transparent text-rose-500/70 hover:text-rose-600 dark:hover:text-rose-400"
+                    }`}
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5" />
+                    <span>Konsol Superadmin</span>
+                  </button>
+                )}
               </div>
 
               {/* Tab Contents */}
@@ -5620,6 +5863,153 @@ export default function ZAPApp() {
                         <Sparkles className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-300" />
                         <span>Buka Hub Model &amp; API Keys (/connector) &rarr;</span>
                       </Link>
+                    </div>
+                  </div>
+                )}
+
+                {/* 5. SUPERADMIN SECURITY CONSOLE TAB (wakhidpangestu1@gmail.com) */}
+                {settingsTab === "admin" && currentUser?.email?.toLowerCase().trim() === "wakhidpangestu1@gmail.com" && (
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 font-bold text-xs text-rose-900 dark:text-rose-200">
+                          <ShieldAlert className="w-4 h-4 text-rose-600" />
+                          <span>Pusat Kendali Keamanan Superadmin (Wakhid Pangestu)</span>
+                        </div>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-200 dark:bg-rose-900/60 text-rose-800 dark:text-rose-300">
+                          Superadmin Mode
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-rose-700 dark:text-rose-300/90 leading-relaxed">
+                        Kelola permohonan pemulihan akun siswa yang terkena sanksi penangguhan akibat percobaan jailbreak.
+                        Anda dapat membuka blokir langsung berdasarkan email atau menghasilkan link/kode pemulihan 1-klik untuk dibalas ke email siswa.
+                      </p>
+                    </div>
+
+                    {/* Form Buka Blokir & Draf Balasan */}
+                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#181a20] border border-slate-200 dark:border-white/[0.06] space-y-3">
+                      <h5 className="font-semibold text-xs text-slate-900 dark:text-white">Buka Blokir Pengguna Berdasarkan Email</h5>
+                      <div className="flex gap-2">
+                        <input
+                          type="email"
+                          placeholder="Masukkan email siswa (misal: user@gmail.com)"
+                          value={adminTargetEmail}
+                          onChange={(e) => setAdminTargetEmail(e.target.value)}
+                          className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-white/[0.1] bg-white dark:bg-[#14151a] text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-white font-mono"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleAdminUnbanUser()}
+                          disabled={adminUnbanLoading || !adminTargetEmail.trim()}
+                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-medium text-xs transition cursor-pointer whitespace-nowrap shadow-xs flex items-center gap-1.5"
+                        >
+                          {adminUnbanLoading ? <RotateCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                          <span>Buka Blokir Sekarang</span>
+                        </button>
+                      </div>
+
+                      {/* Hasil Aksi Admin */}
+                      {adminActionResult && (
+                        <div className={`p-3 rounded-xl border text-xs space-y-2 animate-fade-in ${
+                          adminActionResult.success
+                            ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-200"
+                            : "bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40 text-rose-800 dark:text-rose-200"
+                        }`}>
+                          <div className="font-semibold">{adminActionResult.message}</div>
+                          {adminActionResult.token && (
+                            <div className="space-y-1.5 pt-1 border-t border-emerald-200/60 dark:border-emerald-800/40">
+                              <div className="text-[11px]">
+                                <strong>Kode Pemulihan:</strong>{" "}
+                                <span className="font-mono px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 select-all">
+                                  {adminActionResult.token}
+                                </span>
+                              </div>
+                              <div className="text-[11px] truncate">
+                                <strong>Link 1-Klik:</strong>{" "}
+                                <span className="font-mono text-[10px] text-emerald-700 dark:text-emerald-300 underline select-all">
+                                  {adminActionResult.url}
+                                </span>
+                              </div>
+                              <div className="pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const template = `Halo,\n\nPermohonan pemulihan akun ChatZAP Anda (${adminTargetEmail}) telah disetujui.\n\nKlik tautan berikut untuk langsung membuka blokir akun Anda secara otomatis:\n${adminActionResult.url}\n\nAtau masukkan kode pemulihan ini pada kotak banner ChatZAP:\n${adminActionResult.token}\n\nSalam,\nWakhid Pangestu\nChatZAP Administrator`;
+                                    handleAdminCopyDraft(template);
+                                  }}
+                                  className="px-3 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 shadow-xs"
+                                >
+                                  {adminCopiedDraft ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                                  <span>{adminCopiedDraft ? "Draf Balasan Email Tersalin!" : "Salin Draf Balasan Email untuk Siswa"}</span>
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Daftar Pengguna Terflag / Suspended di Server */}
+                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#181a20] border border-slate-200 dark:border-white/[0.06] space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h5 className="font-semibold text-xs text-slate-900 dark:text-white">
+                          Daftar Rekam Keamanan Pengguna ({adminSuspendedList.length})
+                        </h5>
+                        <button
+                          type="button"
+                          onClick={() => fetchAdminSuspendedList()}
+                          disabled={adminLoadingList}
+                          className="text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-white text-[11px] flex items-center gap-1 cursor-pointer"
+                        >
+                          <RotateCw className={`w-3 h-3 ${adminLoadingList ? "animate-spin" : ""}`} />
+                          <span>Segarkan</span>
+                        </button>
+                      </div>
+
+                      {adminSuspendedList.length === 0 ? (
+                        <p className="text-[11px] text-slate-500 dark:text-zinc-400 italic py-2">
+                          Belum ada pengguna yang tercatat melakukan pelanggaran jailbreak.
+                        </p>
+                      ) : (
+                        <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                          {adminSuspendedList.map((rec) => (
+                            <div
+                              key={rec.email}
+                              className="p-2.5 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-[#15161b] flex items-center justify-between text-xs"
+                            >
+                              <div className="space-y-0.5 min-w-0 pr-2">
+                                <div className="font-mono font-medium text-slate-900 dark:text-white truncate">
+                                  {rec.email}
+                                </div>
+                                <div className="flex items-center gap-2 text-[10px]">
+                                  <span className={`px-1.5 py-0.5 rounded font-semibold ${
+                                    rec.isSuspended
+                                      ? "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300"
+                                      : rec.unbannedAt
+                                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
+                                      : "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
+                                  }`}>
+                                    {rec.isSuspended ? "DITANGGUHKAN" : rec.unbannedAt ? "DIPULIHKAN" : `STRIKE ${rec.strikes}/2`}
+                                  </span>
+                                  {rec.reason && (
+                                    <span className="text-slate-400 dark:text-zinc-500 truncate max-w-xs">
+                                      {rec.reason}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleAdminUnbanUser(rec.email)}
+                                disabled={adminUnbanLoading}
+                                className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-zinc-200 text-white text-[11px] font-medium transition cursor-pointer whitespace-nowrap shadow-xs"
+                              >
+                                Buka Blokir
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
