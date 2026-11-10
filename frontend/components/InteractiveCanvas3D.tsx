@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import {
   RotateCcw,
   Sparkles,
@@ -24,6 +25,8 @@ import {
   Edit3,
   Send,
   Check,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { useTheme } from "@/utils/theme";
 import MathView from "@/components/MathView";
@@ -31,6 +34,8 @@ import ZapLogo from "@/components/ZapLogo";
 
 export type MathModelType =
   | "empty"
+  | "2d_empty"
+  | "3d_empty"
   | "2d_shape"
   | "2d_quadratic"
   | "2d_trig"
@@ -214,6 +219,87 @@ interface InteractiveCanvas3DProps {
 
 const GRID_Y = -1.5;
 
+/**
+ * Membuat geometri sudut siku 3D (3-axis corner angle bracket) untuk vertex handle resize
+ * Menggantikan bulatan bola dengan sudut siku presisi sesuai bentuk geometri
+ */
+function createCornerBracketGeometry(
+  dx: number,
+  dy: number,
+  dz: number,
+  armLen = 0.28,
+  armThick = 0.038
+): THREE.BufferGeometry {
+  const geoX = new THREE.BoxGeometry(armLen, armThick, armThick);
+  geoX.translate((dx * armLen) / 2, 0, 0);
+
+  const geoY = new THREE.BoxGeometry(armThick, armLen, armThick);
+  geoY.translate(0, (dy * armLen) / 2, 0);
+
+  const geoZ = new THREE.BoxGeometry(armThick, armThick, armLen);
+  geoZ.translate(0, 0, (dz * armLen) / 2);
+
+  const geoCorner = new THREE.BoxGeometry(armThick * 1.6, armThick * 1.6, armThick * 1.6);
+
+  const merged = BufferGeometryUtils.mergeGeometries([geoX, geoY, geoZ, geoCorner]);
+  geoX.dispose();
+  geoY.dispose();
+  geoZ.dispose();
+  geoCorner.dispose();
+  return merged;
+}
+
+/**
+ * Membuat sprite teks angka/dimensi 3D yang selalu menghadap kamera dan terlihat jelas di sisi 3D
+ */
+function createDimensionSprite(text: string, isDark = true): THREE.Sprite {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 72;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    // Glass pill background
+    ctx.fillStyle = isDark ? "rgba(10, 14, 26, 0.90)" : "rgba(255, 255, 255, 0.92)";
+    const radius = 18;
+    const x = 8, y = 6, w = 240, h = 60;
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + w - radius, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+    ctx.lineTo(x + w, y + h - radius);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+    ctx.lineTo(x + radius, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    ctx.fill();
+
+    // Border
+    ctx.strokeStyle = isDark ? "#38bdf8" : "#0284c7";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Text label
+    ctx.fillStyle = isDark ? "#ffffff" : "#0f172a";
+    ctx.font = "bold 26px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, 128, 36);
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthTest: false,
+  });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(0.9, 0.28, 1);
+  return sprite;
+}
+
 function fmt(n: number): string {
   return n.toLocaleString("id-ID", {
     minimumFractionDigits: 2,
@@ -303,8 +389,17 @@ export default function InteractiveCanvas3D({
     }
   }, [isDark, hasDrawings]);
 
-  // 2D Graph Canvas
+  // 2D Graph Canvas & Interactive Zoom / Pan State
   const graph2DCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [zoom2D, setZoom2D] = useState<number>(1);
+  const [pan2D, setPan2D] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const isPanning2DRef = useRef<boolean>(false);
+  const panStartRef = useRef<{ x: number; y: number; initialPanX: number; initialPanY: number }>({
+    x: 0,
+    y: 0,
+    initialPanX: 0,
+    initialPanY: 0,
+  });
 
   // Board Workspace Container Ref (for calculating percentage drag coordinates)
   const boardWorkspaceRef = useRef<HTMLDivElement | null>(null);
@@ -1075,6 +1170,7 @@ export default function InteractiveCanvas3D({
   // 3. 2D CARTESIAN & PLANE GEOMETRY VIEW (JAJAR GENJANG, TRAPESIUM, SEGITIGA)
   // =========================================================================
   const is2DGraphModel =
+    activeModel === "2d_empty" ||
     activeModel === "2d_shape" ||
     activeModel === "2d_quadratic" ||
     activeModel === "2d_trig" ||
@@ -1095,9 +1191,10 @@ export default function InteractiveCanvas3D({
 
     const width = canvas.width;
     const height = canvas.height;
-    const originX = width / 2;
-    const originY = height / 2;
-    const scale = Math.min(width, height) / 18;
+    const baseScale = Math.min(width, height) / 18;
+    const scale = baseScale * zoom2D;
+    const originX = width / 2 + pan2D.x;
+    const originY = height / 2 + pan2D.y;
 
     ctx.fillStyle = isProjectorMode ? "#0c101d" : isDark ? "#080a0f" : "#ffffff";
     ctx.fillRect(0, 0, width, height);
@@ -2035,12 +2132,13 @@ export default function InteractiveCanvas3D({
         ctx.fillText("Jaring-Jaring 2D Limas (Piramida)", originX, topY - petal - 24);
       }
     }
-  }, [activeModel, planeShapeKind, paramA, paramB, paramC, unit, isProjectorMode, is2DGraphModel, isDark]);
+  }, [activeModel, planeShapeKind, paramA, paramB, paramC, unit, isProjectorMode, is2DGraphModel, isDark, zoom2D, pan2D]);
 
   // =========================================================================
   // 4. THREE.JS 3D MESH GENERATOR (KUBUS SOLID, BALOK, SILINDER, KERUCUT)
   // =========================================================================
   const is3DModel =
+    activeModel === "3d_empty" ||
     activeModel === "parabola" ||
     activeModel === "conic_slicer" ||
     activeModel === "cylinder" ||
@@ -2361,7 +2459,7 @@ export default function InteractiveCanvas3D({
       });
     }
 
-    if (!is3DModel) return;
+    if (!is3DModel || activeModel === "3d_empty") return;
 
     const addEdges = (mesh: THREE.Mesh, geometry: THREE.BufferGeometry, color = 0x38bdf8) => {
       const edges = new THREE.LineSegments(
@@ -2391,7 +2489,7 @@ export default function InteractiveCanvas3D({
       addEdges(cubeMesh, cubeGeo, 0x38bdf8);
       group.add(cubeMesh);
 
-      // Interactive 8 Corner Vertex Handle Spheres for Direct Mouse Drag-to-Resize
+      // Interactive 8 Corner Vertex Handles with 3-Axis Angle Brackets (Sudut Siku Presisi untuk Resizing)
       cornerHandlesRef.current = [];
       const hs = displaySize / 2;
       const corners = [
@@ -2400,28 +2498,37 @@ export default function InteractiveCanvas3D({
       ];
 
       corners.forEach(([cx, cy, cz], idx) => {
-        const dotGeo = new THREE.SphereGeometry(0.12, 16, 16);
-        const dotMat = new THREE.MeshStandardMaterial({
-          color: 0xffffff,
+        const dx = -Math.sign(cx) || 1;
+        const dy = -Math.sign(cy) || 1;
+        const dz = -Math.sign(cz) || 1;
+        const bracketGeo = createCornerBracketGeometry(dx, dy, dz);
+        const bracketMat = new THREE.MeshStandardMaterial({
+          color: 0x38bdf8,
           emissive: 0x38bdf8,
-          emissiveIntensity: 0.4,
+          emissiveIntensity: 0.5,
           roughness: 0.2,
         });
-        const dot = new THREE.Mesh(dotGeo, dotMat);
-        dot.position.set(cx, cy + displaySize / 2 + GRID_Y, cz);
-        dot.userData = { isCornerHandle: true, index: idx };
-        group.add(dot);
-        cornerHandlesRef.current.push(dot);
+        const bracket = new THREE.Mesh(bracketGeo, bracketMat);
+        bracket.position.set(cx, cy + displaySize / 2 + GRID_Y, cz);
+        bracket.userData = { isCornerHandle: true, index: idx };
+        group.add(bracket);
+        cornerHandlesRef.current.push(bracket);
       });
 
-      // Dimension indicator line on front edge
-      const dimPoints = [
-        new THREE.Vector3(-hs, GRID_Y - 0.1, hs + 0.15),
-        new THREE.Vector3(hs, GRID_Y - 0.1, hs + 0.15),
-      ];
-      const dimGeo = new THREE.BufferGeometry().setFromPoints(dimPoints);
-      const dimMat = new THREE.LineBasicMaterial({ color: 0x60a5fa });
-      group.add(new THREE.Line(dimGeo, dimMat));
+      // Dimension labels on 3D edges (Angka pada sisi 3D)
+      const u = unit || "cm";
+      const sVal = paramA || 10;
+      const dimFront = createDimensionSprite(`s = ${sVal} ${u}`, isDark);
+      dimFront.position.set(0, GRID_Y - 0.25, hs + 0.25);
+      group.add(dimFront);
+
+      const dimVert = createDimensionSprite(`s = ${sVal} ${u}`, isDark);
+      dimVert.position.set(-hs - 0.45, displaySize / 2 + GRID_Y, hs);
+      group.add(dimVert);
+
+      const dimDepth = createDimensionSprite(`s = ${sVal} ${u}`, isDark);
+      dimDepth.position.set(hs + 0.45, GRID_Y - 0.25, 0);
+      group.add(dimDepth);
 
       // Slicing Plane: ONLY RENDER IF USER SPECIFICALLY REQUESTED IT!
       if (showSlicePlane) {
@@ -2467,7 +2574,7 @@ export default function InteractiveCanvas3D({
       addEdges(mesh, geo, 0x38bdf8);
       group.add(mesh);
 
-      // Interactive 8 Corner Vertex Handles for Balok
+      // Interactive 8 Corner Vertex Handles for Balok with 3-Axis Angle Brackets (Sudut Siku)
       cornerHandlesRef.current = [];
       const hw = w / 2;
       const hh = h / 2;
@@ -2477,19 +2584,39 @@ export default function InteractiveCanvas3D({
         [-hw, hh, -hd], [hw, hh, -hd], [-hw, hh, hd], [hw, hh, hd],
       ];
       corners.forEach(([cx, cy, cz], idx) => {
-        const dotGeo = new THREE.SphereGeometry(0.11, 16, 16);
-        const dotMat = new THREE.MeshStandardMaterial({
-          color: 0xffffff,
+        const dx = -Math.sign(cx) || 1;
+        const dy = -Math.sign(cy) || 1;
+        const dz = -Math.sign(cz) || 1;
+        const bracketGeo = createCornerBracketGeometry(dx, dy, dz);
+        const bracketMat = new THREE.MeshStandardMaterial({
+          color: 0x38bdf8,
           emissive: 0x38bdf8,
-          emissiveIntensity: 0.4,
+          emissiveIntensity: 0.5,
           roughness: 0.2,
         });
-        const dot = new THREE.Mesh(dotGeo, dotMat);
-        dot.position.set(cx, cy + hh + GRID_Y, cz);
-        dot.userData = { isCornerHandle: true, index: idx };
-        group.add(dot);
-        cornerHandlesRef.current.push(dot);
+        const bracket = new THREE.Mesh(bracketGeo, bracketMat);
+        bracket.position.set(cx, cy + hh + GRID_Y, cz);
+        bracket.userData = { isCornerHandle: true, index: idx };
+        group.add(bracket);
+        cornerHandlesRef.current.push(bracket);
       });
+
+      // Dimension labels on 3D edges (Angka pada sisi 3D)
+      const u = unit || "cm";
+      const pVal = paramA || 10;
+      const lVal = paramB || 6;
+      const tVal = paramC || 4;
+      const dimP = createDimensionSprite(`p = ${pVal} ${u}`, isDark);
+      dimP.position.set(0, GRID_Y - 0.25, hd + 0.25);
+      group.add(dimP);
+
+      const dimL = createDimensionSprite(`l = ${lVal} ${u}`, isDark);
+      dimL.position.set(hw + 0.45, GRID_Y - 0.25, 0);
+      group.add(dimL);
+
+      const dimT = createDimensionSprite(`t = ${tVal} ${u}`, isDark);
+      dimT.position.set(-hw - 0.45, hh + GRID_Y, hd);
+      group.add(dimT);
     }
 
     // 3. CYLINDER / TABUNG
@@ -2511,13 +2638,25 @@ export default function InteractiveCanvas3D({
       group.add(mesh);
 
       cornerHandlesRef.current = [];
-      const handleGeo = new THREE.SphereGeometry(0.12, 16, 16);
-      const handleMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x22d3ee, emissiveIntensity: 0.4 });
+      const handleGeo = createCornerBracketGeometry(1, -1, 1, 0.24, 0.038);
+      const handleMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x22d3ee, emissiveIntensity: 0.5 });
       const topHandle = new THREE.Mesh(handleGeo, handleMat);
       topHandle.position.set(r, h + GRID_Y, 0);
       topHandle.userData = { isCornerHandle: true, index: 0 };
       group.add(topHandle);
       cornerHandlesRef.current.push(topHandle);
+
+      // Dimension labels on Tabung
+      const u = unit || "cm";
+      const rVal = paramA || 7;
+      const tVal = paramB || 12;
+      const dimR = createDimensionSprite(`r = ${rVal} ${u}`, isDark);
+      dimR.position.set(r / 2, h + GRID_Y + 0.25, 0);
+      group.add(dimR);
+
+      const dimH = createDimensionSprite(`t = ${tVal} ${u}`, isDark);
+      dimH.position.set(-r - 0.45, h / 2 + GRID_Y, 0);
+      group.add(dimH);
     }
 
     // 4. CONIC SLICER (IRISAN KERUCUT)
@@ -2594,13 +2733,20 @@ export default function InteractiveCanvas3D({
         group.add(mesh);
 
         cornerHandlesRef.current = [];
-        const sphereDotGeo = new THREE.SphereGeometry(0.12, 16, 16);
-        const sphereDotMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x38bdf8, emissiveIntensity: 0.4 });
-        const dot = new THREE.Mesh(sphereDotGeo, sphereDotMat);
+        const sphereHandleGeo = createCornerBracketGeometry(1, 1, 1, 0.24, 0.038);
+        const sphereHandleMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x67e8f9, emissiveIntensity: 0.5 });
+        const dot = new THREE.Mesh(sphereHandleGeo, sphereHandleMat);
         dot.position.set(radius, radius + GRID_Y, 0);
         dot.userData = { isCornerHandle: true, index: 0 };
         group.add(dot);
         cornerHandlesRef.current.push(dot);
+
+        // Dimension label on Bola
+        const u = unit || "cm";
+        const rVal = paramA || 7;
+        const dimR = createDimensionSprite(`r = ${rVal} ${u}`, isDark);
+        dimR.position.set(radius / 2, radius + GRID_Y + 0.25, 0);
+        group.add(dimR);
       } else if (solidKind === "kerucut") {
         geo = new THREE.ConeGeometry(1.8, 3.2, 36);
         const mat = new THREE.MeshStandardMaterial({
@@ -2631,32 +2777,43 @@ export default function InteractiveCanvas3D({
         addEdges(mesh, geo, 0x38bdf8);
         group.add(mesh);
 
-        // 6 Corner handles (3 top vertices, 3 bottom vertices)
+        // 6 Corner handles with 3-Axis Angle Brackets (Sudut Siku)
         cornerHandlesRef.current = [];
-        const dotGeo = new THREE.SphereGeometry(0.11, 16, 16);
-        const dotMat = new THREE.MeshStandardMaterial({
-          color: 0xffffff,
-          emissive: 0x38bdf8,
-          emissiveIntensity: 0.4,
-          roughness: 0.2,
-        });
         for (let i = 0; i < 3; i++) {
           const angle = (i * 2 * Math.PI) / 3 + Math.PI / 6;
           const vx = prismR * Math.sin(angle);
           const vz = prismR * Math.cos(angle);
-          // Bottom
-          const bDot = new THREE.Mesh(dotGeo, dotMat);
-          bDot.position.set(vx, GRID_Y, vz);
-          bDot.userData = { isCornerHandle: true, index: i };
-          group.add(bDot);
-          cornerHandlesRef.current.push(bDot);
-          // Top
-          const tDot = new THREE.Mesh(dotGeo, dotMat);
-          tDot.position.set(vx, prismH + GRID_Y, vz);
-          tDot.userData = { isCornerHandle: true, index: i + 3 };
-          group.add(tDot);
-          cornerHandlesRef.current.push(tDot);
+          const dx = -Math.sign(vx) || 1;
+          const dz = -Math.sign(vz) || 1;
+          // Bottom bracket
+          const bGeo = createCornerBracketGeometry(dx, 1, dz, 0.22, 0.035);
+          const bMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x38bdf8, emissiveIntensity: 0.5 });
+          const bMesh = new THREE.Mesh(bGeo, bMat);
+          bMesh.position.set(vx, GRID_Y, vz);
+          bMesh.userData = { isCornerHandle: true, index: i };
+          group.add(bMesh);
+          cornerHandlesRef.current.push(bMesh);
+
+          // Top bracket
+          const tGeo = createCornerBracketGeometry(dx, -1, dz, 0.22, 0.035);
+          const tMesh = new THREE.Mesh(tGeo, bMat);
+          tMesh.position.set(vx, prismH + GRID_Y, vz);
+          tMesh.userData = { isCornerHandle: true, index: i + 3 };
+          group.add(tMesh);
+          cornerHandlesRef.current.push(tMesh);
         }
+
+        // Dimension labels on Prisma (Angka pada sisi 3D)
+        const u = unit || "cm";
+        const sVal = paramA || 8;
+        const tVal = paramB || 10;
+        const dimBase = createDimensionSprite(`s = ${sVal} ${u}`, isDark);
+        dimBase.position.set(0, GRID_Y - 0.25, prismR + 0.25);
+        group.add(dimBase);
+
+        const dimHeight = createDimensionSprite(`t = ${tVal} ${u}`, isDark);
+        dimHeight.position.set(-prismR - 0.45, prismH / 2 + GRID_Y, 0);
+        group.add(dimHeight);
 
         if (showSlicePlane) {
           const planeSize = Math.max(prismR, prismH) * 1.8;
@@ -2692,17 +2849,12 @@ export default function InteractiveCanvas3D({
         addEdges(mesh, geo, 0x38bdf8);
         group.add(mesh);
 
-        // 5 Corner handles (1 apex + 4 base corners)
+        // 5 Handles: apex + 4 base corners with corner brackets
         cornerHandlesRef.current = [];
-        const dotGeo = new THREE.SphereGeometry(0.11, 16, 16);
-        const dotMat = new THREE.MeshStandardMaterial({
-          color: 0xffffff,
-          emissive: 0x38bdf8,
-          emissiveIntensity: 0.4,
-          roughness: 0.2,
-        });
-        const apex = new THREE.Mesh(dotGeo, dotMat);
-        apex.position.set(0, pyrH + GRID_Y, 0);
+        const apexGeo = new THREE.ConeGeometry(0.12, 0.22, 4);
+        const apexMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x38bdf8, emissiveIntensity: 0.6 });
+        const apex = new THREE.Mesh(apexGeo, apexMat);
+        apex.position.set(0, pyrH + GRID_Y + 0.1, 0);
         apex.userData = { isCornerHandle: true, index: 0 };
         group.add(apex);
         cornerHandlesRef.current.push(apex);
@@ -2711,12 +2863,28 @@ export default function InteractiveCanvas3D({
           const angle = (i * Math.PI) / 2 + Math.PI / 4;
           const bx = pyrR * Math.cos(angle);
           const bz = pyrR * Math.sin(angle);
-          const dot = new THREE.Mesh(dotGeo, dotMat);
-          dot.position.set(bx, GRID_Y, bz);
-          dot.userData = { isCornerHandle: true, index: i + 1 };
-          group.add(dot);
-          cornerHandlesRef.current.push(dot);
+          const dx = -Math.sign(bx) || 1;
+          const dz = -Math.sign(bz) || 1;
+          const bGeo = createCornerBracketGeometry(dx, 1, dz, 0.24, 0.035);
+          const bMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x38bdf8, emissiveIntensity: 0.5 });
+          const bMesh = new THREE.Mesh(bGeo, bMat);
+          bMesh.position.set(bx, GRID_Y, bz);
+          bMesh.userData = { isCornerHandle: true, index: i + 1 };
+          group.add(bMesh);
+          cornerHandlesRef.current.push(bMesh);
         }
+
+        // Dimension labels on Limas (Angka pada sisi 3D)
+        const u = unit || "cm";
+        const sVal = paramA || 8;
+        const tVal = paramB || 10;
+        const dimBase = createDimensionSprite(`s = ${sVal} ${u}`, isDark);
+        dimBase.position.set(0, GRID_Y - 0.25, pyrR + 0.25);
+        group.add(dimBase);
+
+        const dimHeight = createDimensionSprite(`t = ${tVal} ${u}`, isDark);
+        dimHeight.position.set(-pyrR - 0.45, pyrH / 2 + GRID_Y, 0);
+        group.add(dimHeight);
 
         if (showSlicePlane) {
           const planeSize = Math.max(pyrR, pyrH) * 1.8;
@@ -2748,7 +2916,7 @@ export default function InteractiveCanvas3D({
         group.add(mesh);
       }
     }
-  }, [activeModel, solidKind, showSlicePlane, sliceProgress, wireframe, is3DModel, paramA, paramB, paramC]);
+  }, [activeModel, solidKind, showSlicePlane, sliceProgress, wireframe, is3DModel, paramA, paramB, paramC, isDark, unit]);
 
   // Init Three.js container
   useEffect(() => {
@@ -3056,6 +3224,38 @@ export default function InteractiveCanvas3D({
     setInlineComposer({ x: Math.max(2, Math.min(75, pctX)), y: Math.max(2, Math.min(75, pctY)), text: "" });
   };
 
+  // 2D Canvas Interactive Zoom & Pan Handlers
+  const handleWheel2D = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.15 : 0.87;
+    setZoom2D((prev) => Math.max(0.2, Math.min(8, prev * factor)));
+  };
+
+  const handle2DPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (isDrawingToolActive || isTypingToolActive) return;
+    isPanning2DRef.current = true;
+    panStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      initialPanX: pan2D.x,
+      initialPanY: pan2D.y,
+    };
+  };
+
+  const handle2DPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isPanning2DRef.current || isDrawingToolActive || isTypingToolActive) return;
+    const dx = e.clientX - panStartRef.current.x;
+    const dy = e.clientY - panStartRef.current.y;
+    setPan2D({
+      x: panStartRef.current.initialPanX + dx,
+      y: panStartRef.current.initialPanY + dy,
+    });
+  };
+
+  const handle2DPointerUp = () => {
+    isPanning2DRef.current = false;
+  };
+
   // Status apakah teks sambutan & preset papan kosong boleh ditampilkan:
   // Hilang secara otomatis jika pengguna mulai mencoret kanvas, mengetik rumus, atau mengaktifkan alat pena/ketik
   const showEmptyBoardPlaceholder =
@@ -3078,26 +3278,26 @@ export default function InteractiveCanvas3D({
           <div className="flex items-center dark:bg-white/[0.04] bg-slate-100 p-0.5 rounded-xl border dark:border-white/[0.08] border-slate-200">
             <button
               type="button"
-              onClick={() => selectModel("solids")}
+              onClick={() => selectModel("3d_empty")}
               className={`px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition cursor-pointer ${
                 is3DModel
                   ? "bg-white dark:bg-white/[0.16] text-slate-900 dark:text-white shadow-sm font-semibold"
                   : "dark:text-zinc-400 text-slate-600 dark:hover:text-white hover:text-slate-900"
               }`}
-              title="Geometri 3D Ruang"
+              title="Geometri 3D Ruang (Default Bersih & Kosong)"
             >
               <Box className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">3D</span>
             </button>
             <button
               type="button"
-              onClick={() => selectModel("2d_quadratic")}
+              onClick={() => selectModel("2d_empty")}
               className={`px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition cursor-pointer ${
                 is2DGraphModel
                   ? "bg-white dark:bg-white/[0.16] text-slate-900 dark:text-white shadow-sm font-semibold"
                   : "dark:text-zinc-400 text-slate-600 dark:hover:text-white hover:text-slate-900"
               }`}
-              title="Grafik 2D Kartesius"
+              title="Grafik 2D Kartesius (Default Bersih & Kosong)"
             >
               <span className="font-mono text-xs">2D</span>
             </button>
@@ -3125,6 +3325,8 @@ export default function InteractiveCanvas3D({
                 setInlineComposer(null);
                 setIsTypingToolActive(false);
                 setIsDrawingToolActive(false);
+                setZoom2D(1);
+                setPan2D({ x: 0, y: 0 });
                 selectModel("empty");
               }}
               className="p-1.5 rounded-xl dark:bg-white/[0.04] bg-slate-100 hover:bg-slate-200 dark:hover:bg-white/[0.08] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border dark:border-white/[0.08] border-slate-200 transition cursor-pointer"
@@ -3366,11 +3568,80 @@ export default function InteractiveCanvas3D({
             is2DGraphModel ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
           }`}
         >
-          <canvas ref={graph2DCanvasRef} className="w-full h-full block" />
+          <canvas
+            ref={graph2DCanvasRef}
+            onWheel={handleWheel2D}
+            onPointerDown={handle2DPointerDown}
+            onPointerMove={handle2DPointerMove}
+            onPointerUp={handle2DPointerUp}
+            onPointerLeave={handle2DPointerUp}
+            className={`w-full h-full block ${isDrawingToolActive ? "" : "cursor-grab active:cursor-grabbing"}`}
+          />
 
-          {/* 2D Equation & Coefficients Bar (Hanya untuk fungsi kurva aljabar 2D, bukan bangun datar geometri) */}
+          {/* 2D Zoom In / Out / Reset Floating Controls */}
+          <div className="absolute top-3 left-3 z-20 flex items-center gap-1 p-1 rounded-xl liquid-glass-popup border border-slate-200 dark:border-white/10 shadow-lg select-none">
+            <button
+              type="button"
+              onClick={() => setZoom2D((prev) => Math.min(8, prev * 1.25))}
+              className="p-1.5 rounded-lg text-slate-600 dark:text-zinc-300 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.08] transition cursor-pointer"
+              title="Perbesar Grafik (Zoom In)"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setZoom2D(1);
+                setPan2D({ x: 0, y: 0 });
+              }}
+              className="px-2 py-0.5 text-[11px] font-mono font-semibold text-slate-600 dark:text-zinc-300 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.08] rounded-lg transition cursor-pointer"
+              title="Reset Zoom ke 100%"
+            >
+              {Math.round(zoom2D * 100)}%
+            </button>
+            <button
+              type="button"
+              onClick={() => setZoom2D((prev) => Math.max(0.2, prev / 1.25))}
+              className="p-1.5 rounded-lg text-slate-600 dark:text-zinc-300 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.08] transition cursor-pointer"
+              title="Perkecil Grafik (Zoom Out)"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Menu Kurva Cepat Saat Mode 2D Kosong */}
+          {activeModel === "2d_empty" && (
+            <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5 p-1 rounded-xl liquid-glass-popup border border-slate-200 dark:border-white/10 shadow-lg select-none text-xs">
+              <span className="text-[11px] text-slate-500 dark:text-zinc-400 px-2 font-medium">
+                Pilih Kurva 2D:
+              </span>
+              <button
+                type="button"
+                onClick={() => selectModel("2d_quadratic")}
+                className="px-2 py-1 rounded-lg text-xs font-semibold bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-300 transition cursor-pointer"
+              >
+                Parabola Kuadrat
+              </button>
+              <button
+                type="button"
+                onClick={() => selectModel("2d_trig")}
+                className="px-2 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 transition cursor-pointer"
+              >
+                Trigonometri Sinus
+              </button>
+              <button
+                type="button"
+                onClick={() => selectModel("2d_linear")}
+                className="px-2 py-1 rounded-lg text-xs font-semibold bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-300 transition cursor-pointer"
+              >
+                Garis Linear
+              </button>
+            </div>
+          )}
+
+          {/* 2D Equation & Coefficients Bar (Repositioned to bottom-left with safe right clearance) */}
           {(activeModel === "2d_quadratic" || activeModel === "2d_trig" || activeModel === "2d_linear" || activeModel === "2d_circle") && (
-            <div className="absolute bottom-3 inset-x-4 flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-2xl bg-white/95 dark:bg-[#0f121d]/90 border border-slate-200 dark:border-white/[0.08] backdrop-blur-md shadow-xl z-20 text-xs text-slate-800 dark:text-zinc-200">
+            <div className="absolute bottom-4 left-4 max-w-[calc(100%-80px)] sm:max-w-md md:max-w-lg flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-2xl bg-white/95 dark:bg-[#0f121d]/90 border border-slate-200 dark:border-white/[0.08] backdrop-blur-md shadow-xl z-20 text-xs text-slate-800 dark:text-zinc-200 animate-fadeIn">
               <div className="flex items-center gap-3">
                 <span className="font-semibold text-slate-900 dark:text-white font-mono text-[13px]">
                   {activeModel === "2d_quadratic"
@@ -3428,7 +3699,47 @@ export default function InteractiveCanvas3D({
         />
 
         {/* 3D Geometry HUD Overlay Card (With Minimize/Hide Toggle) */}
-        {(is3DModel || activeModel === "2d_shape") && isHudVisible && (
+        {activeModel === "3d_empty" && (
+          <div className="absolute top-3 right-3 p-3.5 rounded-2xl liquid-glass-popup z-20 text-xs w-64 space-y-2.5 text-slate-800 dark:text-zinc-200 animate-liquid-pop origin-top-right">
+            <div className="flex items-center justify-between border-b dark:border-white/[0.08] border-slate-200/80 pb-2">
+              <span className="font-semibold dark:text-white text-slate-900 flex items-center gap-1.5">
+                <Box className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-300" />
+                Ruang 3D Kosong
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-tight">
+              Pilih bentuk geometri 3D untuk dimunculkan ke ruang kanvas:
+            </p>
+            <div className="grid grid-cols-2 gap-1.5 pt-1">
+              {[
+                { id: "kubus", label: "Kubus" },
+                { id: "balok", label: "Balok" },
+                { id: "prisma", label: "Prisma" },
+                { id: "limas", label: "Limas" },
+                { id: "tabung", label: "Tabung" },
+                { id: "bola", label: "Bola" },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    if (item.id === "tabung") {
+                      selectModel("cylinder");
+                    } else {
+                      setSolidKind(item.id as SolidKind);
+                      selectModel("solids");
+                    }
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.12] text-xs font-medium text-slate-800 dark:text-zinc-200 text-center transition cursor-pointer"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {(is3DModel || activeModel === "2d_shape") && activeModel !== "3d_empty" && isHudVisible && (
           isHudMinimized ? (
             <div className="absolute top-3 right-3 flex items-center gap-1 z-20">
               <button
@@ -4289,16 +4600,16 @@ export default function InteractiveCanvas3D({
             <button
               type="button"
               onClick={() => setIsAiWidgetOpen(true)}
-              className="group flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-white/95 dark:bg-[#121520]/95 hover:bg-white dark:hover:bg-[#181c2b] border border-slate-200 dark:border-white/10 shadow-xl hover:shadow-2xl backdrop-blur-md transition-all duration-200 cursor-pointer active:scale-95"
+              className="group flex items-center h-11 rounded-full bg-white/95 dark:bg-[#121520]/95 hover:bg-white dark:hover:bg-[#181c2b] border border-slate-200 dark:border-white/10 shadow-xl hover:shadow-2xl backdrop-blur-md transition-all duration-300 ease-out cursor-pointer active:scale-95 p-1.5 overflow-hidden w-11 hover:w-auto"
               title="Buka ZAP AI Copilot untuk membuat bangun 2D/3D & rumus"
             >
-              <div className="w-6 h-6 rounded-lg bg-amber-500/10 dark:bg-amber-400/15 flex items-center justify-center text-amber-500 dark:text-amber-400 group-hover:scale-110 transition-transform">
+              <div className="w-8 h-8 rounded-full bg-amber-500/10 dark:bg-amber-400/15 flex items-center justify-center text-amber-500 dark:text-amber-400 shrink-0 group-hover:scale-105 transition-transform">
                 <ZapLogo className="w-4 h-4" />
               </div>
-              <div className="flex flex-col text-left">
+              <div className="flex flex-col text-left opacity-0 max-w-0 group-hover:opacity-100 group-hover:max-w-[220px] transition-all duration-300 ease-out whitespace-nowrap pl-0 group-hover:pl-2 group-hover:pr-3 overflow-hidden">
                 <span className="text-xs font-semibold text-slate-900 dark:text-white leading-tight flex items-center gap-1">
                   ZAP AI Copilot
-                  <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
+                  <Sparkles className="w-3 h-3 text-amber-500" />
                 </span>
                 <span className="text-[10px] text-slate-500 dark:text-zinc-400 leading-tight">
                   Buat 2D, 3D, atau Rumus
