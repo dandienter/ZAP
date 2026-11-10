@@ -19,6 +19,8 @@ class RobustZeroAnswerGuardrail:
         r"(?:maka|jadi|kesimpulannya|sehingga|diperoleh|didapatkan),?\s+(?:nilai\s+)?[a-zA-Z]\s*=\s*[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+|√\d+)",
         # Deteksi deklarasi nilai variabel langsung: "nilai x adalah 5", "nilai dari x = -2"
         r"(?:nilai\s+(?:dari\s+|variabel\s+)?[a-zA-Z])\s*(?:adalah|=|:)\s*[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+|√\d+)",
+        # Deteksi evaluasi diagonal atau nilai geometri jadi: "d_bidang = 14,14 cm", "diagonal ruang = 17,32 cm"
+        r"(?:d(?:[_\s]*(?:bidang|ruang|sisi))?|diagonal(?:[_\s]*(?:bidang|ruang|sisi))?)\s*(?:=|\\approx|≈|adalah)\s*(?:[^\n=]*=)?\s*[-+−]?\s*\d+(?:[.,]\d+)?\s*(?:\\text\{\s*(?:cm|m|mm|satuan)\s*\}|cm|m|mm|satuan)?",
         # Bahasa Inggris fallback
         r"(?:the\s+(?:final\s+)?answer\s+is|therefore\s+[a-zA-Z]\s*=|we\s+get\s+[a-zA-Z]\s*=)\s*[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+)"
     ]

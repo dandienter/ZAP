@@ -218,3 +218,15 @@ class TestZeroAnswerGuardrail:
         
         assert "kunci adalah [DIRAHASIAKAN]" in sanitized
         assert "baris ke-5" in sanitized
+
+    def test_guardrail_censors_geometric_diagonal_declaration(self):
+        """
+        Kasus 9: Memastikan nilai diagonal ruang/bidang yang dihitung langsung disaring.
+        """
+        text = "Untuk kubus s = 10 cm, diagonal ruang = 17.32 cm dan d_bidang = 14.14 cm."
+        sanitized = RobustZeroAnswerGuardrail.sanitize(text)
+
+        assert "17.32 cm" not in sanitized
+        assert "14.14 cm" not in sanitized
+        assert "Bagaimanakah menurut analisismu?" in sanitized
+        assert "kubus s = 10 cm" in sanitized

@@ -583,9 +583,6 @@ export function resolveGeometricIntent(
       const entity = GEOMETRY_DATABASE.nets_2d.find((n) => n.id === "jaring_prisma")!;
       const s = nums[0] || 8;
       const t = nums[1] || 10;
-      const luasAlas = ((Math.sqrt(3) / 4) * s * s).toFixed(2);
-      const luasSelimut = (3 * s * t).toFixed(2);
-      const totalNet = (2 * parseFloat(luasAlas) + parseFloat(luasSelimut)).toFixed(2);
 
       return {
         dimension: "2D",
@@ -593,7 +590,7 @@ export function resolveGeometricIntent(
         entity,
         params: { s, t },
         unit: parsedUnit,
-        reply: `Representasi **2D Jaring-Jaring Prisma Segitiga** telah **AKTIF** di Papan Tulis Interaktif 2D di panel kanan layar! 📐\n\n### Komponen & Rumus Jaring-Jaring Prisma Segitiga ($s = ${s}\\text{ ${parsedUnit}},\\ t = ${t}\\text{ ${parsedUnit}}$):\n\n- **Bentuk Bentangan 2D:** 2 segitiga sama sisi (alas & tutup) dan 3 persegi panjang (sisi tegak).\n- **Luas 1 Alas Segitiga ($L_a$):** $$L_a = \\frac{\\sqrt{3}}{4}s^2 = \\frac{\\sqrt{3}}{4}(${s})^2 \\approx ${luasAlas}\\text{ ${parsedUnit}}^2$$\n- **Luas 3 Sisi Tegak ($L_s$):** $$L_s = 3(s \\times t) = 3(${s})(${t}) = ${luasSelimut}\\text{ ${parsedUnit}}^2$$\n- **Luas Total Jaring-Jaring ($L_{\\text{jaring}}$):** $$L_{\\text{jaring}} = 2L_a + L_s \\approx 2(${luasAlas}) + ${luasSelimut} = ${totalNet}\\text{ ${parsedUnit}}^2$$\n\n💡 **Eksplorasi Kanvas 2D:**\nAmati garis putus-putus lipatan (folding lines) yang menghubungkan bidang alas segitiga dengan ketiga bidang tegak persegi panjang di kanvas 2D!`,
+        reply: `Representasi **2D Jaring-Jaring Prisma Segitiga** telah **AKTIF** di Papan Tulis Interaktif 2D di panel kanan layar! 📐\n\n### Komponen & Rumus Jaring-Jaring Prisma Segitiga ($s = ${s}\\text{ ${parsedUnit}},\\ t = ${t}\\text{ ${parsedUnit}}$):\n\n- **Bentuk Bentangan 2D:** 2 segitiga sama sisi (alas & tutup) dan 3 persegi panjang (sisi tegak).\n- **Rumus Luas 1 Alas Segitiga ($L_a$):** $$L_a = \\frac{\\sqrt{3}}{4}s^2$$\n- **Rumus Luas 3 Sisi Tegak ($L_s$):** $$L_s = 3(s \\times t)$$\n- **Rumus Luas Total Jaring-Jaring ($L_{\\text{jaring}}$):** $$L_{\\text{jaring}} = 2L_a + L_s$$\n\n💡 **Tantangan Eksplorasi 2D:** Dengan $s = ${s}\\text{ ${parsedUnit}}$ dan $t = ${t}\\text{ ${parsedUnit}}$, coba hitung berapakah luas total bentangan jaring-jaringnya?`,
         smartboardItem: {
           targetTab: "2d",
           model: "2d_shape",
@@ -610,14 +607,13 @@ export function resolveGeometricIntent(
     if (lower.includes("kubus") || lower.includes("cube")) {
       const entity = GEOMETRY_DATABASE.nets_2d.find((n) => n.id === "jaring_kubus")!;
       const s = nums[0] || 10;
-      const totalNet = (6 * s * s).toFixed(2);
       return {
         dimension: "2D",
         targetTab: "2d",
         entity,
         params: { s },
         unit: parsedUnit,
-        reply: `Representasi **2D Jaring-Jaring Kubus** telah **AKTIF** di Papan Tulis Interaktif 2D di panel sebelah kanan! 📐\n\n### Sifat Bentangan Jaring-Jaring Kubus ($s = ${s}\\text{ ${parsedUnit}}$):\n- **Komponen 2D:** 6 buah bujur sangkar (persegi) kongruen tersusun dalam pola salib (T-cross).\n- **Luas 1 Persegi:** $$L_1 = s^2 = (${s})^2 = ${s * s}\\text{ ${parsedUnit}}^2$$\n- **Luas Total Jaring-Jaring ($L_{\\text{jaring}}$):** $$L_{\\text{jaring}} = 6s^2 = 6(${s})^2 = ${totalNet}\\text{ ${parsedUnit}}^2$$\n\n💡 Silakan geser slider panjang rusuk di panel metrik kanvas 2D untuk mengamati perubahan luas bentangannya!`,
+        reply: `Representasi **2D Jaring-Jaring Kubus** telah **AKTIF** di Papan Tulis Interaktif 2D di panel sebelah kanan! 📐\n\n### Sifat Bentangan Jaring-Jaring Kubus ($s = ${s}\\text{ ${parsedUnit}}$):\n- **Komponen 2D:** 6 buah bujur sangkar (persegi) kongruen tersusun dalam pola salib (T-cross).\n- **Rumus Luas 1 Persegi ($L_1$):** $$L_1 = s^2$$\n- **Rumus Luas Total Jaring-Jaring ($L_{\\text{jaring}}$):** $$L_{\\text{jaring}} = 6s^2$$\n\n💡 **Tantangan Eksplorasi 2D:** Dengan panjang sisi $s = ${s}\\text{ ${parsedUnit}}$, coba substitusikan ke rumus $6s^2$: berapakah luas total yang kamu dapatkan?`,
         smartboardItem: {
           targetTab: "2d",
           model: "2d_shape",
@@ -634,17 +630,13 @@ export function resolveGeometricIntent(
       const entity = GEOMETRY_DATABASE.nets_2d.find((n) => n.id === "jaring_limas")!;
       const s = nums[0] || 8;
       const t = nums[1] || 10;
-      const ts = Math.sqrt((s / 2) ** 2 + t ** 2).toFixed(2);
-      const luasAlas = (s * s).toFixed(2);
-      const luas4Segitiga = (4 * 0.5 * s * parseFloat(ts)).toFixed(2);
-      const totalNet = (parseFloat(luasAlas) + parseFloat(luas4Segitiga)).toFixed(2);
       return {
         dimension: "2D",
         targetTab: "2d",
         entity,
         params: { s, t },
         unit: parsedUnit,
-        reply: `Representasi **2D Jaring-Jaring Limas Segi Empat (Piramida)** telah **AKTIF** di Papan Tulis 2D! 📐\n\n### Parameter & Komponen Jaring-Jaring ($s = ${s}\\text{ ${parsedUnit}},\\ t = ${t}\\text{ ${parsedUnit}}$):\n- **Bentuk Bentangan 2D:** 1 persegi alas di tengah, dikelilingi oleh 4 segitiga sama kaki sebagai selimut.\n- **Luas Alas Persegi ($L_a$):** $$L_a = s^2 = (${s})^2 = ${luasAlas}\\text{ ${parsedUnit}}^2$$\n- **Tinggi Apotema Segitiga ($t_s$):** $$t_s = \\sqrt{(s/2)^2 + t^2} = \\sqrt{${(s / 2).toFixed(1)}^2 + ${t}^2} \\approx ${ts}\\text{ ${parsedUnit}}$$\n- **Luas Total Jaring-Jaring ($L_{\\text{jaring}}$):** $$L_{\\text{jaring}} = s^2 + 2s \\cdot t_s \\approx ${totalNet}\\text{ ${parsedUnit}}^2$$\n\n💡 Perhatikan bagaimana 4 kelopak segitiga dapat dilipat ke atas menuju satu titik puncak (*apex*)!`,
+        reply: `Representasi **2D Jaring-Jaring Limas Segi Empat (Piramida)** telah **AKTIF** di Papan Tulis 2D! 📐\n\n### Parameter & Komponen Jaring-Jaring ($s = ${s}\\text{ ${parsedUnit}},\\ t = ${t}\\text{ ${parsedUnit}}$):\n- **Bentuk Bentangan 2D:** 1 persegi alas di tengah, dikelilingi oleh 4 segitiga sama kaki sebagai selimut.\n- **Rumus Luas Alas Persegi ($L_a$):** $$L_a = s^2$$\n- **Rumus Tinggi Apotema Segitiga ($t_s$):** $$t_s = \\sqrt{(s/2)^2 + t^2}$$\n- **Rumus Luas Total Jaring-Jaring ($L_{\\text{jaring}}$):** $$L_{\\text{jaring}} = s^2 + 2s \\cdot t_s$$\n\n💡 **Tantangan Eksplorasi 2D:** Dengan $s = ${s}\\text{ ${parsedUnit}}$ dan $t = ${t}\\text{ ${parsedUnit}}$, coba hitung luas alas atau tinggi apotemanya!`,
         smartboardItem: {
           targetTab: "2d",
           model: "2d_shape",
@@ -663,14 +655,13 @@ export function resolveGeometricIntent(
       const p = nums[0] || 10;
       const l = nums[1] || 6;
       const t = nums[2] || 4;
-      const totalNet = (2 * (p * l + p * t + l * t)).toFixed(2);
       return {
         dimension: "2D",
         targetTab: "2d",
         entity,
         params: { p, l, t },
         unit: parsedUnit,
-        reply: `Representasi **2D Jaring-Jaring Balok** telah **AKTIF** di Papan Tulis 2D di sebelah kanan! 📐\n\n### Parameter Balok ($p = ${p},\\ l = ${l},\\ t = ${t}\\text{ ${parsedUnit}}$):\n- **Komponen 2D:** 6 buah persegi panjang yang terdiri dari 3 pasang bidang kongruen.\n- **Luas Total Jaring-Jaring:** $$L_{\\text{jaring}} = 2(pl + pt + lt) = 2((${p}\\times${l}) + (${p}\\times${t}) + (${l}\\times${t})) = ${totalNet}\\text{ ${parsedUnit}}^2$$\n\n💡 Amati kesesuaian pasangan bidang yang berhadapan pada jaring-jaring 2D!`,
+        reply: `Representasi **2D Jaring-Jaring Balok** telah **AKTIF** di Papan Tulis 2D di sebelah kanan! 📐\n\n### Parameter Balok ($p = ${p},\\ l = ${l},\\ t = ${t}\\text{ ${parsedUnit}}$):\n- **Komponen 2D:** 6 buah persegi panjang yang terdiri dari 3 pasang bidang kongruen.\n- **Rumus Luas Total Jaring-Jaring:** $$L_{\\text{jaring}} = 2(pl + pt + lt)$$\n\n💡 **Tantangan Eksplorasi 2D:** Dengan $p=${p}, $l=${l}, $t=${t}\\text{ ${parsedUnit}}$, coba hitung luas total jaring-jaring balok tersebut!`,
         smartboardItem: {
           targetTab: "2d",
           model: "2d_shape",
@@ -703,15 +694,13 @@ export function resolveGeometricIntent(
 
         if (shape.id === "persegi") {
           paramA = nums[0] || 10;
-          const luas = (paramA * paramA).toFixed(2);
-          const keliling = (4 * paramA).toFixed(2);
           return {
             dimension: "2D",
             targetTab: "2d",
             entity: shape,
             params: { s: paramA },
             unit: parsedUnit,
-            reply: `Bangun datar **Persegi (2D)** telah **AKTIF** di Papan Tulis Interaktif 2D panel kanan! 📐\n\n### Parameter & Sifat Matematis Persegi ($s = ${paramA}\\text{ ${parsedUnit}}$):\n- **Panjang Sisi ($s$):** $${paramA}\\text{ ${parsedUnit}}$\n- **Luas Bidang ($L$):** $$L = s^2 = (${paramA})^2 = ${luas}\\text{ ${parsedUnit}}^2$$\n- **Keliling ($K$):** $$K = 4s = 4(${paramA}) = ${keliling}\\text{ ${parsedUnit}}$$\n- **Panjang Diagonal ($d$):** $$d = s\\sqrt{2} \\approx ${(paramA * Math.SQRT2).toFixed(2)}\\text{ ${parsedUnit}}$$\n\n💡 Amati 4 sudut siku-siku $90^\\circ$ dan 4 sumbu simetri lipat di kanvas 2D!`,
+            reply: `Bangun datar **Persegi (2D)** telah **AKTIF** di Papan Tulis Interaktif 2D panel kanan! 📐\n\n### Parameter & Rumus Persegi ($s = ${paramA}\\text{ ${parsedUnit}}$):\n- **Panjang Sisi ($s$):** $${paramA}\\text{ ${parsedUnit}}$\n- **Rumus Luas Bidang ($L$):** $$L = s^2$$\n- **Rumus Keliling ($K$):** $$K = 4s$$\n- **Rumus Panjang Diagonal ($d$):** $$d = s\\sqrt{2}$$\n\n💡 **Tantangan Eksplorasi 2D:** Dengan panjang sisi $s = ${paramA}\\text{ ${parsedUnit}}$, coba hitung berapakah luas atau keliling persegi ini?`,
             smartboardItem: {
               targetTab: "2d",
               model: "2d_shape",
@@ -727,16 +716,13 @@ export function resolveGeometricIntent(
         if (shape.id === "persegi_panjang") {
           paramA = nums[0] || 14;
           paramB = nums[1] || 8;
-          const luas = (paramA * paramB).toFixed(2);
-          const keliling = (2 * (paramA + paramB)).toFixed(2);
-          const diag = Math.sqrt(paramA * paramA + paramB * paramB).toFixed(2);
           return {
             dimension: "2D",
             targetTab: "2d",
             entity: shape,
             params: { p: paramA, l: paramB },
             unit: parsedUnit,
-            reply: `Bangun datar **Persegi Panjang (2D)** telah **AKTIF** di Papan Tulis Interaktif 2D panel kanan! 📐\n\n### Parameter & Sifat Matematis ($p = ${paramA}\\text{ ${parsedUnit}},\\ l = ${paramB}\\text{ ${parsedUnit}}$):\n- **Panjang ($p$):** $${paramA}\\text{ ${parsedUnit}}$\n- **Lebar ($l$):** $${paramB}\\text{ ${parsedUnit}}$\n- **Luas Bidang ($L$):** $$L = p \\times l = ${paramA} \\times ${paramB} = ${luas}\\text{ ${parsedUnit}}^2$$\n- **Keliling ($K$):** $$K = 2(p + l) = 2(${paramA} + ${paramB}) = ${keliling}\\text{ ${parsedUnit}}$$\n- **Panjang Diagonal ($d$):** $$d = \\sqrt{p^2 + l^2} = \\sqrt{${paramA}^2 + ${paramB}^2} \\approx ${diag}\\text{ ${parsedUnit}}$$\n\n💡 Tarik slider dimensi di panel metrik kanvas untuk mengamati proporsi panjang vs lebar!`,
+            reply: `Bangun datar **Persegi Panjang (2D)** telah **AKTIF** di Papan Tulis Interaktif 2D panel kanan! 📐\n\n### Parameter & Rumus ($p = ${paramA}\\text{ ${parsedUnit}},\\ l = ${paramB}\\text{ ${parsedUnit}}$):\n- **Panjang ($p$):** $${paramA}\\text{ ${parsedUnit}}$\n- **Lebar ($l$):** $${paramB}\\text{ ${parsedUnit}}$\n- **Rumus Luas Bidang ($L$):** $$L = p \\times l$$\n- **Rumus Keliling ($K$):** $$K = 2(p + l)$$\n- **Rumus Panjang Diagonal ($d$):** $$d = \\sqrt{p^2 + l^2}$$\n\n💡 **Tantangan Eksplorasi 2D:** Dengan dimensi di atas, coba hitung berapakah luas atau panjang diagonalnya?`,
             smartboardItem: {
               targetTab: "2d",
               model: "2d_shape",
@@ -752,15 +738,13 @@ export function resolveGeometricIntent(
 
         if (shape.id === "lingkaran") {
           paramA = nums[0] || 7;
-          const luas = (Math.PI * paramA * paramA).toFixed(2);
-          const keliling = (2 * Math.PI * paramA).toFixed(2);
           return {
             dimension: "2D",
             targetTab: "2d",
             entity: shape,
             params: { r: paramA },
             unit: parsedUnit,
-            reply: `Bangun datar **Lingkaran (2D)** telah **AKTIF** di Papan Tulis Interaktif 2D panel kanan! 📐\n\n### Parameter & Sifat Matematis ($r = ${paramA}\\text{ ${parsedUnit}}$):\n- **Jari-jari ($r$):** $${paramA}\\text{ ${parsedUnit}}$\n- **Diameter ($d$):** $${2 * paramA}\\text{ ${parsedUnit}}$\n- **Luas Bidang ($L$):** $$L = \\pi r^2 = \\pi (${paramA})^2 \\approx ${luas}\\text{ ${parsedUnit}}^2$$\n- **Keliling ($K$):** $$K = 2\\pi r = 2\\pi (${paramA}) \\approx ${keliling}\\text{ ${parsedUnit}}$$\n\n💡 Amati titik pusat $O$ dan garis putus-putus jari-jari di kanvas 2D!`,
+            reply: `Bangun datar **Lingkaran (2D)** telah **AKTIF** di Papan Tulis Interaktif 2D panel kanan! 📐\n\n### Parameter & Rumus ($r = ${paramA}\\text{ ${parsedUnit}}$):\n- **Jari-jari ($r$):** $${paramA}\\text{ ${parsedUnit}}$\n- **Diameter ($d$):** $$d = 2r$$\n- **Rumus Luas Bidang ($L$):** $$L = \\pi r^2$$\n- **Rumus Keliling ($K$):** $$K = 2\\pi r$$\n\n💡 **Tantangan Eksplorasi 2D:** Dengan $r = ${paramA}\\text{ ${parsedUnit}}$, coba hitung berapakah luas atau keliling lingkaran ini?`,
             smartboardItem: {
               targetTab: "2d",
               model: "2d_shape",
@@ -776,16 +760,13 @@ export function resolveGeometricIntent(
         if (shape.id === "belah_ketupat") {
           paramA = nums[0] || 12;
           paramB = nums[1] || 16;
-          const s = Math.sqrt((paramA / 2) ** 2 + (paramB / 2) ** 2).toFixed(2);
-          const luas = ((paramA * paramB) / 2).toFixed(2);
-          const keliling = (4 * parseFloat(s)).toFixed(2);
           return {
             dimension: "2D",
             targetTab: "2d",
             entity: shape,
             params: { d1: paramA, d2: paramB },
             unit: parsedUnit,
-            reply: `Bangun datar **Belah Ketupat (2D)** telah **AKTIF** di Papan Tulis Interaktif 2D panel kanan! 📐\n\n### Parameter ($d_1 = ${paramA}\\text{ ${parsedUnit}},\\ d_2 = ${paramB}\\text{ ${parsedUnit}}$):\n- **Diagonal 1 ($d_1$):** $${paramA}\\text{ ${parsedUnit}}$\n- **Diagonal 2 ($d_2$):** $${paramB}\\text{ ${parsedUnit}}$\n- **Sisi Miring ($s$):** $$s = \\sqrt{(d_1/2)^2 + (d_2/2)^2} \\approx ${s}\\text{ ${parsedUnit}}$$\n- **Luas ($L$):** $$L = \\frac{d_1 \\times d_2}{2} = ${luas}\\text{ ${parsedUnit}}^2$$\n- **Keliling ($K$):** $$K = 4s = ${keliling}\\text{ ${parsedUnit}}$$\n\n💡 Perhatikan perpotongan tegak lurus kedua diagonal di titik tengah simetri!`,
+            reply: `Bangun datar **Belah Ketupat (2D)** telah **AKTIF** di Papan Tulis Interaktif 2D panel kanan! 📐\n\n### Parameter & Rumus ($d_1 = ${paramA}\\text{ ${parsedUnit}},\\ d_2 = ${paramB}\\text{ ${parsedUnit}}$):\n- **Diagonal 1 ($d_1$):** $${paramA}\\text{ ${parsedUnit}}$\n- **Diagonal 2 ($d_2$):** $${paramB}\\text{ ${parsedUnit}}$\n- **Rumus Sisi Miring ($s$):** $$s = \\sqrt{(d_1/2)^2 + (d_2/2)^2}$$\n- **Rumus Luas ($L$):** $$L = \\frac{d_1 \\times d_2}{2}$$\n- **Rumus Keliling ($K$):** $$K = 4s$$\n\n💡 **Tantangan Eksplorasi 2D:** Coba masukkan nilai $d_1 = ${paramA}$ dan $d_2 = ${paramB}$ ke dalam rumus luas: berapa hasilnya?`,
             smartboardItem: {
               targetTab: "2d",
               model: "2d_shape",
@@ -802,14 +783,13 @@ export function resolveGeometricIntent(
         if (shape.id === "layang_layang") {
           paramA = nums[0] || 12;
           paramB = nums[1] || 16;
-          const luas = ((paramA * paramB) / 2).toFixed(2);
           return {
             dimension: "2D",
             targetTab: "2d",
             entity: shape,
             params: { d1: paramA, d2: paramB },
             unit: parsedUnit,
-            reply: `Bangun datar **Layang-Layang (2D)** telah **AKTIF** di Papan Tulis Interaktif 2D panel kanan! 📐\n\n### Parameter ($d_1 = ${paramA}\\text{ ${parsedUnit}},\\ d_2 = ${paramB}\\text{ ${parsedUnit}}$):\n- **Diagonal Utama ($d_1$):** $${paramA}\\text{ ${parsedUnit}}$\n- **Diagonal Melintang ($d_2$):** $${paramB}\\text{ ${parsedUnit}}$\n- **Luas ($L$):** $$L = \\frac{d_1 \\times d_2}{2} = ${luas}\\text{ ${parsedUnit}}^2$$\n\n💡 Amati sumbu simetri lipat vertikal yang membagi layang-layang menjadi dua bagian kongruen!`,
+            reply: `Bangun datar **Layang-Layang (2D)** telah **AKTIF** di Papan Tulis Interaktif 2D panel kanan! 📐\n\n### Parameter & Rumus ($d_1 = ${paramA}\\text{ ${parsedUnit}},\\ d_2 = ${paramB}\\text{ ${parsedUnit}}$):\n- **Diagonal Utama ($d_1$):** $${paramA}\\text{ ${parsedUnit}}$\n- **Diagonal Melintang ($d_2$):** $${paramB}\\text{ ${parsedUnit}}$\n- **Rumus Luas ($L$):** $$L = \\frac{d_1 \\times d_2}{2}$$\n\n💡 **Tantangan Eksplorasi 2D:** Coba hitung luas layang-layang ini menggunakan rumus di atas!`,
             smartboardItem: {
               targetTab: "2d",
               model: "2d_shape",
@@ -827,15 +807,13 @@ export function resolveGeometricIntent(
           paramA = nums[0] || 12;
           paramB = nums[1] || 8;
           paramC = nums[2] || 10;
-          const luas = (paramA * paramB).toFixed(2);
-          const keliling = (2 * (paramA + paramC)).toFixed(2);
           return {
             dimension: "2D",
             targetTab: "2d",
             entity: shape,
             params: { a: paramA, t: paramB, s: paramC },
             unit: parsedUnit,
-            reply: `Bangun datar **Jajar Genjang (2D)** telah **AKTIF** di Papan Tulis Interaktif 2D panel kanan! 📐\n\n### Parameter ($a = ${paramA}\\text{ ${parsedUnit}},\\ t = ${paramB}\\text{ ${parsedUnit}},\\ s = ${paramC}\\text{ ${parsedUnit}}$):\n- **Alas ($a$):** $${paramA}\\text{ ${parsedUnit}}$\n- **Tinggi Tegak ($t$):** $${paramB}\\text{ ${parsedUnit}}$\n- **Sisi Miring ($s$):** $${paramC}\\text{ ${parsedUnit}}$\n- **Luas ($L$):** $$L = a \\times t = ${paramA} \\times ${paramB} = ${luas}\\text{ ${parsedUnit}}^2$$\n- **Keliling ($K$):** $$K = 2(a + s) = 2(${paramA} + ${paramC}) = ${keliling}\\text{ ${parsedUnit}}$$\n\n💡 Geser slider untuk melihat bagaimana tinggi tegak menentukan luas independen dari sisi miring!`,
+            reply: `Bangun datar **Jajar Genjang (2D)** telah **AKTIF** di Papan Tulis Interaktif 2D panel kanan! 📐\n\n### Parameter & Rumus ($a = ${paramA}\\text{ ${parsedUnit}},\\ t = ${paramB}\\text{ ${parsedUnit}},\\ s = ${paramC}\\text{ ${parsedUnit}}$):\n- **Alas ($a$):** $${paramA}\\text{ ${parsedUnit}}$\n- **Tinggi Tegak ($t$):** $${paramB}\\text{ ${parsedUnit}}$\n- **Sisi Miring ($s$):** $${paramC}\\text{ ${parsedUnit}}$\n- **Rumus Luas ($L$):** $$L = a \\times t$$\n- **Rumus Keliling ($K$):** $$K = 2(a + s)$$\n\n💡 **Tantangan Eksplorasi 2D:** Coba hitung berapakah luas jajar genjang ini dengan alas $a = ${paramA}$ dan tinggi $t = ${paramB}$!`,
             smartboardItem: {
               targetTab: "2d",
               model: "2d_shape",
@@ -854,14 +832,13 @@ export function resolveGeometricIntent(
           paramA = nums[0] || 8;
           paramB = nums[1] || 14;
           paramC = nums[2] || 6;
-          const luas = (((paramA + paramB) * paramC) / 2).toFixed(2);
           return {
             dimension: "2D",
             targetTab: "2d",
             entity: shape,
             params: { a: paramA, b: paramB, t: paramC },
             unit: parsedUnit,
-            reply: `Bangun datar **Trapesium (2D)** telah **AKTIF** di Papan Tulis Interaktif 2D panel kanan! 📐\n\n### Parameter ($a = ${paramA}\\text{ ${parsedUnit}},\\ b = ${paramB}\\text{ ${parsedUnit}},\\ t = ${paramC}\\text{ ${parsedUnit}}$):\n- **Sisi Sejajar Atas ($a$):** $${paramA}\\text{ ${parsedUnit}}$\n- **Sisi Sejajar Bawah ($b$):** $${paramB}\\text{ ${parsedUnit}}$\n- **Tinggi ($t$):** $${paramC}\\text{ ${parsedUnit}}$\n- **Luas ($L$):** $$L = \\frac{a + b}{2} \\times t = \\frac{${paramA} + ${paramB}}{2} \\times ${paramC} = ${luas}\\text{ ${parsedUnit}}^2$$\n\n💡 Perhatikan bagaimana garis tinggi menghubungkan tegak lurus kedua sisi sejajar!`,
+            reply: `Bangun datar **Trapesium (2D)** telah **AKTIF** di Papan Tulis Interaktif 2D panel kanan! 📐\n\n### Parameter & Rumus ($a = ${paramA}\\text{ ${parsedUnit}},\\ b = ${paramB}\\text{ ${parsedUnit}},\\ t = ${paramC}\\text{ ${parsedUnit}}$):\n- **Sisi Sejajar Atas ($a$):** $${paramA}\\text{ ${parsedUnit}}$\n- **Sisi Sejajar Bawah ($b$):** $${paramB}\\text{ ${parsedUnit}}$\n- **Tinggi ($t$):** $${paramC}\\text{ ${parsedUnit}}$\n- **Rumus Luas ($L$):** $$L = \\frac{a + b}{2} \\times t$$\n\n💡 **Tantangan Eksplorasi 2D:** Coba hitung luas trapesium ini dengan rumus di atas!`,
             smartboardItem: {
               targetTab: "2d",
               model: "2d_shape",
@@ -891,18 +868,13 @@ export function resolveGeometricIntent(
   if (isPrisma3D) {
     const s = nums[0] || 8;
     const t = nums[1] || 10;
-    const luasAlas = ((Math.sqrt(3) / 4) * s * s).toFixed(2);
-    const luasSelimut = (3 * s * t).toFixed(2);
-    const lp = (2 * parseFloat(luasAlas) + parseFloat(luasSelimut)).toFixed(2);
-    const vol = (parseFloat(luasAlas) * t).toFixed(2);
-
     return {
       dimension: "3D",
       targetTab: "3d",
       entity: GEOMETRY_DATABASE.shapes_3d.find((s) => s.id === "prisma")!,
       params: { s, t },
       unit: parsedUnit,
-      reply: `Objek geometri 3D **Prisma Segitiga** telah **AKTIF** dan ditampilkan di Papan Tulis Pintar (Smartboard) 3D di panel sebelah kanan layar! 🎉\n\n### Parameter & Sifat Matematis Prisma Segitiga ($s = ${s}\\text{ ${parsedUnit}},\\ t = ${t}\\text{ ${parsedUnit}}$):\n\n- **Sisi Alas Segitiga Sama Sisi ($s$):** $${s}\\text{ ${parsedUnit}}$\n- **Tinggi Prisma ($t$):** $${t}\\text{ ${parsedUnit}}$\n- **Luas Alas ($L_a$):** $$L_a = \\frac{\\sqrt{3}}{4}s^2 = \\frac{\\sqrt{3}}{4}(${s})^2 \\approx ${luasAlas}\\text{ ${parsedUnit}}^2$$\n- **Luas Selimut ($L_s$):** $$L_s = 3(s \\times t) = 3(${s})(${t}) = ${luasSelimut}\\text{ ${parsedUnit}}^2$$\n- **Luas Permukaan Total ($L$):** $$L = 2L_a + L_s \\approx ${lp}\\text{ ${parsedUnit}}^2$$\n- **Volume Ruang ($V$):** $$V = L_a \\times t \\approx ${vol}\\text{ ${parsedUnit}}^3$$\n\n💡 **Eksplorasi Interaktif 3D:**\nSilakan putar kanvas 3D di sebelah kanan (drag mouse 360°) untuk mengamati kedua bidang alas segitiga dan ketiga bidang tegak persegi panjangnya!`,
+      reply: `Objek geometri 3D **Prisma Segitiga** telah **AKTIF** dan ditampilkan di Papan Tulis Pintar 3D! 🎉\n\n### Parameter & Rumus Sifat Matematis Prisma Segitiga ($s = ${s}\\text{ ${parsedUnit}},\\ t = ${t}\\text{ ${parsedUnit}}$):\n- **Sisi Alas Segitiga Sama Sisi ($s$):** $${s}\\text{ ${parsedUnit}}$\n- **Tinggi Prisma ($t$):** $${t}\\text{ ${parsedUnit}}$\n- **Rumus Luas Alas ($L_a$):** $$L_a = \\frac{\\sqrt{3}}{4}s^2$$\n- **Rumus Luas Selimut ($L_s$):** $$L_s = 3(s \\times t)$$\n- **Rumus Luas Permukaan Total ($L$):** $$L = 2L_a + L_s$$\n- **Rumus Volume Ruang ($V$):** $$V = L_a \\times t$$\n\n💡 **Tantangan Eksplorasi 3D:** Model 3D siap dieksplorasi di kanvas! Sekarang giliranmu: dengan dimensi di atas, berapakah volume atau luas permukaannya?`,
       smartboardItem: {
         targetTab: "3d",
         model: "solids",
@@ -919,19 +891,13 @@ export function resolveGeometricIntent(
   if (isLimas3D) {
     const s = nums[0] || 8;
     const t = nums[1] || 10;
-    const luasAlas = (s * s).toFixed(2);
-    const ts = Math.sqrt((s / 2) ** 2 + t ** 2).toFixed(2);
-    const luasSelimut = (2 * s * parseFloat(ts)).toFixed(2);
-    const lp = (parseFloat(luasAlas) + parseFloat(luasSelimut)).toFixed(2);
-    const vol = ((1 / 3) * parseFloat(luasAlas) * t).toFixed(2);
-
     return {
       dimension: "3D",
       targetTab: "3d",
       entity: GEOMETRY_DATABASE.shapes_3d.find((s) => s.id === "limas")!,
       params: { s, t },
       unit: parsedUnit,
-      reply: `Objek geometri 3D **Limas Segi Empat (Piramida)** telah **AKTIF** dan ditampilkan di Papan Tulis Pintar (Smartboard) 3D di panel sebelah kanan layarmu! 🎉\n\n### Parameter & Sifat Matematis Limas / Piramida ($s = ${s}\\text{ ${parsedUnit}},\\ t = ${t}\\text{ ${parsedUnit}}$):\n\n- **Panjang Rusuk Alas Persegi ($s$):** $${s}\\text{ ${parsedUnit}}$\n- **Tinggi Tegak Limas ($t$):** $${t}\\text{ ${parsedUnit}}$\n- **Tinggi Sisi Miring Tegak ($t_s$):** $$t_s = \\sqrt{(s/2)^2 + t^2} = \\sqrt{${(s / 2).toFixed(1)}^2 + ${t}^2} \\approx ${ts}\\text{ ${parsedUnit}}$$\n- **Luas Alas ($L_a$):** $$L_a = s^2 = (${s})^2 = ${luasAlas}\\text{ ${parsedUnit}}^2$$\n- **Luas Selimut ($L_s$):** $$L_s = 2 s \\cdot t_s \\approx ${luasSelimut}\\text{ ${parsedUnit}}^2$$\n- **Luas Permukaan Total ($L$):** $$L = L_a + L_s \\approx ${lp}\\text{ ${parsedUnit}}^2$$\n- **Volume Ruang ($V$):** $$V = \\frac{1}{3}s^2 t = \\frac{1}{3}(${luasAlas})(${t}) \\approx ${vol}\\text{ ${parsedUnit}}^3$$\n\n💡 **Eksplorasi Kanvas 3D:**\nKamu bisa memutar model 3D (drag mouse 360°), menyesuaikan slider dimensi di panel metrik, atau klik tombol **+ Tambah Irisan Bidang** untuk melihat penampang irisan kerucut/piramida!`,
+      reply: `Objek geometri 3D **Limas Segi Empat (Piramida)** telah **AKTIF** di Papan Tulis Pintar 3D! 🎉\n\n### Parameter & Rumus Limas / Piramida ($s = ${s}\\text{ ${parsedUnit}},\\ t = ${t}\\text{ ${parsedUnit}}$):\n- **Panjang Rusuk Alas Persegi ($s$):** $${s}\\text{ ${parsedUnit}}$\n- **Tinggi Tegak Limas ($t$):** $${t}\\text{ ${parsedUnit}}$\n- **Rumus Tinggi Apotema ($t_s$):** $$t_s = \\sqrt{(s/2)^2 + t^2}$$\n- **Rumus Luas Alas ($L_a$):** $$L_a = s^2$$\n- **Rumus Luas Selimut ($L_s$):** $$L_s = 2 s \\cdot t_s$$\n- **Rumus Volume Ruang ($V$):** $$V = \\frac{1}{3}s^2 t$$\n\n💡 **Tantangan Eksplorasi 3D:** Putar model 3D di kanvas! Dapatkah kamu menghitung volume limas ini menggunakan rumus di atas?`,
       smartboardItem: {
         targetTab: "3d",
         model: "solids",
@@ -947,18 +913,13 @@ export function resolveGeometricIntent(
 
   if (isKubus3D) {
     const s = nums[0] || 10;
-    const vol = (s * s * s).toFixed(2);
-    const lp = (6 * s * s).toFixed(2);
-    const db = (s * Math.SQRT2).toFixed(2);
-    const dr = (s * Math.sqrt(3)).toFixed(2);
-
     return {
       dimension: "3D",
       targetTab: "3d",
       entity: GEOMETRY_DATABASE.shapes_3d.find((s) => s.id === "kubus")!,
       params: { s },
       unit: parsedUnit,
-      reply: `Objek geometri 3D **Kubus** telah **AKTIF** dan ditampilkan di Papan Tulis Pintar (Smartboard) 3D di sebelah kanan! 🎉\n\n### Parameter & Sifat Matematis Kubus ($s = ${s}\\text{ ${parsedUnit}}$):\n- **Panjang Rusuk ($s$):** $${s}\\text{ ${parsedUnit}}$\n- **Luas Permukaan ($L$):** $$L = 6s^2 = 6(${s})^2 = ${lp}\\text{ ${parsedUnit}}^2$$\n- **Volume Ruang ($V$):** $$V = s^3 = (${s})^3 = ${vol}\\text{ ${parsedUnit}}^3$$\n- **Diagonal Bidang ($d_b$):** $$d_b = s\\sqrt{2} \\approx ${db}\\text{ ${parsedUnit}}$$\n- **Diagonal Ruang ($d_r$):** $$d_r = s\\sqrt{3} \\approx ${dr}\\text{ ${parsedUnit}}$$\n\n💡 Tarik sudut kubus di kanvas 3D untuk resize langsung atau gunakan slider metrik!`,
+      reply: `Objek geometri 3D **Kubus** telah **AKTIF** dan ditampilkan di Papan Tulis Pintar 3D di sebelah kanan! 🎉\n\n### Parameter & Rumus Sifat Matematis Kubus ($s = ${s}\\text{ ${parsedUnit}}$):\n- **Panjang Rusuk ($s$):** $${s}\\text{ ${parsedUnit}}$\n- **Rumus Luas Permukaan ($L$):** $$L = 6s^2$$\n- **Rumus Volume Ruang ($V$):** $$V = s^3$$\n- **Rumus Diagonal Bidang ($d_b$):** $$d_b = s\\sqrt{2}$$\n- **Rumus Diagonal Ruang ($d_r$):** $$d_r = s\\sqrt{3}$$\n\n💡 **Tantangan Eksplorasi 3D:** Model 3D kubus siap dieksplorasi di kanvas! Sekarang giliranmu: dengan $s = ${s}\\text{ ${parsedUnit}}$, coba hitung berapakah luas permukaan, volume, atau panjang diagonalnya?`,
       smartboardItem: {
         targetTab: "3d",
         model: "solids",
@@ -975,17 +936,13 @@ export function resolveGeometricIntent(
     const p = nums[0] || 10;
     const l = nums[1] || 6;
     const t = nums[2] || 4;
-    const vol = (p * l * t).toFixed(2);
-    const lp = (2 * (p * l + p * t + l * t)).toFixed(2);
-    const dr = Math.sqrt(p * p + l * l + t * t).toFixed(2);
-
     return {
       dimension: "3D",
       targetTab: "3d",
       entity: GEOMETRY_DATABASE.shapes_3d.find((s) => s.id === "balok")!,
       params: { p, l, t },
       unit: parsedUnit,
-      reply: `Objek geometri 3D **Balok** telah **AKTIF** dan ditampilkan di Papan Tulis Pintar 3D! 🎉\n\n### Parameter & Dimensi Balok ($p=${p},\\ l=${l},\\ t=${t}\\text{ ${parsedUnit}}$):\n- **Ukuran Dimensi:** $p = ${p}\\text{ ${parsedUnit}},\\ l = ${l}\\text{ ${parsedUnit}},\\ t = ${t}\\text{ ${parsedUnit}}$\n- **Luas Permukaan Total ($L$):** $$L = 2(pl + pt + lt) = ${lp}\\text{ ${parsedUnit}}^2$$\n- **Volume Ruang ($V$):** $$V = p \\times l \\times t = ${vol}\\text{ ${parsedUnit}}^3$$\n- **Diagonal Ruang ($d_r$):** $$d_r = \\sqrt{p^2 + l^2 + t^2} \\approx ${dr}\\text{ ${parsedUnit}}$$\n\n💡 Putar model 3D untuk melihat semua sudut pandang bidang sisi balok!`,
+      reply: `Objek geometri 3D **Balok** telah **AKTIF** di Papan Tulis Pintar 3D! 🎉\n\n### Parameter & Rumus Dimensi Balok ($p=${p},\\ l=${l},\\ t=${t}\\text{ ${parsedUnit}}$):\n- **Ukuran Dimensi:** $p = ${p}\\text{ ${parsedUnit}},\\ l = ${l}\\text{ ${parsedUnit}},\\ t = ${t}\\text{ ${parsedUnit}}$\n- **Rumus Luas Permukaan Total ($L$):** $$L = 2(pl + pt + lt)$$\n- **Rumus Volume Ruang ($V$):** $$V = p \\times l \\times t$$\n- **Rumus Diagonal Ruang ($d_r$):** $$d_r = \\sqrt{p^2 + l^2 + t^2}$$\n\n💡 **Tantangan Eksplorasi 3D:** Putar model 3D di kanvas! Coba substitusikan nilainya ke rumus: berapakah volume atau diagonal ruang yang kamu peroleh?`,
       smartboardItem: {
         targetTab: "3d",
         model: "solids",
@@ -1003,17 +960,13 @@ export function resolveGeometricIntent(
   if (isTabung3D) {
     const r = nums[0] || 7;
     const t = nums[1] || 12;
-    const vol = (Math.PI * r * r * t).toFixed(2);
-    const ls = (2 * Math.PI * r * t).toFixed(2);
-    const lp = (2 * Math.PI * r * (r + t)).toFixed(2);
-
     return {
       dimension: "3D",
       targetTab: "3d",
       entity: GEOMETRY_DATABASE.shapes_3d.find((s) => s.id === "tabung")!,
       params: { r, t },
       unit: parsedUnit,
-      reply: `Objek geometri 3D **Tabung Silinder** telah **AKTIF** di Papan Tulis 3D! 🎉\n\n### Parameter Tabung ($r = ${r}\\text{ ${parsedUnit}},\\ t = ${t}\\text{ ${parsedUnit}}$):\n- **Jari-jari Alas ($r$):** $${r}\\text{ ${parsedUnit}}$\n- **Tinggi Silinder ($t$):** $${t}\\text{ ${parsedUnit}}$\n- **Luas Selimut ($L_s$):** $$L_s = 2\\pi r t \\approx ${ls}\\text{ ${parsedUnit}}^2$$\n- **Luas Permukaan Total ($L$):** $$L = 2\\pi r(r + t) \\approx ${lp}\\text{ ${parsedUnit}}^2$$\n- **Volume Ruang ($V$):** $$V = \\pi r^2 t \\approx ${vol}\\text{ ${parsedUnit}}^3$$\n\n💡 Drag mouse untuk memutar silinder 360° di kanvas 3D!`,
+      reply: `Objek geometri 3D **Tabung Silinder** telah **AKTIF** di Papan Tulis 3D! 🎉\n\n### Parameter & Rumus Tabung ($r = ${r}\\text{ ${parsedUnit}},\\ t = ${t}\\text{ ${parsedUnit}}$):\n- **Jari-jari Alas ($r$):** $${r}\\text{ ${parsedUnit}}$\n- **Tinggi Silinder ($t$):** $${t}\\text{ ${parsedUnit}}$\n- **Rumus Luas Selimut ($L_s$):** $$L_s = 2\\pi r t$$\n- **Rumus Luas Permukaan Total ($L$):** $$L = 2\\pi r(r + t)$$\n- **Rumus Volume Ruang ($V$):** $$V = \\pi r^2 t$$\n\n💡 **Tantangan Eksplorasi 3D:** Putar silinder 360° di kanvas 3D! Dengan $r = ${r}\\text{ ${parsedUnit}}$ dan $t = ${t}\\text{ ${parsedUnit}}$, coba hitung berapakah volume silinder ini?`,
       smartboardItem: {
         targetTab: "3d",
         model: "cylinder",
@@ -1028,16 +981,13 @@ export function resolveGeometricIntent(
 
   if (isBola3D) {
     const r = nums[0] || 7;
-    const vol = ((4 / 3) * Math.PI * r * r * r).toFixed(2);
-    const lp = (4 * Math.PI * r * r).toFixed(2);
-
     return {
       dimension: "3D",
       targetTab: "3d",
       entity: GEOMETRY_DATABASE.shapes_3d.find((s) => s.id === "bola")!,
       params: { r },
       unit: parsedUnit,
-      reply: `Objek geometri 3D **Bola** telah **AKTIF** di Papan Tulis 3D! 🎉\n\n### Parameter Bola ($r = ${r}\\text{ ${parsedUnit}}$):\n- **Jari-jari ($r$):** $${r}\\text{ ${parsedUnit}}$\n- **Diameter ($d$):** $${2 * r}\\text{ ${parsedUnit}}$\n- **Luas Permukaan ($L$):** $$L = 4\\pi r^2 \\approx ${lp}\\text{ ${parsedUnit}}^2$$\n- **Volume Ruang ($V$):** $$V = \\frac{4}{3}\\pi r^3 \\approx ${vol}\\text{ ${parsedUnit}}^3$$\n\n💡 Putar bola 3D atau aktifkan wireframe untuk melihat garis meridian jaring-jaring spasial!`,
+      reply: `Objek geometri 3D **Bola** telah **AKTIF** di Papan Tulis 3D! 🎉\n\n### Parameter & Rumus Bola ($r = ${r}\\text{ ${parsedUnit}}$):\n- **Jari-jari ($r$):** $${r}\\text{ ${parsedUnit}}$\n- **Diameter ($d$):** $$d = 2r$$\n- **Rumus Luas Permukaan ($L$):** $$L = 4\\pi r^2$$\n- **Rumus Volume Ruang ($V$):** $$V = \\frac{4}{3}\\pi r^3$$\n\n💡 **Tantangan Eksplorasi 3D:** Putar bola 3D di kanvas! Dengan jari-jari $r = ${r}\\text{ ${parsedUnit}}$, coba hitung berapakah luas permukaan bola tersebut?`,
       smartboardItem: {
         targetTab: "3d",
         model: "solids",

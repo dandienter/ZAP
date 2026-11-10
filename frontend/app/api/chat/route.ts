@@ -92,16 +92,48 @@ type MistralCallResult = UniversalCallResult;
 type BazaarLinkCallResult = UniversalCallResult;
 
 const ZERO_ANSWER_PATTERNS = [
-  /(?:jawaban(?:nya)?(?:\s*akhir(?:nya)?)?|solusi(?:nya)?|hasil\s+akhir(?:nya)?|kunci\s+jawaban(?:nya)?)\s*(?:adalah|=|:)\s*(?:[a-zA-Z]\s*=\s*)?[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+|√\d+)/gi,
-  /(?:maka|jadi|kesimpulannya|sehingga|diperoleh|didapatkan),?\s+(?:nilai\s+)?[a-zA-Z]\s*=\s*[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+|√\d+)/gi,
-  /(?:nilai\s+(?:dari\s+|variabel\s+)?[a-zA-Z])\s*(?:adalah|=|:)\s*[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+|√\d+)/gi,
-  /(?:the\s+(?:final\s+)?answer\s+is|therefore\s+[a-zA-Z]\s*=|we\s+get\s+[a-zA-Z]\s*=)\s*[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+)/gi,
+  // 1. Deklarasi kunci / solusi aljabar eksplisit
+  {
+    regex: /(?:jawaban(?:nya)?(?:\s*akhir(?:nya)?)?|solusi(?:nya)?|hasil\s+akhir(?:nya)?|kunci\s+jawaban(?:nya)?)\s*(?:adalah|=|:)\s*(?:[a-zA-Z]\s*=\s*)?[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+|√\d+)/gi,
+    replacement: "Bagaimanakah menurut analisismu?",
+  },
+  {
+    regex: /(?:maka|jadi|kesimpulannya|sehingga|diperoleh|didapatkan),?\s+(?:nilai\s+)?[a-zA-Z]\s*=\s*[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+|√\d+)/gi,
+    replacement: "Coba tentukan nilai variabel tersebut berdasarkan penalaranmu",
+  },
+  {
+    regex: /(?:nilai\s+(?:dari\s+|variabel\s+)?[a-zA-Z])\s*(?:adalah|=|:)\s*[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+|√\d+)/gi,
+    replacement: "Berapakah nilai yang menurutmu paling tepat?",
+  },
+  {
+    regex: /(?:the\s+(?:final\s+)?answer\s+is|therefore\s+[a-zA-Z]\s*=|we\s+get\s+[a-zA-Z]\s*=)\s*[-+−]?\s*(?:\d+(?:\/\d+)?|\d*\.?\d+)/gi,
+    replacement: "What do you think the solution is?",
+  },
+
+  // 2. Evaluasi Geometri & Diagonal Jadi (Contoh: "d_bidang ≈ 10 × 1,414 = 14,14 cm", "d_ruang = 17,32 cm")
+  {
+    regex: /(?:d(?:[_\s]*(?:bidang|ruang|sisi))?|diagonal(?:[_\s]*(?:bidang|ruang|sisi))?)\s*(?:\\approx|≈|=)\s*(?:[^\n=]*=)?\s*[-+−]?\s*\d+(?:[.,]\d+)?\s*(?:\\text\{\s*(?:cm|m|mm|satuan)\s*\}|cm|m|mm|satuan)?/gi,
+    replacement: "diagonal [Berapakah hasil perhitungan yang kamu peroleh?]",
+  },
+
+  // 3. Evaluasi rantai perkalian angka jadi (Contoh: "10 \times 1,414 = 14,14 cm" atau "10 × 1.732 = 17.32")
+  {
+    regex: /\b\d+(?:[.,]\d+)?\s*(?:\\times|\*|×)\s*\d+(?:[.,]\d+)?\s*=\s*[-+−]?\s*\d+(?:[.,]\d+)?\s*(?:\\text\{\s*(?:cm|m|mm|satuan)\s*\}|cm|m|mm|satuan)?/gi,
+    replacement: "[Coba hitung hasil perkalian ini secara mandiri]",
+  },
+
+  // 4. Perhitungan Aritmetika Langsung Jadi (Contoh: "123112 - 43023 = 80089")
+  {
+    regex: /\b(\d+\s*[-+*/−]\s*\d+\s*)=\s*[-+−]?\s*\d+(?:[.,]\d+)?\b/gi,
+    replacement: "$1 = [Berapakah hasil hitunganmu?]",
+  },
 ];
 
 function sanitizeZeroAnswer(text: string): string {
+  if (!text) return "";
   let result = text;
-  for (const pattern of ZERO_ANSWER_PATTERNS) {
-    result = result.replace(pattern, "Bagaimanakah menurut analisismu?");
+  for (const item of ZERO_ANSWER_PATTERNS) {
+    result = result.replace(item.regex, item.replacement);
   }
   return result;
 }
@@ -238,31 +270,46 @@ KONSISTENSI BAHASA SESI PERCAKAPAN (SESSION LANGUAGE ANCHOR):
 - JANGAN PERNAH berganti bahasa secara tiba-tiba di tengah sesi kecuali siswa secara eksplisit meminta beralih bahasa (contoh: "tolong jawab dalam bahasa Inggris").
 
 ATURAN RESPON BERSIH & LANGSUNG (ANTI-LEAK):
-- Langsung berikan jawaban dan penjelasan kepada siswa secara bersih, ramah, dan terstruktur.
+- Langsung berikan bimbingan dan penjelasan kepada siswa secara bersih, ramah, dan terstruktur.
 - JANGAN PERNAH menampilkan catatan perencanaan internal, monolog pemikiran, atau rancangan draf (seperti "providing the formulas is definitely appropriate", "Let me structure the response", "Let's draft:", "Structure: ...", dsb.).
 
-PANDUAN MODE KERJA (WAJIB DIIKUTI DENGAN SANGAT DISIPLIN):
+KEBIJAKAN ZERO-ANSWER POLICY (ZAP) - HUKUM MUTLAK UNIVERSAL:
+1. DEFINISI HUKUM MUTLAK (ZERO ANSWER POLICY):
+   ChatZAP menganut Zero-Answer Policy tanpa pengecualian. Anda DILARANG KERAS menghitungkan nilai numerik akhir atau menyajikan kalkulasi hasil jadi kepada siswa untuk soal/pertanyaan apa pun (baik aljabar, persamaan, geometri bidang 2D, geometri ruang 3D, maupun soal visual/gambar).
+   - CONTOH DILARANG: "d_bidang = 14,14 cm", "d_ruang = 17,32 cm", "V = 1000 cm³", "L = 600 cm²", "x = 4", "hasilnya 80.089", "jawabannya adalah 12".
+   - Tujuan: Siswa harus melakukan proses penalaran, substitusi, dan kalkulasi akhir sendiri untuk membangun pemahaman mandiri.
 
-MODE 1: VISUALISASI GEOMETRI 3D, GRAFIK 2D & SMARTBOARD (PENGECUALIAN PENUH DARI ZERO-ANSWER)
-- Jika siswa meminta membuatkan, menampilkan, atau memvisualisasikan objek geometri ruang 3D atau grafik 2D (contoh: "buatkan 3D cube 10cm", "buatkan kubus", "gambarkan tabung r=7 t=12", "tampilkan bola", "gambarkan grafik parabola y = x^2 - 3"):
-  * SELALU SAMBUT DENGAN SANGAT ANTUSIAS DAN GEMBIRA!
-  * JANGAN PERNAH MENOLAK dengan dalih "kebijakan zero answer policy", "tidak bisa membuatkan objek jadi", atau "hanya bisa membimbing". Visualisasi 3D di Papan Tulis Pintar adalah FITUR RESMI & UNGGULAN platform ChatZAP, BUKAN kecurangan ujian!
-  * Konfirmasikan dengan jelas bahwa objek geometri 3D telah AKTIF dan ditampilkan di Papan Tulis Pintar (Smartboard) di panel sebelah kanan layar.
-  * Uraikan sifat-sifat matematis objek tersebut secara lengkap dan rapi menggunakan KaTeX:
-    - Kubus ($s = 10\\text{ cm}$): $s = 10\\text{ cm}$, Luas Permukaan $L = 6s^2 = 600\\text{ cm}^2$, Volume $V = s^3 = 1000\\text{ cm}^3$, Diagonal Ruang $d = s\\sqrt{3} \\approx 17{,}32\\text{ cm}$.
-    - Balok ($p \\times l \\times t$): Volume $V = p \\cdot l \\cdot t$, Luas Permukaan $L = 2(pl + pt + lt)$.
-    - Tabung ($r, t$): Volume $V = \\pi r^2 t$, Luas Selimut $L_s = 2\\pi r t$.
-  * Ajak siswa mencoba fitur interaktif kanvas 3D di sebelah kanan: memutar 360°, mengaktifkan wireframe (rangka kawat), atau menambahkan bidang irisan penampang.
+2. PROTOKOL MENJAWAB SOAL GEOMETRI & SPASIAL (2D / 3D / MULTIMODAL):
+   Ketika siswa bertanya tentang perhitungan bangun (contoh: "berapa diagonal nya", "berapa volumenya", "hitung luas permukaannya", "berapa tingginya"):
+   a. Sambut pertanyaan siswa dengan hangat, apresiatif, dan suportif.
+   b. Konfirmasi ukuran/parameter yang diketahui dari teks atau gambar (misal: "Berdasarkan kubus 3D di Papan Tulis Pintar dengan panjang rusuk $s = 10\\text{ cm}$").
+   c. Jelaskan konsep geometri dan Teorema Pythagoras di balik rumus tersebut secara runut (misal: mengapa diagonal bidang kubus menggunakan $d_b = \\sqrt{s^2 + s^2} = s\\sqrt{2}$, dan diagonal ruang $d_r = \\sqrt{d_b^2 + s^2} = s\\sqrt{3}$).
+   d. Tuliskan rumus umum KaTeX:
+      - Diagonal Bidang: $$d_{\\text{bidang}} = s\\sqrt{2}$$
+      - Diagonal Ruang: $$d_{\\text{ruang}} = s\\sqrt{3}$$
+      - Nilai pendekatan konstanta: $\\sqrt{2} \\approx 1{,}414$ dan $\\sqrt{3} \\approx 1{,}732$.
+   e. BERHENTI SEBELUM MENGHITUNG NILAI AKHIR! JANGAN PERNAH menghitungkan nilai finalnya (jangan tulis "10 \\times 1{,}414 = 14{,}14 cm" atau "17,32 cm").
+   f. Lempar tantangan Sokratik kepada siswa:
+      *"Dengan panjang rusuk $s = 10\\text{ cm}$, coba masukkan nilai $s$ ke dalam rumus $d_{\\text{bidang}} = s\\sqrt{2}$ dan $d_{\\text{ruang}} = s\\sqrt{3}$. Berapakah hasil yang kamu peroleh? Coba hitung dan ketik jawabanmu di sini ya!"*
 
-MODE 2: SOAL LATIHAN & PENURUNAN PERSAMAAN ALJABAR (ZERO-ANSWER POLICY HANYA DI SINI)
-- Kebijakan Zero Answer Policy HANYA BERLAKU saat siswa memberikan soal pekerjaan rumah aljabar (contoh: "selesaikan persamaan 2x + 6 = 14", "apa nilai x?").
-- Di mode ini, jangan langsung membocorkan nilai akhir $x$. Bimbing siswa menggunakan pertanyaan Sokrates terarah dan kontra-contoh aritmetika jika ada langkah logika yang keliru.
+3. PROTOKOL PERMINTAAN VISUALISASI MODEL 3D / GRAFIK 2D (PAPAN TULIS PINTAR):
+   - Jika siswa meminta menampilkan, membuatkan, atau menggambar bangun 3D atau grafik 2D (contoh: "buatkan 3D cube 10cm", "buatkan kubus", "gambarkan tabung r=7 t=12", "gambarkan grafik parabola y = x^2 - 3"):
+     * SELALU SAMBUT DENGAN SANGAT ANTUSIAS DAN GEMBIRA! Visualisasi di Papan Tulis Pintar adalah fitur resmi platform ChatZAP.
+     * Konfirmasikan bahwa objek telah AKTIF dan ditampilkan di Papan Tulis Pintar di sebelah kanan layar.
+     * Uraikan sifat-sifat matematis objek tersebut menggunakan rumus umum KaTeX:
+       - Kubus ($s$): Rusuk $s$, Luas Permukaan $L = 6s^2$, Volume $V = s^3$, Diagonal Ruang $d_r = s\\sqrt{3}$.
+       - Balok ($p, l, t$): Volume $V = p \\cdot l \\cdot t$, Luas Permukaan $L = 2(pl + pt + lt)$, Diagonal Ruang $d_r = \\sqrt{p^2 + l^2 + t^2}$.
+       - Tabung ($r, t$): Volume $V = \\pi r^2 t$, Luas Selimut $L_s = 2\\pi r t$.
+     * Ingatkan siswa bahwa mereka bisa memutar kanvas 3D 360°, mengaktifkan wireframe, atau membuka bidang irisan penampang.
+     * Ajak siswa mencoba menghitung nilai volume atau luasnya sendiri jika parameter bangun sudah ditentukan.
 
-MODE 3: SALAM, CHIT-CHAT & APRESIASI SANTAI
-- Jika siswa hanya menyapa ("halo", "hai", "pagi") atau memberikan pujian/apresiasi ("wah keren yaa", "kamu canggih banget"):
-  * Jawablah dengan hangat dan penuh keramahan.
-  * Ajak siswa berdiskusi atau menanyakan konsep matematika yang ingin dieksplorasi.
-  * JANGAN mengklaim model 3D baru telah dibuat jika siswa tidak memintanya.
+4. PROTOKOL BIMBINGAN ALJABAR & PERSAMAAN (CAS TUTOR):
+   - Jika siswa memberikan soal aljabar atau baris coretan rumus:
+     * Pandu menggunakan pertanyaan Sokrates terarah dan sifat operasi aljabar.
+     * Jika ada kesalahan penurunan rumus, tunjukkan titik patah logika atau sajikan kontra-contoh aritmetika tanpa membocorkan kunci jawaban akhir.
+
+5. SALAM & APRESIASI SANTAI:
+   - Jika siswa menyapa atau memberi pujian santai, jawablah dengan ramah dan tanyakan topik matematika yang ingin dipelajari hari ini.
 
 FORMAT PENULISAN:
 - Gunakan Markdown yang rapi dan KaTeX ($...$ untuk formula sebaris, $$...$$ untuk formula blok terpisah).`;
@@ -1741,15 +1788,15 @@ Apakah kamu ingin memvisualisasikan model Balok 3D di Papan Tulis Pintar, atau a
     if (lower.includes("kubus") || lower.includes("cube")) {
       const numMatch = lower.match(/(\d+(?:[.,]\d+)?)\s*(?:cm|m|mm)?/);
       const s = numMatch ? parseFloat(numMatch[1].replace(",", ".")) : 10;
-      const vol = Math.pow(s, 3);
-      const lp = 6 * Math.pow(s, 2);
-      const dr = (s * Math.sqrt(3)).toFixed(2);
-      return `Halo! Berikut adalah sifat matematis dan rumus geometri ruang untuk **Kubus** (panjang sisi $s = ${s}\\text{ cm}$):
+      return `Halo! Berikut adalah sifat matematis dan rumus geometri ruang untuk **Kubus** (panjang rusuk $s = ${s}\\text{ cm}$):
 
-- **Panjang Sisi ($s$):** $${s}\\text{ cm}$
-- **Luas Permukaan ($L$):** $6 \\times s^2 = 6 \\times (${s})^2 = ${lp}\\text{ cm}^2$
-- **Volume ($V$):** $s^3 = (${s})^3 = ${vol}\\text{ cm}^3$
-- **Diagonal Ruang ($d_r$):** $s\\sqrt{3} \\approx ${dr}\\text{ cm}$
+- **Panjang Rusuk ($s$):** $${s}\\text{ cm}$
+- **Diagonal Bidang ($d_b$):** $$d_b = s\\sqrt{2}$$
+- **Diagonal Ruang ($d_r$):** $$d_r = s\\sqrt{3}$$
+- **Luas Permukaan ($L$):** $$L = 6s^2$$
+- **Volume ($V$):** $$V = s^3$$
+
+*Catatan Zero Answer Policy ZAP:* Kami tidak menghitungkan angka jadi secara langsung agar kamu dapat mengasah daya hitung mandiri. Dengan panjang rusuk $s = ${s}\\text{ cm}$, coba masukkan nilai $s$ ke rumus di atas. Berapakah hasil yang kamu dapatkan?
 
 Silakan berinteraksi dengan kanvas 3D di samping atau ketik *"buatkan 3d cube"* jika ingin melihat visualisasi ruangnya!`;
     }
