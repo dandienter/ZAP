@@ -146,6 +146,26 @@ function cleanModelResponse(text: string): string {
   return clean;
 }
 
+function cleanModelDisplayName(rawName?: string): string {
+  if (!rawName) return "ChatZAP Cognitive Engine";
+  let clean = rawName.trim();
+  clean = clean
+    .replace(/^BazaarLink\s*\((.*?)\)$/i, "$1")
+    .replace(/deepseek\/deepseek-v4-flash-[^\s)]+/gi, "DeepSeek V4 Flash")
+    .replace(/qwen\/qwen3\.7-flash[^\s)]*/gi, "Qwen 3.7 Flash")
+    .replace(/nvidia\/nemotron-3\.5-bolt-[^\s)]+/gi, "Nemotron-3.5 Bolt Tutor")
+    .replace(/nvidia\/nemotron-3-nano-omni-[^\s)]+/gi, "Nemotron-3 Omni Math")
+    .replace(/nvidia\/nemotron-3\.5-super-vl-[^\s)]+/gi, "Nemotron-3.5 Super-VL 120B")
+    .replace(/nvidia\/nemotron-3-ultra-[^\s)]+/gi, "Nemotron-3 Ultra 550B")
+    .replace(/poolside\/laguna-[^\s)]+/gi, "Poolside Laguna Code")
+    .replace(/deepseek-ai\/deepseek-v4\.1-flash/gi, "DeepSeek V4.1")
+    .replace(/openai\/gpt-oss-[^\s)]+/gi, "GPT-OSS 20B")
+    .replace(/google\/diffusiongemma-[^\s)]+/gi, "DiffusionGemma 26B")
+    .replace(/:free/gi, "")
+    .trim();
+  return clean || "ChatZAP Cognitive Engine";
+}
+
 function buildZAPSystemPrompt(
   studentName: string,
   activeProblem?: ActiveProblemContext | null,
@@ -153,7 +173,13 @@ function buildZAPSystemPrompt(
   sessionLanguage: string = "Bahasa Indonesia",
   workspaceMode: "write" | "read" = "write"
 ): string {
-  let prompt = `Anda adalah ChatZAP, asisten cerdas matematika interaktif dan tutor aljabar yang ditenagai oleh model AI (${modelName || "ChatZAP Cognitive Engine"}).
+  const cleanName = cleanModelDisplayName(modelName);
+  let prompt = `Anda adalah ChatZAP, asisten cerdas matematika interaktif dan tutor aljabar yang ditenagai oleh model AI (${cleanName}).
+
+KONSISTENSI IDENTITAS MODEL:
+- Nama Anda adalah ChatZAP. Anda beroperasi menggunakan arsitektur model penalaran: **${cleanName}**.
+- Jika siswa menanyakan identitas model Anda atau bertanya apakah Anda GPT, Nemotron, Gemini, Claude, dsb., jawablah dengan ramah dan konsisten sesuai model aktif Anda saat ini (**${cleanName}**).
+- JANGAN PERNAH membantah model aktif Anda sendiri, dan JANGAN PERNAH membocorkan slug teknis internal atau nama proxy gateway (seperti BazaarLink, endpoint URL, :free, atau nomor build internal).
 
 IDENTITAS SISWA:
 - Nama siswa: ${studentName}.
@@ -343,7 +369,8 @@ export async function POST(req: Request) {
           activeProblem,
           userName,
           22000,
-          sessionLanguage
+          sessionLanguage,
+          targetFriendlyName
         );
 
         // Jika kunci pengguna menghasilkan 401 atau gagal, otomatis coba dengan kunci sistem terverifikasi
@@ -359,7 +386,8 @@ export async function POST(req: Request) {
             activeProblem,
             userName,
             22000,
-            sessionLanguage
+            sessionLanguage,
+            targetFriendlyName
           );
         }
 
@@ -375,7 +403,8 @@ export async function POST(req: Request) {
             activeProblem,
             userName,
             12000,
-            sessionLanguage
+            sessionLanguage,
+            "Nemotron-3.5 Bolt (Fast Fallback)"
           );
           if (nvidiaRes.text) {
             targetFriendlyName = "Nemotron-3.5 Bolt (Fast Fallback)";
@@ -488,45 +517,22 @@ export async function POST(req: Request) {
 
     // 3. Panggil OpenAI ChatGPT API jika dipilih
     if (modelId?.startsWith("gpt") || modelId?.startsWith("o1") || modelId?.startsWith("o3")) {
-      const effectiveOpenaiKey =
-        openaiApiKey?.trim() ||
-        apiKey?.trim() ||
-        process.env.OPENAI_API_KEY?.trim() ||
-        "";
-
-      // Jika akun ChatGPT terhubung via SSO/session (dummy session key) dan tidak ada real sk- key,
-      // kita dukung dengan gateway BazaarLink dalam persona ChatGPT Tutor agar mulus tanpa error 401
-      if (effectiveOpenaiKey.startsWith("sk-proj-chatgpt-account-")) {
-        const bazaarKey =
-          bazaarlinkApiKey?.trim() ||
-          process.env.BAZAARLINK_API_KEY ||
-          "";
-        try {
-          const bazaarRes = await callBazaarLinkAPI(
-            message,
-            bazaarKey,
-            conversationHistory,
-            activeProblem,
-            "bazaarlink-deepseek",
-            userName
-          );
-          if (bazaarRes.text) {
-            return NextResponse.json({
-              reply: sanitizeZeroAnswer(bazaarRes.text),
-              model: "GPT-4o Omni (Akun ChatGPT Terhubung)",
-              source: "chatgpt-account-gateway",
-            });
-          }
-        } catch (err) {
-          console.warn("ChatGPT account gateway failed:", err);
-        }
+      // Prioritaskan API Key OpenAI resmi jika ada
+      let realOpenaiKey = "";
+      if (openaiApiKey?.trim() && !openaiApiKey.trim().startsWith("sk-proj-chatgpt-account-")) {
+        realOpenaiKey = openaiApiKey.trim();
+      } else if (apiKey?.trim() && apiKey.trim().startsWith("sk-") && !apiKey.trim().startsWith("sk-proj-chatgpt-account-")) {
+        realOpenaiKey = apiKey.trim();
+      } else if (process.env.OPENAI_API_KEY?.trim() && process.env.OPENAI_API_KEY.trim().startsWith("sk-")) {
+        realOpenaiKey = process.env.OPENAI_API_KEY.trim();
       }
 
-      if (effectiveOpenaiKey && !effectiveOpenaiKey.startsWith("sk-proj-chatgpt-account-")) {
+      // 3a. Panggil langsung API resmi OpenAI jika kunci resmi tersedia
+      if (realOpenaiKey) {
         try {
           const openaiRes = await callOpenAIAPI(
             message,
-            effectiveOpenaiKey,
+            realOpenaiKey,
             conversationHistory,
             activeProblem,
             modelId,
@@ -536,7 +542,7 @@ export async function POST(req: Request) {
           if (openaiRes.text) {
             return NextResponse.json({
               reply: sanitizeZeroAnswer(openaiRes.text),
-              model: `${openaiRes.modelUsed || "GPT"} (OpenAI API)`,
+              model: `${openaiRes.modelUsed || "GPT-4o"} (OpenAI API)`,
               source: "openai-api",
             });
           }
@@ -551,14 +557,47 @@ export async function POST(req: Request) {
         } catch (err) {
           console.warn("OpenAI API call failed:", err);
         }
-      } else if (!effectiveOpenaiKey.startsWith("sk-proj-chatgpt-account-")) {
-        const socraticFallback = generateSocraticFallbackResponse(message, activeProblem);
-        return NextResponse.json({
-          reply: `ℹ️ **Kunci OpenAI ChatGPT Belum Diatur:**\nMasukkan OpenAI API Key kamu pada menu pemilih model di atas, atau dapatkan di [platform.openai.com](https://platform.openai.com).\n\n*Sementara ini asisten Sokratik ZAP menjawab:*\n\n---\n\n${socraticFallback}`,
-          model: "ChatGPT (Local Preview)",
-          source: "local-preview-no-key",
-        });
       }
+
+      // 3b. Jika akun ChatGPT terhubung via SSO/sesi (tanpa direct billing key),
+      // layani lewat gateway dengan persona GPT-4o yang konsisten tanpa membocorkan backend proxy
+      const effectiveOpenaiKey = openaiApiKey?.trim() || apiKey?.trim() || "";
+      if (effectiveOpenaiKey.startsWith("sk-proj-chatgpt-account-")) {
+        const bazaarKey =
+          bazaarlinkApiKey?.trim() ||
+          process.env.BAZAARLINK_API_KEY ||
+          "";
+        try {
+          const persona = modelId === "gpt-4o-mini" ? "GPT-4o Mini" : "GPT-4o Omni";
+          const bazaarRes = await callBazaarLinkAPI(
+            message,
+            bazaarKey,
+            conversationHistory,
+            activeProblem,
+            "bazaarlink-deepseek",
+            userName,
+            persona,
+            sessionLanguage
+          );
+          if (bazaarRes.text) {
+            return NextResponse.json({
+              reply: sanitizeZeroAnswer(bazaarRes.text),
+              model: `${persona} (Akun ChatGPT Terhubung)`,
+              source: "chatgpt-account-gateway",
+            });
+          }
+        } catch (err) {
+          console.warn("ChatGPT account gateway failed:", err);
+        }
+      }
+
+      // 3c. Jika kunci belum diatur sama sekali
+      const socraticFallback = generateSocraticFallbackResponse(message, activeProblem);
+      return NextResponse.json({
+        reply: `ℹ️ **Kunci OpenAI ChatGPT Belum Diatur:**\nMasukkan OpenAI API Key kamu pada menu pemilih model (klik tombol model di bawah), atau dapatkan di [platform.openai.com](https://platform.openai.com).\n\n*Sementara ini asisten Sokratik ZAP menjawab:*\n\n---\n\n${socraticFallback}`,
+        model: "ChatGPT (Local Preview)",
+        source: "local-preview-no-key",
+      });
     }
 
     const isBazaarLink = modelId?.startsWith("bazaarlink") || modelId?.startsWith("deepseek");
@@ -1059,23 +1098,32 @@ async function callBazaarLinkAPI(
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
   activeProblem?: ActiveProblemContext | null,
   modelId?: string,
-  userName?: string
+  userName?: string,
+  overridePersona?: string,
+  sessionLanguage: string = "Bahasa Indonesia"
 ): Promise<BazaarLinkCallResult> {
   const studentName = userName?.trim() || "Siswa";
 
   let targetModel = "auto:free";
+  let defaultPersona = "ChatZAP Smart Router";
   if (modelId === "bazaarlink-deepseek") {
     targetModel = "deepseek/deepseek-v4-flash-0731free:free";
+    defaultPersona = "DeepSeek V4 Flash";
   } else if (modelId === "bazaarlink-qwen") {
     targetModel = "qwen/qwen3.7-flash:free";
+    defaultPersona = "Qwen 3.7 Flash";
   } else if (modelId === "bazaarlink-auto") {
     targetModel = "auto:free";
+    defaultPersona = "ChatZAP Smart Router";
   }
+
+  const effectivePersona = overridePersona || defaultPersona;
 
   const systemInstructionText = buildZAPSystemPrompt(
     studentName,
     activeProblem,
-    `BazaarLink (${targetModel})`
+    effectivePersona,
+    sessionLanguage
   );
 
   const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
@@ -1170,10 +1218,11 @@ async function callClaudeAPI(
       ? "claude-3-7-sonnet-20250219"
       : "claude-3-5-sonnet-20241022";
 
+  const persona = targetModel.includes("3-7") ? "Claude 3.7 Sonnet" : "Claude 3.5 Sonnet";
   const systemInstructionText = buildZAPSystemPrompt(
     studentName,
     activeProblem,
-    `Anthropic Claude (${targetModel})`,
+    persona,
     sessionLanguage
   );
 
@@ -1239,10 +1288,11 @@ async function callOpenAIAPI(
   const studentName = userName?.trim() || "Siswa";
   const targetModel = modelId === "gpt-4o-mini" ? "gpt-4o-mini" : "gpt-4o";
 
+  const persona = targetModel === "gpt-4o-mini" ? "GPT-4o Mini" : "GPT-4o Omni";
   const systemInstructionText = buildZAPSystemPrompt(
     studentName,
     activeProblem,
-    `OpenAI (${targetModel})`,
+    persona,
     sessionLanguage
   );
 
@@ -1305,7 +1355,8 @@ async function callCustomOpenAIAPI(
   activeProblem?: ActiveProblemContext | null,
   userName?: string,
   timeoutMs: number = 12000,
-  sessionLanguage: string = "Bahasa Indonesia"
+  sessionLanguage: string = "Bahasa Indonesia",
+  displayName?: string
 ): Promise<UniversalCallResult> {
   const studentName = userName?.trim() || "Siswa";
   const cleanBase = (baseUrl || "http://localhost:11434/v1").replace(/\/+$/, "");
@@ -1315,7 +1366,7 @@ async function callCustomOpenAIAPI(
   const systemInstructionText = buildZAPSystemPrompt(
     studentName,
     activeProblem,
-    targetModel,
+    displayName || targetModel,
     sessionLanguage
   );
 
