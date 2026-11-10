@@ -176,10 +176,11 @@ function buildZAPSystemPrompt(
   const cleanName = cleanModelDisplayName(modelName);
   let prompt = `Anda adalah ChatZAP, asisten cerdas matematika interaktif dan tutor aljabar yang ditenagai oleh model AI (${cleanName}).
 
-KONSISTENSI IDENTITAS MODEL:
-- Nama Anda adalah ChatZAP. Anda beroperasi menggunakan arsitektur model penalaran: **${cleanName}**.
-- Jika siswa menanyakan identitas model Anda atau bertanya apakah Anda GPT, Nemotron, Gemini, Claude, dsb., jawablah dengan ramah dan konsisten sesuai model aktif Anda saat ini (**${cleanName}**).
-- JANGAN PERNAH membantah model aktif Anda sendiri, dan JANGAN PERNAH membocorkan slug teknis internal atau nama proxy gateway (seperti BazaarLink, endpoint URL, :free, atau nomor build internal).
+KONSISTENSI IDENTITAS MODEL (MUTLAK & KEBALIKAN SESI LAMA):
+- Nama Anda adalah ChatZAP. Arsitektur model penalaran yang aktif saat ini adalah: **${cleanName}**.
+- Pengguna dapat mengganti model AI kapan saja di tengah sesi percakapan. Jika dalam riwayat pesan terdahulu ada model sebelumnya yang pernah menyebut dirinya Gemini, DeepSeek, Nemotron, GPT, atau Claude, ABAIKAN nama model lama tersebut!
+- Identitas Anda saat ini secara mutlak adalah **${cleanName}**. Jika siswa bertanya "kamu model apa?", "apakah kamu deepseek?", "apakah kamu gpt?", atau menanyakan model aktif, tegaskan dengan ramah bahwa Anda beroperasi dengan **${cleanName}**.
+- JANGAN PERNAH menyangkal model aktif Anda sendiri, dan JANGAN PERNAH membocorkan nama proxy gateway internal, URL endpoint, :free, atau nomor build internal.
 
 IDENTITAS SISWA:
 - Nama siswa: ${studentName}.
@@ -302,12 +303,79 @@ export async function POST(req: Request) {
       });
     }
 
-    // 0. Panggil NVIDIA NIM API jika Auto-Agent atau model NVIDIA dipilih
+    // 0a. Panggil DeepSeek (DeepSeek V4.1 Flash) jika dipilih - Prioritas BazaarLink (<3 detik)
+    if (
+      modelId === "deepseek-v4.1-flash" ||
+      modelId === "nvidia-deepseek-v4" ||
+      modelId?.startsWith("bazaarlink-deepseek")
+    ) {
+      const bazaarKey = bazaarlinkApiKey?.trim() || process.env.BAZAARLINK_API_KEY || "";
+      if (bazaarKey) {
+        try {
+          const bazaarRes = await callBazaarLinkAPI(
+            message,
+            bazaarKey,
+            conversationHistory,
+            activeProblem,
+            "bazaarlink-deepseek",
+            userName,
+            "DeepSeek V4.1 Flash",
+            sessionLanguage
+          );
+          if (bazaarRes.text) {
+            return NextResponse.json({
+              reply: sanitizeZeroAnswer(bazaarRes.text),
+              model: "DeepSeek V4.1 Flash",
+              source: "deepseek-bazaarlink",
+            });
+          }
+        } catch (err) {
+          console.warn("BazaarLink DeepSeek failed, attempting NVIDIA NIM:", err);
+        }
+      }
+
+      // Fallback ke NVIDIA NIM jika BazaarLink tidak tersedia
+      const nvidiaKey =
+        nvidiaApiKey?.trim() ||
+        process.env.NVIDIA_API_KEY ||
+        "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";
+      try {
+        const nvidiaRes = await callCustomOpenAIAPI(
+          message,
+          "https://integrate.api.nvidia.com/v1",
+          "deepseek-ai/deepseek-v4.1-flash",
+          nvidiaKey,
+          conversationHistory,
+          activeProblem,
+          userName,
+          8000,
+          sessionLanguage,
+          "DeepSeek V4.1 Flash"
+        );
+        if (nvidiaRes.text) {
+          return NextResponse.json({
+            reply: sanitizeZeroAnswer(nvidiaRes.text),
+            model: "DeepSeek V4.1 Flash (NVIDIA NIM)",
+            source: "nvidia-nim",
+          });
+        }
+      } catch (err) {
+        console.warn("NVIDIA DeepSeek failed:", err);
+      }
+
+      const socraticFallback = generateSocraticFallbackResponse(message, activeProblem);
+      return NextResponse.json({
+        reply: socraticFallback,
+        model: "DeepSeek V4.1 Flash (Tutor ZAP)",
+        source: "socratic-deepseek",
+      });
+    }
+
+    // 0b. Panggil NVIDIA NIM API jika Auto-Agent atau model NVIDIA dipilih
     if (
       !modelId ||
       modelId === "auto-agent" ||
       modelId?.startsWith("nvidia") ||
-      modelId === "deepseek-v4.1-flash" ||
       modelId === "poolside-laguna" ||
       modelId === "gpt-oss-20b" ||
       modelId === "gemma-4-31b-it"
@@ -319,8 +387,6 @@ export async function POST(req: Request) {
       let targetFriendlyName = "Auto-Agent (Nemotron-3.5 Bolt Tutor)";
 
       if (!modelId || modelId === "auto-agent") {
-        // Nemotron-3.5 Bolt Tutor adalah tutor matematika percakapan resmi ChatZAP:
-        // Sangat responsif (< 2 detik), konsisten bahasa, KaTeX rapi, dan bebas dari kebocoran draf CoT
         targetModel = "nvidia/nemotron-3.5-bolt-e4b";
         targetFriendlyName = "Auto-Agent (Nemotron-3.5 Bolt Tutor)";
       } else if (modelId === "nvidia-bolt" || modelId === "nvidia-nemotron-bolt") {
@@ -341,9 +407,6 @@ export async function POST(req: Request) {
       } else if (modelId === "nvidia-diffusiongemma") {
         targetModel = "google/diffusiongemma-26b-a4b-it";
         targetFriendlyName = "DiffusionGemma 26B";
-      } else if (modelId === "nvidia-deepseek-v4" || modelId === "deepseek-v4.1-flash") {
-        targetModel = "deepseek-ai/deepseek-v4.1-flash";
-        targetFriendlyName = "DeepSeek V4.1";
       } else if (modelId === "nvidia-gpt-oss" || modelId === "gpt-oss-20b") {
         targetModel = "openai/gpt-oss-20b";
         targetFriendlyName = "GPT-OSS 20B";
@@ -704,41 +767,50 @@ export async function POST(req: Request) {
       process.env.GOOGLE_API_KEY?.trim() ||
       "";
 
-    // 2. Panggil Google Gemini API Asli (Prioritas Utama jika API Key tersedia)
-    if (effectiveApiKey && modelId !== "sympy-cfl") {
-      try {
-        const geminiResult = await callGeminiAPI(
-          message,
-          effectiveApiKey,
-          conversationHistory,
-          activeProblem,
-          modelId,
-          userName,
-          sessionLanguage
-        );
-        
-        if (geminiResult.text) {
-          const guardedReply = sanitizeZeroAnswer(geminiResult.text);
-          return NextResponse.json({
-            reply: guardedReply,
-            model: `${geminiResult.modelUsed || "Gemini 2.0 Flash"} (Google Cloud API)`,
-            source: "gemini-api",
-          });
-        }
-
-        // Jika API Key diberikan tetapi Google API mengembalikan error eksplisit (misal: 400 Invalid Key / 403 / 429)
-        if (geminiResult.error) {
-          console.warn("Gemini API returned error:", geminiResult);
-          const socraticFallback = generateSocraticFallbackResponse(message, activeProblem);
+    // 2. Panggil Google Gemini API jika model Gemini dipilih
+    if (modelId?.startsWith("gemini")) {
+      if (effectiveApiKey) {
+        try {
+          const geminiResult = await callGeminiAPI(
+            message,
+            effectiveApiKey,
+            conversationHistory,
+            activeProblem,
+            modelId,
+            userName,
+            sessionLanguage
+          );
           
-          return NextResponse.json({
-            reply: `⚠️ **Catatan Koneksi Google Gemini API (Status ${geminiResult.status || 400}):**\n${geminiResult.error}\n\n*Periksa kembali API Key kamu di menu model (kanan atas) atau buat kunci baru di [Google AI Studio](https://aistudio.google.com).*  \n*Sementara ini, asisten lokal kami menjawab pertanyaanmu di bawah:*\n\n---\n\n${socraticFallback}`,
-            model: "Local Socratic (API Warning)",
-            source: "fallback-with-warning",
-          });
+          if (geminiResult.text) {
+            const guardedReply = sanitizeZeroAnswer(geminiResult.text);
+            return NextResponse.json({
+              reply: guardedReply,
+              model: `${geminiResult.modelUsed || "Gemini 2.0 Flash"} (Google Cloud API)`,
+              source: "gemini-api",
+            });
+          }
+
+          // Jika API Key diberikan tetapi Google API mengembalikan error eksplisit (misal: 400 Invalid Key / 403 / 429)
+          if (geminiResult.error) {
+            console.warn("Gemini API returned error:", geminiResult);
+            const socraticFallback = generateSocraticFallbackResponse(message, activeProblem);
+            
+            return NextResponse.json({
+              reply: `⚠️ **Catatan Koneksi Google Gemini API (Status ${geminiResult.status || 400}):**\n${geminiResult.error}\n\n*Periksa kembali API Key kamu di menu model (kanan atas) atau buat kunci baru di [Google AI Studio](https://aistudio.google.com).*  \n*Sementara ini, asisten lokal kami menjawab pertanyaanmu di bawah:*\n\n---\n\n${socraticFallback}`,
+              model: "Local Socratic (API Warning)",
+              source: "fallback-with-warning",
+            });
+          }
+        } catch (geminiError) {
+          console.warn("Gemini API call failed with exception:", geminiError);
         }
-      } catch (geminiError) {
-        console.warn("Gemini API call failed with exception:", geminiError);
+      } else {
+        const socraticFallback = generateSocraticFallbackResponse(message, activeProblem);
+        return NextResponse.json({
+          reply: `ℹ️ **Kunci Google Gemini Belum Diatur:**\nMasukkan Google AI Studio Key kamu pada menu model di bawah, atau dapatkan di [aistudio.google.com](https://aistudio.google.com).\n\n*Sementara ini asisten Sokratik ZAP menjawab:*\n\n---\n\n${socraticFallback}`,
+          model: "Gemini (Local Preview)",
+          source: "local-preview-no-key",
+        });
       }
     }
 

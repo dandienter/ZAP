@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
   ChevronDown,
-  ChevronRight,
   Check,
   ExternalLink,
 } from "lucide-react";
@@ -253,7 +252,6 @@ export default function ModelPickerWithEffort({
   onChangeEffort,
 }: ModelPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeSubmenu, setActiveSubmenu] = useState<"model" | "effort" | null>("model");
   const [mounted, setMounted] = useState(false);
   const [triggerRect, setTriggerRect] = useState<DOMRect | null>(null);
 
@@ -290,25 +288,20 @@ export default function ModelPickerWithEffort({
     }
     onSelectModel(model);
     setIsOpen(false);
-    setActiveSubmenu(null);
   };
 
   const handleSelectEffort = (effort: ReasoningEffort) => {
     onChangeEffort(effort);
-    setIsOpen(false);
-    setActiveSubmenu(null);
   };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        // Also check if click is inside portal
         const target = event.target as HTMLElement | null;
         if (target && target.closest(".zap-model-portal")) {
           return;
         }
         setIsOpen(false);
-        setActiveSubmenu(null);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -330,13 +323,11 @@ export default function ModelPickerWithEffort({
       setTriggerRect(containerRef.current.getBoundingClientRect());
     }
     setIsOpen(true);
-    setActiveSubmenu("model");
   };
 
   const handleMouseLeaveContainer = () => {
     closeTimeoutRef.current = setTimeout(() => {
       setIsOpen(false);
-      setActiveSubmenu(null);
     }, 280);
   };
 
@@ -344,21 +335,13 @@ export default function ModelPickerWithEffort({
     if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
   };
 
-  // Dimensions & Coordinates
-  const mainWidth = 232;
-  const submenuWidth = activeSubmenu === "effort" ? 220 : 288;
-  const rightOffset = triggerRect ? Math.max(12, window.innerWidth - triggerRect.right) : 16;
+  // Dimensions & Coordinates - Single Unified Glass Popover
+  const cardWidth = 308;
+  const rightOffset = triggerRect
+    ? Math.max(12, Math.min(window.innerWidth - cardWidth - 12, window.innerWidth - triggerRect.right))
+    : 16;
   const bottomOffset = triggerRect ? Math.max(12, window.innerHeight - triggerRect.top + 6) : 56;
-
-  // Submenu left alignment with auto-clamping to screen edge
-  const mainCardLeft = triggerRect ? triggerRect.right - mainWidth : 300;
-  let submenuLeft = mainCardLeft - 8 - submenuWidth;
-  if (submenuLeft < 12) {
-    submenuLeft = 12;
-  }
-
-  // Maximum submenu height to prevent top viewport clipping
-  const maxSubmenuHeight = triggerRect ? Math.min(380, Math.max(220, triggerRect.top - 20)) : 340;
+  const maxCardHeight = triggerRect ? Math.min(460, Math.max(260, triggerRect.top - 16)) : 380;
 
   return (
     <div
@@ -375,12 +358,7 @@ export default function ModelPickerWithEffort({
           if (containerRef.current) {
             setTriggerRect(containerRef.current.getBoundingClientRect());
           }
-          setIsOpen((prev) => {
-            const next = !prev;
-            if (next) setActiveSubmenu("model");
-            else setActiveSubmenu(null);
-            return next;
-          });
+          setIsOpen((prev) => !prev);
         }}
         title={`Model: ${currentModel.name} • Effort: ${formatEffort(reasoningEffort)}`}
         className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] text-xs text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white transition cursor-pointer select-none"
@@ -398,141 +376,27 @@ export default function ModelPickerWithEffort({
         />
       </button>
 
-      {/* Flyout Cascading Menus Rendered via Portal (Immune to parent overflow-hidden & screen clipping) */}
+      {/* SINGLE UNIFIED GLASS POPOVER (Reasoning Effort + Model List) */}
       {mounted && isOpen && triggerRect && createPortal(
         <div
           className="zap-model-portal"
           onMouseEnter={handleMouseEnterPortal}
           onMouseLeave={handleMouseLeaveContainer}
         >
-          {/* CARD 1: PRIMARY 2-ROW CONTEXT MENU (Model & Effort) */}
           <div
             style={{
               position: "fixed",
               bottom: `${bottomOffset}px`,
               right: `${rightOffset}px`,
-              width: `${mainWidth}px`,
+              width: `${cardWidth}px`,
+              maxHeight: `${maxCardHeight}px`,
               zIndex: 9999,
             }}
-            className="liquid-glass-popup rounded-2xl p-1.5 text-slate-800 dark:text-zinc-200 shadow-2xl border border-slate-200/90 dark:border-white/10 backdrop-blur-2xl animate-liquid-pop origin-bottom-right select-none"
+            className="liquid-glass-popup rounded-2xl text-slate-800 dark:text-zinc-200 shadow-2xl border border-slate-200/90 dark:border-white/10 backdrop-blur-2xl animate-liquid-pop origin-bottom-right flex flex-col overflow-hidden select-none"
           >
-            {/* Row 1: Model */}
-            <div
-              onMouseEnter={() => setActiveSubmenu("model")}
-              onClick={() => setActiveSubmenu("model")}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer ${
-                activeSubmenu === "model"
-                  ? "bg-slate-900/[0.08] dark:bg-white/[0.12] text-slate-950 dark:text-white font-semibold"
-                  : "text-slate-700 dark:text-zinc-300 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-950 dark:hover:text-white"
-              }`}
-            >
-              <span>Model</span>
-              <div className="flex items-center gap-1.5 text-slate-500 dark:text-zinc-400">
-                <span className="truncate max-w-[105px] text-xs font-normal text-right">
-                  {currentModel.id.includes("deepseek") ? "DeepSeek V4.1" : currentModel.shortName}
-                </span>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 shrink-0" />
-              </div>
-            </div>
-
-            {/* Row 2: Effort */}
-            <div
-              onMouseEnter={() => setActiveSubmenu("effort")}
-              onClick={() => setActiveSubmenu("effort")}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer ${
-                activeSubmenu === "effort"
-                  ? "bg-slate-900/[0.08] dark:bg-white/[0.12] text-slate-950 dark:text-white font-semibold"
-                  : "text-slate-700 dark:text-zinc-300 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-950 dark:hover:text-white"
-              }`}
-            >
-              <span>Effort</span>
-              <div className="flex items-center gap-1.5 text-slate-500 dark:text-zinc-400">
-                <span className="text-xs font-normal text-right">
-                  {formatEffort(reasoningEffort)}
-                </span>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 shrink-0" />
-              </div>
-            </div>
-          </div>
-
-          {/* CARD 2A: MODEL SELECTION SUBMENU (Opens to the left of the main card with zero clipping) */}
-          {activeSubmenu === "model" && (
-            <div
-              style={{
-                position: "fixed",
-                bottom: `${bottomOffset}px`,
-                left: `${submenuLeft}px`,
-                width: `${submenuWidth}px`,
-                maxHeight: `${maxSubmenuHeight}px`,
-                zIndex: 9999,
-              }}
-              className="liquid-glass-popup rounded-2xl p-2 text-slate-800 dark:text-zinc-200 shadow-2xl border border-slate-200/90 dark:border-white/10 backdrop-blur-2xl animate-liquid-pop origin-bottom-right flex flex-col overflow-hidden select-none"
-            >
-              <div className="px-2.5 py-1.5 flex items-center justify-between border-b border-slate-200/80 dark:border-white/[0.08] shrink-0 mb-1">
-                <span className="text-[11px] font-mono uppercase tracking-wider text-slate-500 dark:text-zinc-400 font-bold">
-                  PILIH MODEL
-                </span>
-                <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono">
-                  {AVAILABLE_MODELS.length} Model
-                </span>
-              </div>
-
-              <div className="space-y-0.5 overflow-y-auto px-0.5 no-scrollbar flex-1">
-                {AVAILABLE_MODELS.map((model) => {
-                  const isSelected = model.id === currentModel.id;
-                  const Icon = model.icon;
-                  return (
-                    <button
-                      key={model.id}
-                      type="button"
-                      onClick={() => handleSelectModel(model)}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-[12.5px] font-medium transition cursor-pointer text-left ${
-                        isSelected
-                          ? "bg-slate-900/[0.08] dark:bg-white/[0.14] text-slate-950 dark:text-white font-semibold"
-                          : "text-slate-800 dark:text-zinc-200 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-950 dark:hover:text-white"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <Icon className={`w-4 h-4 shrink-0 ${model.iconColor || "text-slate-500"}`} />
-                        <span className="truncate">{model.name}</span>
-                      </div>
-                      {isSelected && (
-                        <Check className="w-3.5 h-3.5 text-slate-900 dark:text-white shrink-0 ml-1.5" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="mt-1.5 pt-1.5 border-t border-slate-200/60 dark:border-white/[0.08] shrink-0">
-                <Link
-                  href="/connector"
-                  onClick={() => {
-                    setIsOpen(false);
-                    setActiveSubmenu(null);
-                  }}
-                  className="flex items-center justify-between px-2.5 py-1.5 rounded-xl text-[11.5px] font-medium text-slate-500 dark:text-zinc-400 hover:text-slate-950 dark:hover:text-white hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] transition"
-                >
-                  <span>Kelola API Key &amp; Hub...</span>
-                  <ExternalLink className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
-                </Link>
-              </div>
-            </div>
-          )}
-
-          {/* CARD 2B: REASONING EFFORT SUBMENU (Opens to the left of the main card with zero clipping) */}
-          {activeSubmenu === "effort" && (
-            <div
-              style={{
-                position: "fixed",
-                bottom: `${bottomOffset}px`,
-                left: `${submenuLeft}px`,
-                width: `${submenuWidth}px`,
-                zIndex: 9999,
-              }}
-              className="liquid-glass-popup rounded-2xl p-2 text-slate-800 dark:text-zinc-200 shadow-2xl border border-slate-200/90 dark:border-white/10 backdrop-blur-2xl animate-liquid-pop origin-bottom-right select-none"
-            >
-              <div className="px-2.5 py-1.5 border-b border-slate-200/80 dark:border-white/[0.08] mb-1 flex items-center justify-between">
+            {/* 1. TOP SECTION: REASONING EFFORT INLINE SEGMENTED CONTROLS */}
+            <div className="p-2.5 pb-2 border-b border-slate-200/80 dark:border-white/[0.08] shrink-0 bg-slate-50/50 dark:bg-white/[0.02]">
+              <div className="flex items-center justify-between mb-1.5 px-0.5">
                 <span className="text-[11px] font-mono uppercase tracking-wider text-slate-500 dark:text-zinc-400 font-bold">
                   REASONING EFFORT
                 </span>
@@ -541,48 +405,101 @@ export default function ModelPickerWithEffort({
                 </span>
               </div>
 
-              <div className="space-y-1 px-0.5">
+              {/* 3-segment pill control */}
+              <div className="grid grid-cols-3 gap-1 p-1 bg-slate-200/60 dark:bg-black/40 rounded-xl border border-slate-300/40 dark:border-white/[0.06]">
                 {(["low", "medium", "high"] as ReasoningEffort[]).map((opt) => {
                   const isSelected = opt === reasoningEffort;
                   return (
                     <button
                       key={opt}
                       type="button"
-                      onClick={() => handleSelectEffort(opt)}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition cursor-pointer text-left ${
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectEffort(opt);
+                      }}
+                      className={`py-1 px-1.5 rounded-lg text-xs transition-all duration-150 flex items-center justify-center gap-1 cursor-pointer ${
                         isSelected
-                          ? "bg-slate-900/[0.08] dark:bg-white/[0.14] text-slate-950 dark:text-white font-semibold"
-                          : "text-slate-800 dark:text-zinc-200 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-950 dark:hover:text-white"
+                          ? "bg-white dark:bg-white/15 text-slate-950 dark:text-white shadow-sm font-semibold"
+                          : "text-slate-600 dark:text-zinc-400 hover:text-slate-950 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/[0.04]"
                       }`}
                     >
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-semibold text-slate-900 dark:text-white">
-                            {formatEffort(opt)}
-                          </span>
-                          {opt === "low" && (
-                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-mono font-medium">
-                              Paling Irit
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[11px] text-slate-500 dark:text-zinc-400 leading-tight mt-0.5">
-                          {opt === "high"
-                            ? "Penalaran bertingkat & pembuktian mendalam"
-                            : opt === "medium"
-                            ? "Keseimbangan kecepatan dan analisis"
-                            : "Respon instan & sangat hemat token"}
-                        </span>
-                      </div>
-                      {isSelected && (
-                        <Check className="w-4 h-4 text-slate-900 dark:text-white shrink-0 ml-2" />
-                      )}
+                      <span>
+                        {opt === "low" ? "⚡ Low" : opt === "medium" ? "⚖️ Med" : "🧠 High"}
+                      </span>
                     </button>
                   );
                 })}
               </div>
+
+              {/* Effort Description Subtitle */}
+              <p className="text-[10px] text-slate-500 dark:text-zinc-400 mt-1 px-0.5 leading-tight">
+                {reasoningEffort === "high"
+                  ? "🧠 Penalaran CoT bertingkat & pembuktian mendalam"
+                  : reasoningEffort === "medium"
+                  ? "⚖️ Keseimbangan kecepatan & kedalaman analisis"
+                  : "⚡ Respon instan & sangat hemat kuota token"}
+              </p>
             </div>
-          )}
+
+            {/* 2. MIDDLE SECTION: MODEL LIST HEADER */}
+            <div className="px-3 pt-2 pb-1 flex items-center justify-between border-b border-slate-200/60 dark:border-white/[0.06] shrink-0">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-slate-500 dark:text-zinc-400 font-bold">
+                PILIH MODEL AI
+              </span>
+              <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono">
+                {AVAILABLE_MODELS.length} Model
+              </span>
+            </div>
+
+            {/* 3. SCROLLABLE MODEL ITEMS */}
+            <div className="space-y-0.5 overflow-y-auto p-1.5 no-scrollbar flex-1">
+              {AVAILABLE_MODELS.map((model) => {
+                const isSelected = model.id === currentModel.id;
+                const Icon = model.icon;
+                return (
+                  <button
+                    key={model.id}
+                    type="button"
+                    onClick={() => handleSelectModel(model)}
+                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-[12.5px] font-medium transition cursor-pointer text-left ${
+                      isSelected
+                        ? "bg-slate-900/[0.08] dark:bg-white/[0.14] text-slate-950 dark:text-white font-semibold"
+                        : "text-slate-800 dark:text-zinc-200 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-950 dark:hover:text-white"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Icon className={`w-4 h-4 shrink-0 ${model.iconColor || "text-slate-500"}`} />
+                      <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="truncate">{model.name}</span>
+                          {model.badge && (
+                            <span className="text-[8.5px] px-1.5 py-0.2 rounded-full bg-slate-200/70 dark:bg-white/10 text-slate-600 dark:text-zinc-400 shrink-0">
+                              {model.badge}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {isSelected && (
+                      <Check className="w-3.5 h-3.5 text-slate-900 dark:text-white shrink-0 ml-1.5" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 4. FOOTER: CONNECTOR LINK */}
+            <div className="p-1.5 border-t border-slate-200/60 dark:border-white/[0.08] shrink-0 bg-slate-50/40 dark:bg-white/[0.01]">
+              <Link
+                href="/connector"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center justify-between px-2.5 py-1.5 rounded-xl text-[11px] font-medium text-slate-500 dark:text-zinc-400 hover:text-slate-950 dark:hover:text-white hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] transition"
+              >
+                <span>Kelola API Key &amp; Hub...</span>
+                <ExternalLink className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
+              </Link>
+            </div>
+          </div>
         </div>,
         document.body
       )}

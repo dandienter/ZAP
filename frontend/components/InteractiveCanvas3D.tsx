@@ -254,14 +254,14 @@ function createCornerBracketGeometry(
  */
 function createDimensionSprite(text: string, isDark = true): THREE.Sprite {
   const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 72;
+  canvas.width = 240;
+  canvas.height = 64;
   const ctx = canvas.getContext("2d");
   if (ctx) {
     // Glass pill background
-    ctx.fillStyle = isDark ? "rgba(10, 14, 26, 0.90)" : "rgba(255, 255, 255, 0.92)";
-    const radius = 18;
-    const x = 8, y = 6, w = 240, h = 60;
+    ctx.fillStyle = isDark ? "rgba(10, 14, 26, 0.92)" : "rgba(255, 255, 255, 0.94)";
+    const radius = 16;
+    const x = 6, y = 6, w = 228, h = 52;
     ctx.beginPath();
     ctx.moveTo(x + radius, y);
     ctx.lineTo(x + w - radius, y);
@@ -276,16 +276,16 @@ function createDimensionSprite(text: string, isDark = true): THREE.Sprite {
     ctx.fill();
 
     // Border
-    ctx.strokeStyle = isDark ? "#38bdf8" : "#0284c7";
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = isDark ? "rgba(56, 189, 248, 0.85)" : "rgba(2, 132, 199, 0.85)";
+    ctx.lineWidth = 2.5;
     ctx.stroke();
 
     // Text label
     ctx.fillStyle = isDark ? "#ffffff" : "#0f172a";
-    ctx.font = "bold 26px sans-serif";
+    ctx.font = "bold 24px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(text, 128, 36);
+    ctx.fillText(text, 120, 32);
   }
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -296,7 +296,7 @@ function createDimensionSprite(text: string, isDark = true): THREE.Sprite {
     depthTest: false,
   });
   const sprite = new THREE.Sprite(material);
-  sprite.scale.set(0.9, 0.28, 1);
+  sprite.scale.set(0.72, 0.22, 1);
   return sprite;
 }
 
@@ -2515,19 +2515,22 @@ export default function InteractiveCanvas3D({
         cornerHandlesRef.current.push(bracket);
       });
 
-      // Dimension labels on 3D edges (Angka pada sisi 3D)
+      // Dimension labels on 3D edges (Angka pada tulang sisi 3D)
       const u = unit || "cm";
       const sVal = paramA || 10;
+      // Tulang alas depan
       const dimFront = createDimensionSprite(`s = ${sVal} ${u}`, isDark);
-      dimFront.position.set(0, GRID_Y - 0.25, hs + 0.25);
+      dimFront.position.set(0, GRID_Y + 0.14, hs + 0.10);
       group.add(dimFront);
 
+      // Tulang tegak kiri depan
       const dimVert = createDimensionSprite(`s = ${sVal} ${u}`, isDark);
-      dimVert.position.set(-hs - 0.45, displaySize / 2 + GRID_Y, hs);
+      dimVert.position.set(-hs - 0.16, hs + GRID_Y, hs);
       group.add(dimVert);
 
+      // Tulang kedalaman samping kanan
       const dimDepth = createDimensionSprite(`s = ${sVal} ${u}`, isDark);
-      dimDepth.position.set(hs + 0.45, GRID_Y - 0.25, 0);
+      dimDepth.position.set(hs + 0.14, GRID_Y + 0.14, 0);
       group.add(dimDepth);
 
       // Slicing Plane: ONLY RENDER IF USER SPECIFICALLY REQUESTED IT!
@@ -2606,16 +2609,19 @@ export default function InteractiveCanvas3D({
       const pVal = paramA || 10;
       const lVal = paramB || 6;
       const tVal = paramC || 4;
+      // Tulang panjang depan
       const dimP = createDimensionSprite(`p = ${pVal} ${u}`, isDark);
-      dimP.position.set(0, GRID_Y - 0.25, hd + 0.25);
+      dimP.position.set(0, GRID_Y + 0.14, hd + 0.10);
       group.add(dimP);
 
+      // Tulang lebar samping kanan
       const dimL = createDimensionSprite(`l = ${lVal} ${u}`, isDark);
-      dimL.position.set(hw + 0.45, GRID_Y - 0.25, 0);
+      dimL.position.set(hw + 0.14, GRID_Y + 0.14, 0);
       group.add(dimL);
 
+      // Tulang tinggi tegak depan-kiri
       const dimT = createDimensionSprite(`t = ${tVal} ${u}`, isDark);
-      dimT.position.set(-hw - 0.45, hh + GRID_Y, hd);
+      dimT.position.set(-hw - 0.16, hh + GRID_Y, hd);
       group.add(dimT);
     }
 
@@ -2646,16 +2652,26 @@ export default function InteractiveCanvas3D({
       group.add(topHandle);
       cornerHandlesRef.current.push(topHandle);
 
-      // Dimension labels on Tabung
+      // Dimension labels on Tabung (Tulang jari-jari & tinggi)
       const u = unit || "cm";
       const rVal = paramA || 7;
       const tVal = paramB || 12;
+
+      // Garis tulang jari-jari pada tutup atas
+      const radPts = [new THREE.Vector3(0, h + GRID_Y, 0), new THREE.Vector3(r, h + GRID_Y, 0)];
+      const radGeo = new THREE.BufferGeometry().setFromPoints(radPts);
+      const radMat = new THREE.LineDashedMaterial({ color: 0x22d3ee, dashSize: 0.12, gapSize: 0.08 });
+      const radLine = new THREE.Line(radGeo, radMat);
+      radLine.computeLineDistances();
+      group.add(radLine);
+
       const dimR = createDimensionSprite(`r = ${rVal} ${u}`, isDark);
-      dimR.position.set(r / 2, h + GRID_Y + 0.25, 0);
+      dimR.position.set(r / 2, h + GRID_Y + 0.16, 0);
       group.add(dimR);
 
+      // Mengikuti siluet tulang tinggi sisi kiri
       const dimH = createDimensionSprite(`t = ${tVal} ${u}`, isDark);
-      dimH.position.set(-r - 0.45, h / 2 + GRID_Y, 0);
+      dimH.position.set(-r - 0.16, h / 2 + GRID_Y, 0);
       group.add(dimH);
     }
 
@@ -2741,14 +2757,24 @@ export default function InteractiveCanvas3D({
         group.add(dot);
         cornerHandlesRef.current.push(dot);
 
-        // Dimension label on Bola
+        // Garis tulang jari-jari bola dari pusat ke permukaan
+        const sphereRPts = [new THREE.Vector3(0, radius + GRID_Y, 0), new THREE.Vector3(radius, radius + GRID_Y, 0)];
+        const sphereRGeo = new THREE.BufferGeometry().setFromPoints(sphereRPts);
+        const sphereRMat = new THREE.LineDashedMaterial({ color: 0x67e8f9, dashSize: 0.1, gapSize: 0.06 });
+        const sphereRLine = new THREE.Line(sphereRGeo, sphereRMat);
+        sphereRLine.computeLineDistances();
+        group.add(sphereRLine);
+
+        // Dimension label on Bola (Mengikuti tulang jari-jari)
         const u = unit || "cm";
         const rVal = paramA || 7;
         const dimR = createDimensionSprite(`r = ${rVal} ${u}`, isDark);
-        dimR.position.set(radius / 2, radius + GRID_Y + 0.25, 0);
+        dimR.position.set(radius / 2, radius + GRID_Y + 0.16, 0);
         group.add(dimR);
       } else if (solidKind === "kerucut") {
-        geo = new THREE.ConeGeometry(1.8, 3.2, 36);
+        const coneR = Math.max(1.2, Math.min(3.0, (paramA / 7) * 1.8));
+        const coneH = Math.max(1.8, Math.min(4.8, ((paramB || 10) / 10) * 3.2));
+        geo = new THREE.ConeGeometry(coneR, coneH, 36);
         const mat = new THREE.MeshStandardMaterial({
           color: 0x38bdf8,
           transparent: true,
@@ -2756,9 +2782,36 @@ export default function InteractiveCanvas3D({
           depthWrite: false,
         });
         const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(0, 1.6 + GRID_Y, 0);
+        mesh.position.set(0, coneH / 2 + GRID_Y, 0);
         addEdges(mesh, geo, 0x67e8f9);
         group.add(mesh);
+
+        // Tulang tinggi tegak putus-putus di pusat kerucut
+        const coneHPts = [new THREE.Vector3(0, GRID_Y, 0), new THREE.Vector3(0, coneH + GRID_Y, 0)];
+        const coneHGeo = new THREE.BufferGeometry().setFromPoints(coneHPts);
+        const coneHMat = new THREE.LineDashedMaterial({ color: 0x67e8f9, dashSize: 0.12, gapSize: 0.08 });
+        const coneHLine = new THREE.Line(coneHGeo, coneHMat);
+        coneHLine.computeLineDistances();
+        group.add(coneHLine);
+
+        // Tulang jari-jari pada alas kerucut
+        const coneRPts = [new THREE.Vector3(0, GRID_Y, 0), new THREE.Vector3(coneR, GRID_Y, 0)];
+        const coneRGeo = new THREE.BufferGeometry().setFromPoints(coneRPts);
+        const coneRMat = new THREE.LineDashedMaterial({ color: 0x67e8f9, dashSize: 0.1, gapSize: 0.06 });
+        const coneRLine = new THREE.Line(coneRGeo, coneRMat);
+        coneRLine.computeLineDistances();
+        group.add(coneRLine);
+
+        const u = unit || "cm";
+        const rVal = paramA || 7;
+        const tVal = paramB || 10;
+        const dimR = createDimensionSprite(`r = ${rVal} ${u}`, isDark);
+        dimR.position.set(coneR / 2, GRID_Y + 0.14, 0);
+        group.add(dimR);
+
+        const dimT = createDimensionSprite(`t = ${tVal} ${u}`, isDark);
+        dimT.position.set(0.38, coneH / 2 + GRID_Y, 0);
+        group.add(dimT);
       } else if (solidKind === "prisma") {
         const prismR = Math.max(1.2, Math.min(3.5, (paramA / 8) * 1.8));
         const prismH = Math.max(1.8, Math.min(5.0, ((paramB || 10) / 10) * 3.0));
@@ -2803,16 +2856,16 @@ export default function InteractiveCanvas3D({
           cornerHandlesRef.current.push(tMesh);
         }
 
-        // Dimension labels on Prisma (Angka pada sisi 3D)
+        // Dimension labels on Prisma (Mengikuti tulang alas dan tulang tinggi tegak)
         const u = unit || "cm";
         const sVal = paramA || 8;
         const tVal = paramB || 10;
         const dimBase = createDimensionSprite(`s = ${sVal} ${u}`, isDark);
-        dimBase.position.set(0, GRID_Y - 0.25, prismR + 0.25);
+        dimBase.position.set(0, GRID_Y + 0.14, prismR * 0.866 + 0.10);
         group.add(dimBase);
 
         const dimHeight = createDimensionSprite(`t = ${tVal} ${u}`, isDark);
-        dimHeight.position.set(-prismR - 0.45, prismH / 2 + GRID_Y, 0);
+        dimHeight.position.set(-prismR * 0.5 - 0.16, prismH / 2 + GRID_Y, prismR * 0.866);
         group.add(dimHeight);
 
         if (showSlicePlane) {
@@ -2874,16 +2927,38 @@ export default function InteractiveCanvas3D({
           cornerHandlesRef.current.push(bMesh);
         }
 
-        // Dimension labels on Limas (Angka pada sisi 3D)
+        // Dimension labels on Limas - mengikuti tulang alas dan tulang sumbu tinggi tegak
         const u = unit || "cm";
         const sVal = paramA || 8;
         const tVal = paramB || 10;
+
+        // 1. Tulang alas depan: titik tengah rusuk alas depan di z = pyrR / sqrt(2)
+        const frontEdgeZ = pyrR / Math.SQRT2;
         const dimBase = createDimensionSprite(`s = ${sVal} ${u}`, isDark);
-        dimBase.position.set(0, GRID_Y - 0.25, pyrR + 0.25);
+        dimBase.position.set(0, GRID_Y + 0.14, frontEdgeZ + 0.10);
         group.add(dimBase);
 
+        // 2. Tulang sumbu tinggi tegak (dashed line dari pusat alas ke puncak)
+        const pyrHPts = [new THREE.Vector3(0, GRID_Y, 0), new THREE.Vector3(0, pyrH + GRID_Y, 0)];
+        const pyrHGeo = new THREE.BufferGeometry().setFromPoints(pyrHPts);
+        const pyrHMat = new THREE.LineDashedMaterial({ color: 0x38bdf8, dashSize: 0.12, gapSize: 0.08 });
+        const pyrHLine = new THREE.Line(pyrHGeo, pyrHMat);
+        pyrHLine.computeLineDistances();
+        group.add(pyrHLine);
+
+        // Penanda siku-siku di pusat alas
+        const sq = 0.22;
+        const sqGeo = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(sq, GRID_Y, 0),
+          new THREE.Vector3(sq, GRID_Y + sq, 0),
+          new THREE.Vector3(0, GRID_Y + sq, 0),
+        ]);
+        const sqMat = new THREE.LineBasicMaterial({ color: 0x38bdf8 });
+        group.add(new THREE.Line(sqGeo, sqMat));
+
+        // Label tinggi t tepat di samping tulang tinggi tegak
         const dimHeight = createDimensionSprite(`t = ${tVal} ${u}`, isDark);
-        dimHeight.position.set(-pyrR - 0.45, pyrH / 2 + GRID_Y, 0);
+        dimHeight.position.set(0.38, pyrH / 2 + GRID_Y, 0);
         group.add(dimHeight);
 
         if (showSlicePlane) {
