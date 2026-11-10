@@ -2760,7 +2760,15 @@ export default function ZAPApp() {
       setTerminalInput("");
       return;
     } else if (cmd === "help") {
-      out = "Perintah tersedia: help, status, diagnose [expr], sympy, clear, exit";
+      out = "Perintah tersedia: help, status, diagnose [expr], sympy, unban, reset-security, clear, exit";
+    } else if (cmd === "unban" || cmd === "unsuspend" || cmd === "reset-security" || cmd === "reset-strikes") {
+      setIsAccountSuspended(false);
+      setJailbreakStrikes(0);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("zap_account_suspended");
+        localStorage.removeItem("zap_jailbreak_strikes");
+      }
+      out = "✅ Status penangguhan akun berhasil dicabut! Strike keamanan direset ke 0.";
     } else if (cmd === "status") {
       out = `CAS Engine: ${backendStatus}\nActive Model: ${selectedModel.name}\nEffort: ${reasoningEffort}`;
     } else if (cmd.startsWith("diagnose ")) {
@@ -5417,6 +5425,62 @@ export default function ZAPApp() {
                           </>
                         )}
                       </div>
+                    </div>
+
+                    {/* Security & Strike Status */}
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#181a20] border border-slate-200 dark:border-white/[0.06] space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                          <h4 className="font-semibold text-xs text-slate-900 dark:text-white">Status Keamanan Akun</h4>
+                        </div>
+                        <span
+                          className={`text-[9px] font-mono px-2 py-0.5 rounded-full border ${
+                            isAccountSuspended
+                              ? "bg-rose-500/20 text-rose-700 dark:text-rose-400 border-rose-500/30"
+                              : jailbreakStrikes > 0
+                              ? "bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-500/30"
+                              : "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
+                          }`}
+                        >
+                          {isAccountSuspended
+                            ? "Ditangguhkan (Suspended)"
+                            : jailbreakStrikes > 0
+                            ? `Peringatan (${jailbreakStrikes}/2 Strike)`
+                            : "Normal (Aktif)"}
+                        </span>
+                      </div>
+
+                      <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+                        {isAccountSuspended
+                          ? "Akun Anda saat ini ditangguhkan akibat terdeteksi melakukan percobaan manipulasi instruksi (jailbreak) berulang."
+                          : jailbreakStrikes > 0
+                          ? "Akun Anda memiliki 1 peringatan keamanan. Percobaan jailbreak 1 kali lagi akan langsung menangguhkan akun secara permanen."
+                          : "Akun Anda bersih dari catatan pelanggaran keamanan atau percobaan jailbreak."}
+                      </p>
+
+                      {(isAccountSuspended || jailbreakStrikes > 0) && (
+                        <div className="pt-1 flex items-center justify-between border-t border-slate-200/60 dark:border-white/[0.06]">
+                          <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono">
+                            Admin: wakhidpangestu1@gmail.com
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsAccountSuspended(false);
+                              setJailbreakStrikes(0);
+                              if (typeof window !== "undefined") {
+                                localStorage.removeItem("zap_account_suspended");
+                                localStorage.removeItem("zap_jailbreak_strikes");
+                              }
+                              alert("Status penangguhan akun berhasil dicabut! Strike direset ke 0.");
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-[11px] font-medium hover:opacity-90 transition cursor-pointer"
+                          >
+                            Cabut Penangguhan &amp; Reset
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#181a20] border border-slate-200 dark:border-white/[0.06] space-y-2">
