@@ -704,9 +704,9 @@ HTML_CONTENT = """<!DOCTYPE html>
 """
 
 def generate_pdf():
-    workspace = Path("C:/Users/wakhidpangestu/orca/projects/logicodix")
+    workspace = Path(__file__).resolve().parent.parent
     html_path = workspace / "docs" / "ZAP_Product_Blueprint.html"
-    pdf_path = workspace / "ZAP_Product_Blueprint.pdf"
+    pdf_path = workspace / "docs" / "ZAP_Product_Blueprint.pdf"
 
     print(f"Writing updated HTML blueprint to {html_path}...")
     html_path.write_text(HTML_CONTENT, encoding="utf-8")

@@ -2,16 +2,22 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter, useParams } from "next/navigation";
 import MathView from "@/components/MathView";
 import RichChatText from "@/components/RichChatText";
 import ZapLogo from "@/components/ZapLogo";
 import { type ZAPUser } from "@/components/GoogleAuthButton";
-import InteractiveCanvas3D, {
-  type MathModelType,
-  type SolidKind,
-  type PlaneShapeKind,
+import type {
+  MathModelType,
+  SolidKind,
+  PlaneShapeKind,
 } from "@/components/InteractiveCanvas3D";
+
+const InteractiveCanvas3D = dynamic(
+  () => import("@/components/InteractiveCanvas3D"),
+  { ssr: false }
+);
 import ModelPickerWithEffort, {
   AVAILABLE_MODELS,
   type AIModel,
@@ -1227,12 +1233,14 @@ function PromptActionBarLeft({
           setShowAttachMenu((prev) => !prev);
           setShowWorkspaceMenu(false);
         }}
-        className={`p-1 rounded-lg transition cursor-pointer ${
+        className={`p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded-lg transition cursor-pointer ${
           showAttachMenu
             ? "bg-slate-200 dark:bg-white/[0.1] text-slate-900 dark:text-white"
             : "hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
         }`}
         title="Lampirkan berkas, foto coretan, LaTeX, atau buka kanvas"
+        aria-label="Lampirkan berkas, foto coretan, LaTeX, atau buka kanvas"
+        aria-expanded={showAttachMenu}
       >
         <Plus className="w-4 h-4" />
       </button>
@@ -1244,12 +1252,14 @@ function PromptActionBarLeft({
           setShowWorkspaceMenu((prev) => !prev);
           setShowAttachMenu(false);
         }}
-        className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition cursor-pointer text-xs ${
+        className={`flex items-center gap-1.5 px-2.5 py-1 min-h-[28px] rounded-lg transition cursor-pointer text-xs ${
           showWorkspaceMenu
             ? "bg-slate-200 dark:bg-white/[0.1] text-slate-900 dark:text-white"
             : "hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
         }`}
         title="Atur izin & ruang kerja aktif"
+        aria-label="Atur izin dan ruang kerja aktif"
+        aria-expanded={showWorkspaceMenu}
       >
         {workspaceMode === "write" ? (
           <Edit3 className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
@@ -1328,8 +1338,13 @@ export default function ZAPApp() {
   const [loadingStatus, setLoadingStatus] = useState<string>("Menganalisis langkah...");
   const [backendStatus, setBackendStatus] = useState<"checking" | "online" | "offline">("checking");
 
-  // Panel layout states persis seperti screenshot 0, 1, dan 2
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
+  // Panel layout states persis seperti screenshot 0, 1, dan 2 (Tertutup default di mobile < 640px agar tidak menutupi chat)
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return window.innerWidth >= 640;
+    }
+    return true;
+  });
   const [showRightPane, setShowRightPane] = useState<boolean>(false);
   const [rightPaneFullscreen, setRightPaneFullscreen] = useState<boolean>(false);
   const [rightPaneTab, setRightPaneTab] = useState<"start" | "files" | "terminal" | "canvas">("start");
@@ -1527,6 +1542,9 @@ export default function ZAPApp() {
     setCanvasShowSlice(false);
     setShowRightPane(false);
     setRightPaneTab("start");
+    if (typeof window !== "undefined" && window.innerWidth < 640) {
+      setSidebarOpen(false);
+    }
 
     updateUrlForConversation(null);
   }, [updateUrlForConversation]);
@@ -1540,6 +1558,9 @@ export default function ZAPApp() {
     setActiveProblemFirstStep(target.activeProblemFirstStep || null);
     setActiveProblemContext(target.activeProblemContext || null);
     setTargetVar(target.targetVar || "x");
+    if (typeof window !== "undefined" && window.innerWidth < 640) {
+      setSidebarOpen(false);
+    }
 
     updateUrlForConversation(target.id);
 
@@ -3073,8 +3094,18 @@ export default function ZAPApp() {
         onChange={handleFileUpload}
       />
 
+      {/* Mobile Sidebar Backdrop Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-[1px] z-30 sm:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* 1. LEFT SIDEBAR (Lebih lebar & Tipografi Jelas) */}
       <aside
+        aria-label="Navigasi dan Riwayat Percakapan"
         className={`fixed inset-y-0 left-0 z-40 w-72 sm:w-[280px] bg-white dark:bg-[#131418] border-r border-slate-200 dark:border-white/[0.06] flex flex-col transition-transform duration-200 ease-in-out sm:static sm:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full sm:hidden"
         }`}
@@ -3088,8 +3119,9 @@ export default function ZAPApp() {
           <button
             type="button"
             onClick={() => setSidebarOpen(false)}
-            className="p-1.5 rounded-lg text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition"
+            className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded-lg text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition"
             title="Ciutkan sidebar"
+            aria-label="Ciutkan sidebar"
           >
             <PanelLeft className="w-4 h-4" />
           </button>
@@ -3098,6 +3130,7 @@ export default function ZAPApp() {
         {/* Action Button: + New Session */}
         <div className="px-3 py-2">
           <button
+            type="button"
             onClick={startNewChat}
             className="w-full py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-[#1e2025] hover:bg-slate-200 dark:hover:bg-[#272a32] text-slate-800 dark:text-zinc-200 font-medium text-[13px] flex items-center justify-center gap-2 transition border border-slate-200/80 dark:border-white/[0.04] active:scale-[0.99] cursor-pointer"
           >
@@ -3138,32 +3171,34 @@ export default function ZAPApp() {
 
         {/* SECTION 1: RIWAYAT CHAT (Mandiri & Terpisah dari Workspace) */}
         <div className="flex-1 flex flex-col min-h-0 pt-3">
-          <div className="flex items-center justify-between px-3.5 pb-1.5 text-slate-400 dark:text-zinc-400">
-            <span className="text-[11px] font-semibold uppercase tracking-wider font-mono text-slate-500 dark:text-zinc-400">
+          <div className="flex items-center justify-between px-3.5 pb-1.5 text-slate-500 dark:text-zinc-400">
+            <span className="text-xs font-semibold uppercase tracking-wider font-mono text-slate-600 dark:text-zinc-400">
               Riwayat Chat
             </span>
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => setIsSearchingSession(!isSearchingSession)}
-                className={`p-1 rounded transition cursor-pointer ${
+                className={`p-1.5 min-w-[26px] min-h-[26px] flex items-center justify-center rounded-lg transition cursor-pointer ${
                   isSearchingSession
                     ? "bg-slate-200 dark:bg-white/[0.1] text-slate-900 dark:text-white border border-slate-300 dark:border-white/[0.15]"
                     : "hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
                 }`}
                 title="Cari sesi aljabar"
+                aria-label="Cari sesi aljabar"
               >
                 <Search className="w-3.5 h-3.5" />
               </button>
               <button
                 type="button"
                 onClick={() => setShowWorkspaceFilter(!showWorkspaceFilter)}
-                className={`p-1 rounded transition cursor-pointer ${
+                className={`p-1.5 min-w-[26px] min-h-[26px] flex items-center justify-center rounded-lg transition cursor-pointer ${
                   showWorkspaceFilter || workspaceStatusFilter !== "all"
                     ? "bg-slate-200 dark:bg-white/[0.1] text-slate-900 dark:text-white border border-slate-300 dark:border-white/[0.15]"
                     : "hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
                 }`}
                 title="Filter status percakapan"
+                aria-label="Filter status percakapan"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" />
               </button>
@@ -3174,20 +3209,22 @@ export default function ZAPApp() {
           {isSearchingSession && (
             <div className="px-3 pb-2 pt-1">
               <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-[#18191e] border border-slate-200 dark:border-white/[0.08] text-xs">
-                <Search className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 flex-shrink-0" />
+                <Search className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 flex-shrink-0" />
                 <input
                   type="text"
+                  aria-label="Cari sesi atau materi"
                   value={sessionSearchQuery}
                   onChange={(e) => setSessionSearchQuery(e.target.value)}
                   placeholder="Cari sesi atau materi..."
-                  className="w-full bg-transparent text-xs text-slate-800 dark:text-zinc-200 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none"
+                  className="w-full bg-transparent text-xs text-slate-800 dark:text-zinc-200 placeholder-slate-500 dark:placeholder-zinc-400 focus:outline-none"
                   autoFocus
                 />
                 {sessionSearchQuery && (
                   <button
                     type="button"
                     onClick={() => setSessionSearchQuery("")}
-                    className="text-slate-400 dark:text-zinc-500 hover:text-slate-800 dark:hover:text-white"
+                    aria-label="Hapus pencarian"
+                    className="p-1 text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-white"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -3199,12 +3236,13 @@ export default function ZAPApp() {
           {/* Chat Filter Popover */}
           {showWorkspaceFilter && (
             <div className="mx-3 mb-2 p-2.5 rounded-2xl liquid-glass-popup text-xs space-y-2 animate-liquid-pop">
-              <div className="flex items-center justify-between text-[11px] text-slate-700 dark:text-zinc-300 font-medium pb-1.5 border-b border-slate-100 dark:border-white/[0.06]">
+              <div className="flex items-center justify-between text-xs text-slate-700 dark:text-zinc-300 font-medium pb-1.5 border-b border-slate-100 dark:border-white/[0.06]">
                 <span>Filter Percakapan</span>
                 <button
                   type="button"
                   onClick={() => setShowWorkspaceFilter(false)}
-                  className="text-slate-400 dark:text-zinc-500 hover:text-slate-800 dark:hover:text-white"
+                  aria-label="Tutup filter"
+                  className="p-1 text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-white"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -3212,8 +3250,8 @@ export default function ZAPApp() {
 
               {/* Status Filter */}
               <div className="space-y-1">
-                <label className="text-[10px] text-slate-400 dark:text-zinc-500 uppercase font-mono">Status Sesi</label>
-                <div className="grid grid-cols-2 gap-1 text-[10px]">
+                <span className="text-xs text-slate-500 dark:text-zinc-400 uppercase font-mono block">Status Sesi</span>
+                <div className="grid grid-cols-2 gap-1 text-xs">
                   {[
                     { id: "all", label: "Semua Sesi" },
                     { id: "fault", label: "Galat CAS" },
@@ -3243,7 +3281,15 @@ export default function ZAPApp() {
             {/* Tampilkan item 'New Session' jika sedang berada di sesi baru yang belum disimpan */}
             {(!conversations.some((c) => c.id === activeConversationId) || messages.length === 0) && (
               <div
+                role="button"
+                tabIndex={0}
                 onClick={startNewChat}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    startNewChat();
+                  }
+                }}
                 className={`flex items-center justify-between px-2.5 py-2 rounded-xl text-[13px] font-medium cursor-pointer transition ${
                   messages.length === 0 && !conversations.some((c) => c.id === activeConversationId)
                     ? "bg-slate-100 dark:bg-[#1e2025] text-slate-900 dark:text-white border border-slate-200/80 dark:border-transparent"
@@ -3280,7 +3326,7 @@ export default function ZAPApp() {
 
               if (filtered.length === 0 && (sessionSearchQuery || workspaceStatusFilter !== "all")) {
                 return (
-                  <div className="px-2.5 py-3 text-center text-slate-400 dark:text-zinc-500 text-[12px] italic">
+                  <div className="px-2.5 py-3 text-center text-slate-500 dark:text-zinc-400 text-[12px] italic">
                     Tidak ada sesi yang cocok dengan filter
                   </div>
                 );
@@ -3288,7 +3334,7 @@ export default function ZAPApp() {
 
               if (conversations.length === 0 && messages.length > 0) {
                 return (
-                  <div className="px-2.5 py-3 text-center text-slate-400 dark:text-zinc-500 text-[12px] italic">
+                  <div className="px-2.5 py-3 text-center text-slate-500 dark:text-zinc-400 text-[12px] italic">
                     Belum ada riwayat percakapan tersimpan
                   </div>
                 );
@@ -3297,7 +3343,15 @@ export default function ZAPApp() {
               return filtered.slice(0, 40).map((conv) => (
                 <div
                   key={conv.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => openConversation(conv.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openConversation(conv.id);
+                    }
+                  }}
                   className={`group flex items-center justify-between px-2.5 py-2 rounded-xl text-[13px] transition cursor-pointer ${
                     conv.id === activeConversationId
                       ? "bg-slate-100 dark:bg-white/[0.08] text-slate-900 dark:text-white font-medium border border-slate-200/60 dark:border-white/[0.08]"
@@ -3307,7 +3361,7 @@ export default function ZAPApp() {
                   <span className="truncate flex-1 font-normal text-slate-700 dark:text-zinc-300 group-hover:text-slate-900 dark:group-hover:text-white">
                     {conv.title}
                   </span>
-                  <span className="text-[11px] font-mono text-slate-400 dark:text-zinc-500 group-hover:hidden flex-shrink-0 ml-1.5">
+                  <span className="text-xs font-mono text-slate-500 dark:text-zinc-400 group-hover:hidden flex-shrink-0 ml-1.5">
                     {formatRelativeTime(conv.updatedAt)}
                   </span>
                   <div className="hidden group-hover:flex items-center gap-1.5 flex-shrink-0 ml-1.5">
@@ -3317,16 +3371,18 @@ export default function ZAPApp() {
                         e.stopPropagation();
                         handleOpenShareModal(conv);
                       }}
-                      className="text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-white transition"
+                      className="p-1 text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition"
                       title="Bagikan tautan percakapan"
+                      aria-label={`Bagikan tautan percakapan ${conv.title}`}
                     >
                       <Share2 className="w-3 h-3" />
                     </button>
                     <button
                       type="button"
                       onClick={(e) => deleteConversation(conv.id, e)}
-                      className="text-slate-400 dark:text-zinc-500 hover:text-rose-500 dark:hover:text-rose-400 transition"
+                      className="p-1 text-slate-500 dark:text-zinc-400 hover:text-rose-500 dark:hover:text-rose-400 transition"
                       title="Hapus sesi"
+                      aria-label={`Hapus sesi ${conv.title}`}
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -3339,15 +3395,16 @@ export default function ZAPApp() {
 
         {/* SECTION 2: WORKSPACES (Dibuat Manual oleh Pengguna) */}
         <div className="border-t border-slate-200/70 dark:border-white/[0.06] pt-2.5 pb-2 shrink-0">
-          <div className="flex items-center justify-between px-3.5 pb-1.5 text-slate-400 dark:text-zinc-400">
-            <span className="text-[11px] font-semibold uppercase tracking-wider font-mono text-slate-500 dark:text-zinc-400">
+          <div className="flex items-center justify-between px-3.5 pb-1.5 text-slate-500 dark:text-zinc-400">
+            <span className="text-xs font-semibold uppercase tracking-wider font-mono text-slate-600 dark:text-zinc-400">
               Workspaces
             </span>
             <button
               type="button"
               onClick={() => setShowNewWorkspaceModal(true)}
-              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
+              className="p-1.5 min-w-[26px] min-h-[26px] flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
               title="Buat workspace baru"
+              aria-label="Buat workspace baru"
             >
               <FolderPlus className="w-3.5 h-3.5" />
             </button>
@@ -3358,9 +3415,9 @@ export default function ZAPApp() {
               <button
                 type="button"
                 onClick={() => setShowNewWorkspaceModal(true)}
-                className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg border border-dashed border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-white/[0.15] text-[12px] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer group"
+                className="w-full flex items-center justify-center gap-2 px-3 py-1.5 min-h-[30px] rounded-lg border border-dashed border-slate-300 dark:border-white/[0.08] hover:border-slate-400 dark:hover:border-white/[0.15] text-[12px] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer group"
               >
-                <FolderPlus className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 group-hover:text-amber-500 transition" />
+                <FolderPlus className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 group-hover:text-amber-500 transition" />
                 <span>+ Buat Workspace</span>
               </button>
             </div>
@@ -3372,7 +3429,15 @@ export default function ZAPApp() {
                 return (
                   <div
                     key={ws.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setActiveWorkspaceId(isActive ? "" : ws.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setActiveWorkspaceId(isActive ? "" : ws.id);
+                      }
+                    }}
                     className={`group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[13px] transition cursor-pointer ${
                       isActive
                         ? "bg-slate-100 dark:bg-white/[0.08] text-slate-900 dark:text-white font-medium"
@@ -3380,12 +3445,12 @@ export default function ZAPApp() {
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
-                      <Folder className={`w-3.5 h-3.5 flex-shrink-0 ${isActive ? "text-amber-500" : "text-slate-400 dark:text-zinc-500"}`} />
+                      <Folder className={`w-3.5 h-3.5 flex-shrink-0 ${isActive ? "text-amber-500" : "text-slate-500 dark:text-zinc-400"}`} />
                       <span className="truncate">{ws.name}</span>
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       {wsFiles.length > 0 && (
-                        <span className="text-[10px] font-mono text-slate-400 dark:text-zinc-500">
+                        <span className="text-xs font-mono text-slate-500 dark:text-zinc-400">
                           {wsFiles.length}
                         </span>
                       )}
@@ -3395,8 +3460,9 @@ export default function ZAPApp() {
                           e.stopPropagation();
                           handleDeleteWorkspace(ws.id);
                         }}
-                        className="hidden group-hover:block p-0.5 text-slate-400 hover:text-rose-500 transition"
+                        className="hidden group-hover:block p-1 text-slate-500 hover:text-rose-500 transition"
                         title="Hapus workspace"
+                        aria-label={`Hapus workspace ${ws.name}`}
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -3410,16 +3476,19 @@ export default function ZAPApp() {
 
         {/* Sidebar Footer: Signed in to ChatZAP + Clean Dropdown Popup */}
         <div className="p-3 border-t border-slate-200 dark:border-white/[0.06] relative" ref={profileDropdownRef}>
-          <div
+          <button
+            type="button"
             onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-            className="flex items-center justify-between w-full hover:bg-slate-100 dark:hover:bg-white/[0.04] p-1.5 rounded-xl cursor-pointer transition"
+            aria-expanded={profileDropdownOpen}
+            aria-label="Menu profil dan pengaturan akun"
+            className="flex items-center justify-between w-full hover:bg-slate-100 dark:hover:bg-white/[0.04] p-1.5 rounded-xl cursor-pointer transition text-left"
           >
             <div className="flex items-center gap-2.5 text-[13px] text-slate-700 dark:text-zinc-300 font-medium min-w-0">
               {currentUser?.avatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={currentUser.avatar} alt={currentUser.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0 ring-1 ring-black/5 dark:ring-white/10" />
               ) : (
-                <div className="w-6 h-6 rounded-full bg-emerald-600 dark:bg-emerald-500 flex items-center justify-center text-[11px] text-white flex-shrink-0 font-bold">
+                <div className="w-6 h-6 rounded-full bg-emerald-600 dark:bg-emerald-500 flex items-center justify-center text-xs text-white flex-shrink-0 font-bold">
                   {currentUser?.name?.charAt(0) || "U"}
                 </div>
               )}
@@ -3427,8 +3496,8 @@ export default function ZAPApp() {
                 {currentUser?.name ? `Signed in as ${currentUser.name}` : "Signed in to ChatZAP"}
               </span>
             </div>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 flex-shrink-0" />
-          </div>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 flex-shrink-0" />
+          </button>
 
           {/* Profile Dropdown Popup (Settings, Appearance, Models, Logout) */}
           {profileDropdownOpen && (
@@ -3454,12 +3523,12 @@ export default function ZAPApp() {
                         {currentUser?.name || "Pengguna ZAP"}
                       </span>
                       {isGuestAccount(currentUser) && (
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.08] text-slate-600 dark:text-zinc-400 shrink-0 font-normal">
+                        <span className="text-xs font-mono px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.08] text-slate-600 dark:text-zinc-400 shrink-0 font-normal">
                           Tamu
                         </span>
                       )}
                     </div>
-                    <div className="text-[11.5px] text-slate-400 dark:text-zinc-400 truncate mt-0.5">
+                    <div className="text-xs text-slate-500 dark:text-zinc-400 truncate mt-0.5">
                       {currentUser?.email || "siswa@logicodix.ai"}
                     </div>
                   </div>
@@ -3479,10 +3548,10 @@ export default function ZAPApp() {
                   className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl hover:bg-slate-100/70 dark:hover:bg-white/[0.06] text-slate-700 dark:text-zinc-200 transition text-left cursor-pointer group"
                 >
                   <div className="flex items-center gap-2.5">
-                    <Settings className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 group-hover:text-slate-800 dark:group-hover:text-white transition" />
+                    <Settings className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 group-hover:text-slate-800 dark:group-hover:text-white transition" />
                     <span className="font-medium text-xs">Pengaturan Akun</span>
                   </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-600 group-hover:translate-x-0.5 transition-transform" />
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 group-hover:translate-x-0.5 transition-transform" />
                 </button>
 
                 {/* 2. Model Connector & Keys */}
@@ -3492,52 +3561,64 @@ export default function ZAPApp() {
                   className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl hover:bg-slate-100/70 dark:hover:bg-white/[0.06] text-slate-700 dark:text-zinc-200 transition text-left group"
                 >
                   <div className="flex items-center gap-2.5">
-                    <Sparkles className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 group-hover:text-slate-800 dark:group-hover:text-white transition" />
+                    <Sparkles className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 group-hover:text-slate-800 dark:group-hover:text-white transition" />
                     <span className="font-medium text-xs">Model &amp; API Keys</span>
                   </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-600 group-hover:translate-x-0.5 transition-transform" />
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 group-hover:translate-x-0.5 transition-transform" />
                 </Link>
 
                 {/* 3. Appearance (Tema) — Sleek single-row with 3-icon pill switcher */}
                 <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-slate-100/70 dark:hover:bg-white/[0.06] transition text-slate-700 dark:text-zinc-200">
                   <div className="flex items-center gap-2.5">
-                    <Palette className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500" />
+                    <Palette className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
                     <span className="font-medium text-xs">Tema</span>
                   </div>
                   <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-slate-200/60 dark:bg-black/40 border border-slate-200/80 dark:border-white/[0.08]">
                     <button
                       type="button"
-                      onClick={() => setTheme("light")}
-                      className={`p-1 rounded-md transition cursor-pointer ${
+                      onClick={() => {
+                        setTheme("light");
+                        if (currentUser) syncAccountBackup(currentUser, { configs: { theme: "light" } });
+                      }}
+                      className={`p-1.5 min-w-[26px] min-h-[26px] flex items-center justify-center rounded-md transition cursor-pointer ${
                         theme === "light"
                           ? "bg-white text-slate-900 shadow-xs dark:bg-white dark:text-slate-900"
-                          : "text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-white"
+                          : "text-slate-600 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-white"
                       }`}
                       title="Mode Terang (Light)"
+                      aria-label="Mode Terang (Light)"
                     >
                       <Sun className="w-3 h-3" />
                     </button>
                     <button
                       type="button"
-                      onClick={() => setTheme("dark")}
-                      className={`p-1 rounded-md transition cursor-pointer ${
+                      onClick={() => {
+                        setTheme("dark");
+                        if (currentUser) syncAccountBackup(currentUser, { configs: { theme: "dark" } });
+                      }}
+                      className={`p-1.5 min-w-[26px] min-h-[26px] flex items-center justify-center rounded-md transition cursor-pointer ${
                         theme === "dark"
                           ? "bg-slate-900 text-white shadow-xs dark:bg-[#282a32]"
-                          : "text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-white"
+                          : "text-slate-600 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-white"
                       }`}
                       title="Mode Gelap (Dark)"
+                      aria-label="Mode Gelap (Dark)"
                     >
                       <Moon className="w-3 h-3" />
                     </button>
                     <button
                       type="button"
-                      onClick={() => setTheme("system")}
-                      className={`p-1 rounded-md transition cursor-pointer ${
+                      onClick={() => {
+                        setTheme("system");
+                        if (currentUser) syncAccountBackup(currentUser, { configs: { theme: "system" } });
+                      }}
+                      className={`p-1.5 min-w-[26px] min-h-[26px] flex items-center justify-center rounded-md transition cursor-pointer ${
                         theme === "system"
                           ? "bg-white dark:bg-[#282a32] text-slate-900 dark:text-white shadow-xs"
-                          : "text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-white"
+                          : "text-slate-600 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-white"
                       }`}
                       title="Sesuai Sistem (Auto)"
+                      aria-label="Sesuai Sistem (Auto)"
                     >
                       <Laptop className="w-3 h-3" />
                     </button>
@@ -3554,7 +3635,7 @@ export default function ZAPApp() {
                   className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-500/10 text-slate-600 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 transition text-left cursor-pointer group"
                 >
                   <div className="flex items-center gap-2.5">
-                    <LogOut className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition" />
+                    <LogOut className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition" />
                     <span className="font-medium text-xs">Keluar Akun</span>
                   </div>
                 </button>
@@ -3565,7 +3646,7 @@ export default function ZAPApp() {
       </aside>
 
       {/* 2. MIDDLE COLUMN (Chat Area) */}
-      <div
+      <main
         className={`flex flex-col h-full overflow-hidden relative transition-all duration-200 bg-[#f8fafc] dark:bg-[#0e0f12] ${
           rightPaneFullscreen
             ? "hidden"
@@ -3582,16 +3663,18 @@ export default function ZAPApp() {
                 <button
                   type="button"
                   onClick={() => setSidebarOpen(true)}
-                  className="p-1.5 rounded-lg text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/[0.08] transition cursor-pointer"
+                  className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded-lg text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/[0.08] transition cursor-pointer"
                   title="Buka sidebar"
+                  aria-label="Buka sidebar"
                 >
                   <PanelLeft className="w-4 h-4" />
                 </button>
                 <button
                   type="button"
                   onClick={startNewChat}
-                  className="p-1.5 rounded-lg text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/[0.08] transition cursor-pointer"
+                  className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded-lg text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/[0.08] transition cursor-pointer"
                   title="Percakapan Baru"
+                  aria-label="Percakapan Baru"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -3606,7 +3689,8 @@ export default function ZAPApp() {
                 type="button"
                 onClick={() => handleOpenShareModal()}
                 title="Bagikan percakapan ini (URL Publik)"
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-white/[0.05] hover:bg-slate-200 dark:hover:bg-white/[0.1] border border-slate-200 dark:border-white/[0.08] transition shadow-sm cursor-pointer"
+                aria-label="Bagikan percakapan ini (URL Publik)"
+                className="flex items-center gap-1.5 px-2.5 py-1 min-h-[28px] rounded-lg text-xs font-medium text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-white/[0.05] hover:bg-slate-200 dark:hover:bg-white/[0.1] border border-slate-200 dark:border-white/[0.08] transition shadow-sm cursor-pointer"
               >
                 <Share2 className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-300" />
                 <span className="hidden sm:inline">Bagikan</span>
@@ -3618,8 +3702,9 @@ export default function ZAPApp() {
               <button
                 type="button"
                 onClick={() => setShowRightPane(true)}
-                className="p-1.5 rounded-lg text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
+                className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded-lg text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
                 title="Buka panel tools / start"
+                aria-label="Buka panel tools / start"
               >
                 <SquareSplitHorizontal className="w-4 h-4" />
               </button>
@@ -3826,19 +3911,19 @@ export default function ZAPApp() {
                 className={`w-full max-w-3xl lg:max-w-4xl bg-white/80 dark:bg-[#14161f]/80 backdrop-blur-xl border ${
                   isDraggingOver
                     ? "border-amber-500 ring-2 ring-amber-500/30 bg-amber-500/[0.04]"
-                    : "border-slate-200/80 dark:border-white/[0.09] focus-within:border-slate-400 dark:focus-within:border-white/20"
+                    : "border-slate-200/80 dark:border-white/[0.09] focus-within:border-slate-400 dark:focus-within:border-white/20 focus-within:ring-2 focus-within:ring-slate-400/30 dark:focus-within:ring-white/15"
                 } rounded-3xl p-3.5 sm:p-4 shadow-2xl transition-all text-left relative`}
               >
                 {/* Drag & Drop Visual Overlay */}
                 {isDraggingOver && (
                   <div className="absolute inset-0 z-20 rounded-3xl bg-amber-500/10 dark:bg-amber-400/10 backdrop-blur-sm border-2 border-dashed border-amber-500 dark:border-amber-400 flex flex-col items-center justify-center pointer-events-none animate-fade-in text-center p-4">
                     <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-1.5 shadow-md">
-                      <FileUp className="w-5 h-5 animate-bounce" />
+                      <FileUp className="w-5 h-5 animate-pulse" />
                     </div>
                     <span className="text-xs font-semibold text-slate-900 dark:text-white">
                       Lepaskan gambar atau dokumen di sini
                     </span>
-                    <span className="text-[10px] text-slate-500 dark:text-zinc-400 mt-0.5">
+                    <span className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
                       Mendukung tangkapan layar, JPG, PNG, PDF, atau teks aljabar
                     </span>
                   </div>
@@ -3853,7 +3938,7 @@ export default function ZAPApp() {
                         <div className="font-bold text-rose-900 dark:text-rose-200">
                           Akses ChatZAP Ditangguhkan Permanen
                         </div>
-                        <p className="text-[11px] text-rose-700 dark:text-rose-300/90 leading-relaxed">
+                        <p className="text-xs text-rose-700 dark:text-rose-300/90 leading-relaxed">
                           Akun Anda dibekukan akibat percobaan manipulasi instruksi (jailbreak) berulang. Untuk permohonan pemulihan akses, silakan email:{" "}
                           <a href="mailto:wakhidpangestu1@gmail.com" className="font-mono font-semibold underline text-rose-800 dark:text-rose-100 hover:opacity-80">
                             wakhidpangestu1@gmail.com
@@ -3865,22 +3950,23 @@ export default function ZAPApp() {
                     <div className="flex items-center gap-2 pt-2 border-t border-rose-500/20">
                       <input
                         type="text"
+                        aria-label="Kode pemulihan akun dari Admin"
                         placeholder="Punya Kode Pemulihan dari Admin? (Contoh: ZAP-...)"
                         value={userRecoveryCodeInput}
                         onChange={(e) => setUserRecoveryCodeInput(e.target.value)}
-                        className="flex-1 px-3 py-1.5 text-[11px] rounded-lg bg-white/70 dark:bg-black/40 border border-rose-500/30 text-rose-900 dark:text-rose-100 placeholder:text-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-500 font-mono"
+                        className="flex-1 px-3 py-1.5 text-xs rounded-lg bg-white/70 dark:bg-black/40 border border-rose-500/30 text-rose-900 dark:text-rose-100 placeholder:text-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-500 font-mono"
                       />
                       <button
                         type="button"
                         onClick={handleRedeemUserRecoveryCode}
                         disabled={userRecoveryLoading || !userRecoveryCodeInput.trim()}
-                        className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-medium text-[11px] cursor-pointer transition whitespace-nowrap shadow-xs"
+                        className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-medium text-xs cursor-pointer transition whitespace-nowrap shadow-xs"
                       >
                         {userRecoveryLoading ? "Memeriksa..." : "Pulihkan Akun"}
                       </button>
                     </div>
                     {userRecoveryMessage && (
-                      <p className={`text-[10px] ${userRecoveryMessage.error ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                      <p className={`text-xs ${userRecoveryMessage.error ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
                         {userRecoveryMessage.text}
                       </p>
                     )}
@@ -3889,11 +3975,11 @@ export default function ZAPApp() {
                   <div className="flex items-center justify-between p-2.5 mb-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-800 dark:text-amber-300 animate-fade-in select-none">
                     <div className="flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-                      <span className="text-[11px] font-medium">
+                      <span className="text-xs font-medium">
                         <strong>Peringatan Keamanan:</strong> Terdeteksi 1x percobaan jailbreak. ChatZAP tidak akan dapat diakses jika jailbreak 1 kali lagi.
                       </span>
                     </div>
-                    <span className="font-mono font-bold text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 shrink-0">
+                    <span className="font-mono font-bold text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 shrink-0">
                       Strike 1/2
                     </span>
                   </div>
@@ -3950,7 +4036,7 @@ export default function ZAPApp() {
                               <span className="font-medium max-w-[130px] truncate text-xs text-slate-800 dark:text-zinc-200">
                                 {f.name}
                               </span>
-                              <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono">
+                              <span className="text-xs text-slate-500 dark:text-zinc-400 font-mono">
                                 {Math.round(f.size / 1024) || 1} KB
                               </span>
                             </div>
@@ -3961,8 +4047,9 @@ export default function ZAPApp() {
                               e.stopPropagation();
                               setAttachedFiles((prev) => prev.filter((item) => item.id !== f.id));
                             }}
-                            className="p-1 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition cursor-pointer"
+                            className="p-1 min-w-[26px] min-h-[26px] flex items-center justify-center rounded-full text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition cursor-pointer"
                             title="Hapus lampiran"
+                            aria-label={`Hapus lampiran ${f.name}`}
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -3974,6 +4061,7 @@ export default function ZAPApp() {
 
                 <textarea
                   ref={textareaRef}
+                  aria-label="Ketik pertanyaan atau langkah aljabar"
                   value={inputText}
                   disabled={loading || isAccountSuspended}
                   onChange={(e) => setInputText(e.target.value)}
@@ -3985,7 +4073,7 @@ export default function ZAPApp() {
                       ? "Akun Anda telah ditangguhkan. Hubungi wakhidpangestu1@gmail.com untuk permohonan pemulihan akses."
                       : "Describe what you want to build, / commands, @ files or sessions (atau paste/drag gambar ke sini)"
                   }
-                  className="w-full bg-transparent text-[15px] sm:text-base text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none resize-none font-sans leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-transparent text-[15px] sm:text-base text-slate-900 dark:text-zinc-100 placeholder-slate-500 dark:placeholder-zinc-400 focus:outline-none focus-visible:ring-0 resize-none font-sans leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed"
                 />
 
                 <div className="flex items-center justify-between pt-2">
@@ -4036,7 +4124,9 @@ export default function ZAPApp() {
                       type="button"
                       onClick={() => handleSend()}
                       disabled={loading || isAccountSuspended || !inputText.trim()}
-                      className={`w-7 h-7 rounded-full flex items-center justify-center transition cursor-pointer ${
+                      title="Kirim pesan"
+                      aria-label="Kirim pesan"
+                      className={`w-7 h-7 min-w-[28px] min-h-[28px] shrink-0 rounded-full flex items-center justify-center transition cursor-pointer ${
                         inputText.trim() && !loading && !isAccountSuspended
                           ? "bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-zinc-200"
                           : "bg-slate-200 dark:bg-[#282a32] text-slate-400 dark:text-zinc-500 cursor-not-allowed"
@@ -4129,8 +4219,9 @@ export default function ZAPApp() {
                             <button
                               type="button"
                               onClick={() => handleCopyUserMessage(msg.rawText || msg.steps?.join("\n") || "", msg.id)}
-                              className="p-1 rounded hover:bg-slate-200/60 dark:hover:bg-white/[0.08] text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
+                              className="p-1.5 min-w-[26px] min-h-[26px] flex items-center justify-center rounded hover:bg-slate-200/60 dark:hover:bg-white/[0.08] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
                               title={copiedUserMsgId === msg.id ? "Tersalin!" : "Salin pesan"}
+                              aria-label={copiedUserMsgId === msg.id ? "Tersalin" : "Salin pesan"}
                             >
                               {copiedUserMsgId === msg.id ? (
                                 <Check className="w-3.5 h-3.5 text-slate-900 dark:text-white" />
@@ -4141,8 +4232,9 @@ export default function ZAPApp() {
                             <button
                               type="button"
                               onClick={() => startEditingMessage(msg.id, msg.rawText || msg.steps?.join("\n") || "")}
-                              className="p-1 rounded hover:bg-slate-200/60 dark:hover:bg-white/[0.08] text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
+                              className="p-1.5 min-w-[26px] min-h-[26px] flex items-center justify-center rounded hover:bg-slate-200/60 dark:hover:bg-white/[0.08] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
                               title="Edit & kirim ulang"
+                              aria-label="Edit dan kirim ulang pesan"
                             >
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
@@ -4273,29 +4365,29 @@ export default function ZAPApp() {
 
                             {msg.diagnosis.diagnosis.counter_example && (
                               <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/[0.06] space-y-1.5">
-                                <div className="flex items-center justify-between text-[10px]">
+                                <div className="flex items-center justify-between text-xs">
                                   <span className="flex items-center gap-1 font-medium text-slate-600 dark:text-zinc-300">
-                                    <FlaskConical className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
+                                    <FlaskConical className="w-3 h-3 text-slate-500 dark:text-zinc-400" />
                                     <span>Kontra-Contoh Substitusi:</span>
                                   </span>
                                 </div>
                                 <div className="grid grid-cols-3 gap-1 text-center text-xs">
                                   <div className="p-1.5 rounded bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]">
-                                    <div className="text-[8px] text-slate-400 dark:text-zinc-500">Var</div>
-                                    <div className="font-bold text-slate-800 dark:text-white font-mono text-[11px]">
+                                    <div className="text-xs text-slate-500 dark:text-zinc-400">Var</div>
+                                    <div className="font-bold text-slate-800 dark:text-white font-mono text-xs">
                                       {msg.diagnosis.diagnosis.counter_example.test_variable} ={" "}
                                       {msg.diagnosis.diagnosis.counter_example.test_value}
                                     </div>
                                   </div>
                                   <div className="p-1.5 rounded bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]">
-                                    <div className="text-[8px] text-slate-400 dark:text-zinc-500">Asal</div>
-                                    <div className="font-bold text-emerald-600 dark:text-emerald-400 font-mono text-[11px]">
+                                    <div className="text-xs text-slate-500 dark:text-zinc-400">Asal</div>
+                                    <div className="font-bold text-emerald-600 dark:text-emerald-400 font-mono text-xs">
                                       {msg.diagnosis.diagnosis.counter_example.lhs_expected}
                                     </div>
                                   </div>
                                   <div className="p-1.5 rounded bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]">
-                                    <div className="text-[8px] text-slate-400 dark:text-zinc-500">Hasilmu</div>
-                                    <div className="font-bold text-amber-600 dark:text-amber-400 font-mono text-[11px]">
+                                    <div className="text-xs text-slate-500 dark:text-zinc-400">Hasilmu</div>
+                                    <div className="font-bold text-amber-600 dark:text-amber-400 font-mono text-xs">
                                       {msg.diagnosis.diagnosis.counter_example.rhs_calculated}
                                     </div>
                                   </div>
@@ -4308,7 +4400,7 @@ export default function ZAPApp() {
                               <button
                                 type="button"
                                 onClick={() => handleOpenSmartboard(msg.smartboardItem)}
-                                className="text-xs font-medium text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] border border-slate-200 dark:border-white/[0.08] px-2.5 py-1 rounded-xl flex items-center gap-1.5 transition cursor-pointer"
+                                className="text-xs font-medium text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] border border-slate-200 dark:border-white/[0.08] px-2.5 py-1 min-h-[28px] rounded-xl flex items-center gap-1.5 transition cursor-pointer"
                               >
                                 <Sparkles className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
                                 <span>Visualisasikan di Papan Tulis Pintar &rarr;</span>
@@ -4318,13 +4410,14 @@ export default function ZAPApp() {
                         )}
 
                         {/* Action Icons Bar (Desain Bersih & Elegan Sesuai Foto Pengguna) */}
-                        <div className="flex items-center gap-1.5 pt-1.5 text-slate-400 dark:text-zinc-400">
+                        <div className="flex items-center gap-1.5 pt-1.5 text-slate-500 dark:text-zinc-400">
                           {/* 1. Copy icon */}
                           <button
                             type="button"
                             onClick={() => handleCopyMessage(msg.replyText || "", msg.id)}
-                            className="p-1.5 rounded-lg hover:text-slate-800 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+                            className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded-lg hover:text-slate-800 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
                             title={copiedMsgId === msg.id ? "Tersalin!" : "Salin jawaban"}
+                            aria-label={copiedMsgId === msg.id ? "Jawaban tersalin" : "Salin jawaban"}
                           >
                             {copiedMsgId === msg.id ? (
                               <Check className="w-4 h-4 text-slate-900 dark:text-white" />
@@ -4337,8 +4430,9 @@ export default function ZAPApp() {
                           <button
                             type="button"
                             onClick={() => handleRegenerate(msg.id)}
-                            className="p-1.5 rounded-lg hover:text-slate-800 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+                            className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded-lg hover:text-slate-800 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
                             title="Buat ulang respon"
+                            aria-label="Buat ulang respon"
                           >
                             <RotateCw className="w-4 h-4 stroke-[1.6]" />
                           </button>
@@ -4347,10 +4441,12 @@ export default function ZAPApp() {
                           <button
                             type="button"
                             onClick={() => handleFeedback(msg.id, "up")}
-                            className={`p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer ${
+                            className={`p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer ${
                               msg.feedback === "up" ? "text-slate-900 dark:text-white bg-slate-200 dark:bg-white/[0.1]" : "hover:text-slate-800 dark:hover:text-zinc-200"
                             }`}
                             title="Bermanfaat"
+                            aria-label="Respon bermanfaat"
+                            aria-pressed={msg.feedback === "up"}
                           >
                             <ThumbsUp className={`w-4 h-4 stroke-[1.6] ${msg.feedback === "up" ? "fill-current" : ""}`} />
                           </button>
@@ -4359,10 +4455,12 @@ export default function ZAPApp() {
                           <button
                             type="button"
                             onClick={() => handleFeedback(msg.id, "down")}
-                            className={`p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer ${
+                            className={`p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer ${
                               msg.feedback === "down" ? "text-slate-900 dark:text-white bg-slate-200 dark:bg-white/[0.1]" : "hover:text-slate-800 dark:hover:text-zinc-200"
                             }`}
                             title="Kurang membantu"
+                            aria-label="Respon kurang membantu"
+                            aria-pressed={msg.feedback === "down"}
                           >
                             <ThumbsDown className={`w-4 h-4 stroke-[1.6] ${msg.feedback === "down" ? "fill-current" : ""}`} />
                           </button>
@@ -4371,10 +4469,11 @@ export default function ZAPApp() {
                           <button
                             type="button"
                             onClick={() => handleSpeakMessage(msg.replyText || "", msg.id)}
-                            className={`p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer ${
+                            className={`p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer ${
                               speakingMsgId === msg.id ? "text-slate-900 dark:text-white bg-slate-200 dark:bg-white/[0.1] animate-pulse" : "hover:text-slate-800 dark:hover:text-zinc-200"
                             }`}
                             title={speakingMsgId === msg.id ? "Hentikan suara" : "Bacakan jawaban (Text-to-Speech)"}
+                            aria-label={speakingMsgId === msg.id ? "Hentikan suara" : "Bacakan jawaban"}
                           >
                             {speakingMsgId === msg.id ? (
                               <VolumeX className="w-4 h-4 stroke-[1.6]" />
@@ -4387,8 +4486,9 @@ export default function ZAPApp() {
                           <button
                             type="button"
                             onClick={() => handleShareMessage(msg.replyText || "", msg.id)}
-                            className="p-1.5 rounded-lg hover:text-slate-800 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+                            className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded-lg hover:text-slate-800 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
                             title={sharedMsgId === msg.id ? "Tautan disalin!" : "Bagikan pesan"}
+                            aria-label={sharedMsgId === msg.id ? "Tautan disalin" : "Bagikan pesan"}
                           >
                             {sharedMsgId === msg.id ? (
                               <Check className="w-4 h-4 text-slate-900 dark:text-white" />
@@ -4440,19 +4540,19 @@ export default function ZAPApp() {
                 className={`w-full bg-white/80 dark:bg-[#14161f]/80 backdrop-blur-xl border ${
                   isDraggingOver
                     ? "border-amber-500 ring-2 ring-amber-500/30 bg-amber-500/[0.04]"
-                    : "border-slate-200/80 dark:border-white/[0.09] focus-within:border-slate-400 dark:focus-within:border-white/20"
+                    : "border-slate-200/80 dark:border-white/[0.09] focus-within:border-slate-400 dark:focus-within:border-white/20 focus-within:ring-2 focus-within:ring-slate-400/30 dark:focus-within:ring-white/15"
                 } rounded-3xl p-3.5 sm:p-4 shadow-2xl transition-all text-left relative`}
               >
                 {/* Drag & Drop Visual Overlay */}
                 {isDraggingOver && (
                   <div className="absolute inset-0 z-20 rounded-3xl bg-amber-500/10 dark:bg-amber-400/10 backdrop-blur-sm border-2 border-dashed border-amber-500 dark:border-amber-400 flex flex-col items-center justify-center pointer-events-none animate-fade-in text-center p-4">
                     <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-1.5 shadow-md">
-                      <FileUp className="w-5 h-5 animate-bounce" />
+                      <FileUp className="w-5 h-5 animate-pulse" />
                     </div>
                     <span className="text-xs font-semibold text-slate-900 dark:text-white">
                       Lepaskan gambar atau dokumen di sini
                     </span>
-                    <span className="text-[10px] text-slate-500 dark:text-zinc-400 mt-0.5">
+                    <span className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
                       Mendukung tangkapan layar, JPG, PNG, PDF, atau teks aljabar
                     </span>
                   </div>
@@ -4467,7 +4567,7 @@ export default function ZAPApp() {
                         <div className="font-bold text-rose-900 dark:text-rose-200">
                           Akses ChatZAP Ditangguhkan Permanen
                         </div>
-                        <p className="text-[11px] text-rose-700 dark:text-rose-300/90 leading-relaxed">
+                        <p className="text-xs text-rose-700 dark:text-rose-300/90 leading-relaxed">
                           Akun Anda dibekukan akibat percobaan manipulasi instruksi (jailbreak) berulang. Untuk permohonan pemulihan akses, silakan email:{" "}
                           <a href="mailto:wakhidpangestu1@gmail.com" className="font-mono font-semibold underline text-rose-800 dark:text-rose-100 hover:opacity-80">
                             wakhidpangestu1@gmail.com
@@ -4479,22 +4579,23 @@ export default function ZAPApp() {
                     <div className="flex items-center gap-2 pt-2 border-t border-rose-500/20">
                       <input
                         type="text"
+                        aria-label="Kode pemulihan akun dari Admin"
                         placeholder="Punya Kode Pemulihan dari Admin? (Contoh: ZAP-...)"
                         value={userRecoveryCodeInput}
                         onChange={(e) => setUserRecoveryCodeInput(e.target.value)}
-                        className="flex-1 px-3 py-1.5 text-[11px] rounded-lg bg-white/70 dark:bg-black/40 border border-rose-500/30 text-rose-900 dark:text-rose-100 placeholder:text-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-500 font-mono"
+                        className="flex-1 px-3 py-1.5 text-xs rounded-lg bg-white/70 dark:bg-black/40 border border-rose-500/30 text-rose-900 dark:text-rose-100 placeholder:text-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-500 font-mono"
                       />
                       <button
                         type="button"
                         onClick={handleRedeemUserRecoveryCode}
                         disabled={userRecoveryLoading || !userRecoveryCodeInput.trim()}
-                        className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-medium text-[11px] cursor-pointer transition whitespace-nowrap shadow-xs"
+                        className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-medium text-xs cursor-pointer transition whitespace-nowrap shadow-xs"
                       >
                         {userRecoveryLoading ? "Memeriksa..." : "Pulihkan Akun"}
                       </button>
                     </div>
                     {userRecoveryMessage && (
-                      <p className={`text-[10px] ${userRecoveryMessage.error ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                      <p className={`text-xs ${userRecoveryMessage.error ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
                         {userRecoveryMessage.text}
                       </p>
                     )}
@@ -4503,11 +4604,11 @@ export default function ZAPApp() {
                   <div className="flex items-center justify-between p-2.5 mb-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-800 dark:text-amber-300 animate-fade-in select-none">
                     <div className="flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-                      <span className="text-[11px] font-medium">
+                      <span className="text-xs font-medium">
                         <strong>Peringatan Keamanan:</strong> Terdeteksi 1x percobaan jailbreak. ChatZAP tidak akan dapat diakses jika jailbreak 1 kali lagi.
                       </span>
                     </div>
-                    <span className="font-mono font-bold text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 shrink-0">
+                    <span className="font-mono font-bold text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 shrink-0">
                       Strike 1/2
                     </span>
                   </div>
@@ -4564,7 +4665,7 @@ export default function ZAPApp() {
                               <span className="font-medium max-w-[130px] truncate text-xs text-slate-800 dark:text-zinc-200">
                                 {f.name}
                               </span>
-                              <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono">
+                              <span className="text-xs text-slate-500 dark:text-zinc-400 font-mono">
                                 {Math.round(f.size / 1024) || 1} KB
                               </span>
                             </div>
@@ -4575,8 +4676,9 @@ export default function ZAPApp() {
                               e.stopPropagation();
                               setAttachedFiles((prev) => prev.filter((item) => item.id !== f.id));
                             }}
-                            className="p-1 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition cursor-pointer"
+                            className="p-1 min-w-[26px] min-h-[26px] flex items-center justify-center rounded-full text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition cursor-pointer"
                             title="Hapus lampiran"
+                            aria-label={`Hapus lampiran ${f.name}`}
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -4588,6 +4690,7 @@ export default function ZAPApp() {
 
                 <textarea
                   ref={textareaRef}
+                  aria-label="Ketik pertanyaan atau langkah aljabar"
                   value={inputText}
                   disabled={loading || isAccountSuspended}
                   onChange={(e) => setInputText(e.target.value)}
@@ -4599,7 +4702,7 @@ export default function ZAPApp() {
                       ? "Akun Anda telah ditangguhkan. Hubungi wakhidpangestu1@gmail.com untuk permohonan pemulihan akses."
                       : "Describe what you want to build, / commands, @ files or sessions (atau paste/drag gambar ke sini)"
                   }
-                className="w-full bg-transparent text-[15px] sm:text-base text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none resize-none font-sans leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-transparent text-[15px] sm:text-base text-slate-900 dark:text-zinc-100 placeholder-slate-500 dark:placeholder-zinc-400 focus:outline-none focus-visible:ring-0 resize-none font-sans leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed"
               />
 
               <div className="flex items-center justify-between pt-2">
@@ -4648,7 +4751,9 @@ export default function ZAPApp() {
                     type="button"
                     onClick={() => handleSend()}
                     disabled={loading || isAccountSuspended || !inputText.trim()}
-                    className={`w-7 h-7 rounded-full flex items-center justify-center transition cursor-pointer ${
+                    title="Kirim pesan"
+                    aria-label="Kirim pesan"
+                    className={`w-7 h-7 min-w-[28px] min-h-[28px] shrink-0 rounded-full flex items-center justify-center transition cursor-pointer ${
                       inputText.trim() && !loading && !isAccountSuspended
                         ? "bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-zinc-200"
                         : "bg-slate-200 dark:bg-[#282a32] text-slate-400 dark:text-zinc-500 cursor-not-allowed"
@@ -4663,7 +4768,7 @@ export default function ZAPApp() {
         </div>
       </>
       )}
-    </div>
+    </main>
 
       {/* 3. RIGHT COLUMN ("Start" Workspace / Tools Pane — Persis Screenshot 0 & 2) */}
       {showRightPane && (
@@ -4689,7 +4794,7 @@ export default function ZAPApp() {
                 <button
                   type="button"
                   onClick={() => setRightPaneTab("start")}
-                  className="ml-2 text-[10px] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white underline cursor-pointer font-medium"
+                  className="ml-2 text-xs text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white underline cursor-pointer font-medium"
                 >
                   Kembali ke Start
                 </button>
@@ -4699,9 +4804,16 @@ export default function ZAPApp() {
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => setRightPaneFullscreen((prev) => !prev)}
-                title={rightPaneFullscreen ? "Restore split view" : "Toggle split view"}
-                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition"
+                onClick={() => {
+                  if (rightPaneFullscreen) {
+                    setRightPaneFullscreen(false);
+                  } else {
+                    setShowRightPane(false);
+                  }
+                }}
+                title={rightPaneFullscreen ? "Kembalikan layar belah (Split View)" : "Sembunyikan panel kanan"}
+                aria-label={rightPaneFullscreen ? "Kembalikan layar belah (Split View)" : "Sembunyikan panel kanan"}
+                className="p-1.5 min-w-[26px] min-h-[26px] flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
               >
                 <Columns className="w-3.5 h-3.5" />
               </button>
@@ -4710,7 +4822,8 @@ export default function ZAPApp() {
                 type="button"
                 onClick={() => setRightPaneFullscreen((prev) => !prev)}
                 title={rightPaneFullscreen ? "Keluar layar penuh" : "Layar penuh"}
-                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition"
+                aria-label={rightPaneFullscreen ? "Keluar layar penuh" : "Layar penuh"}
+                className="p-1.5 min-w-[26px] min-h-[26px] flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
               >
                 {rightPaneFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
               </button>
@@ -4722,7 +4835,8 @@ export default function ZAPApp() {
                   setRightPaneFullscreen(false);
                 }}
                 title="Tutup panel"
-                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition"
+                aria-label="Tutup panel"
+                className="p-1.5 min-w-[26px] min-h-[26px] flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -4742,9 +4856,10 @@ export default function ZAPApp() {
                 {/* Centered Stack of Action Cards */}
                 <div className="w-full max-w-[420px] px-4 space-y-2.5 relative z-10">
                   {/* Card 1: Workspace files */}
-                  <div
+                  <button
+                    type="button"
                     onClick={() => setRightPaneTab("files")}
-                    className="flex items-center justify-between p-3.5 rounded-xl bg-white dark:bg-[#1b1c21] hover:bg-slate-50 dark:hover:bg-[#21232a] border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] transition cursor-pointer group shadow-sm"
+                    className="w-full text-left flex items-center justify-between p-3.5 rounded-xl bg-white dark:bg-[#1b1c21] hover:bg-slate-50 dark:hover:bg-[#21232a] border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] transition cursor-pointer group shadow-sm"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/[0.06] flex items-center justify-center text-slate-700 dark:text-zinc-300 flex-shrink-0">
@@ -4754,20 +4869,21 @@ export default function ZAPApp() {
                         <div className="font-medium text-xs text-slate-800 dark:text-zinc-200 group-hover:text-slate-900 dark:group-hover:text-white">
                           Workspace files
                         </div>
-                        <div className="text-[11px] text-slate-400 dark:text-zinc-500">
+                        <div className="text-xs text-slate-500 dark:text-zinc-400">
                           Browse files in this session&apos;s workspace
                         </div>
                       </div>
                     </div>
-                    <span className="text-[10px] font-mono text-slate-500 dark:text-zinc-400 bg-slate-100 dark:bg-white/[0.04] px-2 py-0.5 rounded border border-slate-200 dark:border-white/[0.06]">
+                    <span className="text-xs font-mono text-slate-600 dark:text-zinc-400 bg-slate-100 dark:bg-white/[0.04] px-2 py-0.5 rounded border border-slate-200 dark:border-white/[0.06]">
                       Ctrl + Alt + P
                     </span>
-                  </div>
+                  </button>
 
                   {/* Card 2: New terminal */}
-                  <div
+                  <button
+                    type="button"
                     onClick={() => setRightPaneTab("terminal")}
-                    className="flex items-center justify-between p-3.5 rounded-xl bg-white dark:bg-[#1b1c21] hover:bg-slate-50 dark:hover:bg-[#21232a] border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] transition cursor-pointer group shadow-sm"
+                    className="w-full text-left flex items-center justify-between p-3.5 rounded-xl bg-white dark:bg-[#1b1c21] hover:bg-slate-50 dark:hover:bg-[#21232a] border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] transition cursor-pointer group shadow-sm"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/[0.06] flex items-center justify-center text-slate-700 dark:text-zinc-300 flex-shrink-0">
@@ -4776,25 +4892,26 @@ export default function ZAPApp() {
                       <div>
                         <div className="font-medium text-xs text-slate-800 dark:text-zinc-200 group-hover:text-slate-900 dark:group-hover:text-white flex items-center gap-1">
                           <span>New terminal</span>
-                          <ChevronDown className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
+                          <ChevronDown className="w-3 h-3 text-slate-500 dark:text-zinc-400" />
                         </div>
-                        <div className="text-[11px] text-slate-400 dark:text-zinc-500">
+                        <div className="text-xs text-slate-500 dark:text-zinc-400">
                           Run commands in the Session workspace
                         </div>
                       </div>
                     </div>
-                    <span className="text-[10px] font-mono text-slate-500 dark:text-zinc-400 bg-slate-100 dark:bg-white/[0.04] px-2 py-0.5 rounded border border-slate-200 dark:border-white/[0.06]">
+                    <span className="text-xs font-mono text-slate-600 dark:text-zinc-400 bg-slate-100 dark:bg-white/[0.04] px-2 py-0.5 rounded border border-slate-200 dark:border-white/[0.06]">
                       Ctrl + `
                     </span>
-                  </div>
+                  </button>
 
                   {/* Card 3: Papan Tulis Pintar */}
-                  <div
+                  <button
+                    type="button"
                     onClick={() => {
                       setActive3DModel("empty");
                       setRightPaneTab("canvas");
                     }}
-                    className="flex items-center justify-between p-3.5 rounded-xl bg-white dark:bg-[#1b1c21] hover:bg-slate-50 dark:hover:bg-[#21232a] border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] transition cursor-pointer group shadow-sm"
+                    className="w-full text-left flex items-center justify-between p-3.5 rounded-xl bg-white dark:bg-[#1b1c21] hover:bg-slate-50 dark:hover:bg-[#21232a] border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] transition cursor-pointer group shadow-sm"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/[0.06] flex items-center justify-center text-slate-700 dark:text-zinc-300 flex-shrink-0">
@@ -4803,19 +4920,20 @@ export default function ZAPApp() {
                       <div>
                         <div className="font-medium text-xs text-slate-800 dark:text-zinc-200 group-hover:text-slate-900 dark:group-hover:text-white flex items-center gap-1.5">
                           <span>Papan Tulis Pintar</span>
-                          <span className="text-[10px] text-slate-600 dark:text-zinc-300 bg-slate-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded border border-slate-200 dark:border-white/[0.08] font-mono">2D / 3D</span>
+                          <span className="text-xs text-slate-600 dark:text-zinc-300 bg-slate-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded border border-slate-200 dark:border-white/[0.08] font-mono">2D / 3D</span>
                         </div>
-                        <div className="text-[11px] text-slate-400 dark:text-zinc-500">
+                        <div className="text-xs text-slate-500 dark:text-zinc-400">
                           Coret-coret kapur, grafik fungsi, &amp; geometri irisan
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </button>
 
                   {/* Card 4: More tools */}
-                  <div
+                  <button
+                    type="button"
                     onClick={() => setShowMoreModal(true)}
-                    className="flex items-center justify-between p-3.5 rounded-xl bg-white dark:bg-[#1b1c21] hover:bg-slate-50 dark:hover:bg-[#21232a] border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] transition cursor-pointer group shadow-sm"
+                    className="w-full text-left flex items-center justify-between p-3.5 rounded-xl bg-white dark:bg-[#1b1c21] hover:bg-slate-50 dark:hover:bg-[#21232a] border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] transition cursor-pointer group shadow-sm"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/[0.06] flex items-center justify-center text-slate-700 dark:text-zinc-300 flex-shrink-0">
@@ -4825,12 +4943,12 @@ export default function ZAPApp() {
                         <div className="font-medium text-xs text-slate-800 dark:text-zinc-200 group-hover:text-slate-900 dark:group-hover:text-white">
                           More tools
                         </div>
-                        <div className="text-[11px] text-slate-400 dark:text-zinc-500">
+                        <div className="text-xs text-slate-500 dark:text-zinc-400">
                           Modul kalkulus, terminal, dan konektor
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 </div>
               </>
             )}
@@ -4844,7 +4962,7 @@ export default function ZAPApp() {
                     <span className="truncate">
                       Workspace: {workspaces.find((w) => w.id === activeWorkspaceId)?.name || "Tanpa Workspace"}
                     </span>
-                    <span className="text-[10px] text-slate-500 dark:text-zinc-500 font-mono bg-slate-200/60 dark:bg-white/[0.04] px-1.5 py-0.5 rounded flex-shrink-0">
+                    <span className="text-xs text-slate-600 dark:text-zinc-400 font-mono bg-slate-200/60 dark:bg-white/[0.04] px-1.5 py-0.5 rounded flex-shrink-0">
                       {workspaceFiles.length} berkas
                     </span>
                   </span>
@@ -4852,7 +4970,7 @@ export default function ZAPApp() {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-zinc-200 text-xs font-medium transition cursor-pointer"
+                      className="flex items-center gap-1.5 px-2.5 py-1 min-h-[28px] rounded-lg bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-zinc-200 text-xs font-medium transition cursor-pointer"
                     >
                       <Upload className="w-3.5 h-3.5" />
                       <span>Unggah File</span>
@@ -4860,7 +4978,7 @@ export default function ZAPApp() {
                     <button
                       type="button"
                       onClick={() => setRightPaneTab("start")}
-                      className="text-[11px] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white cursor-pointer px-2 py-1"
+                      className="text-xs text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white cursor-pointer px-2 py-1 min-h-[28px]"
                     >
                       Tutup
                     </button>
@@ -4881,9 +4999,9 @@ export default function ZAPApp() {
                           {file.name}
                         </span>
                       </div>
-                      <div className="flex items-center gap-3 text-[11px] text-slate-400 dark:text-zinc-500 font-mono flex-shrink-0">
+                      <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-zinc-400 font-mono flex-shrink-0">
                         <span>{Math.round(file.size / 1024) || 1} KB</span>
-                        <Eye className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-400 group-hover:text-slate-900 dark:group-hover:text-white transition" />
+                        <Eye className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 group-hover:text-slate-900 dark:group-hover:text-white transition" />
                       </div>
                     </div>
                   ))}
@@ -4893,40 +5011,41 @@ export default function ZAPApp() {
 
             {/* SUB-VIEW 3: TERMINAL */}
             {rightPaneTab === "terminal" && (
-              <div className="w-full h-full flex flex-col p-4 bg-[#0a0b0e] font-mono text-xs">
-                <div className="flex items-center justify-between pb-2 border-b border-white/[0.06] text-zinc-400">
+              <div className="w-full h-full flex flex-col p-4 bg-slate-50 dark:bg-[#0a0b0e] font-mono text-xs transition-colors">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-white/[0.06] text-slate-600 dark:text-zinc-400">
                   <span className="flex items-center gap-2">
-                    <Terminal className="w-3.5 h-3.5 text-zinc-300" />
+                    <Terminal className="w-3.5 h-3.5 text-slate-700 dark:text-zinc-300" />
                     <span>zap-session@chatzap: ~</span>
                   </span>
                   <button
                     type="button"
                     onClick={() => setTerminalHistory([])}
-                    className="text-[10px] hover:text-white cursor-pointer"
+                    className="text-xs px-2 py-1 min-h-[26px] rounded hover:bg-slate-200/70 dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-white cursor-pointer transition"
                   >
                     Clear
                   </button>
                 </div>
-                <div className="flex-1 overflow-y-auto py-3 space-y-2 text-zinc-300">
+                <div className="flex-1 overflow-y-auto py-3 space-y-2 text-slate-800 dark:text-zinc-300">
                   {terminalHistory.map((item, idx) => (
                     <div key={idx} className="space-y-1">
-                      <div className="text-zinc-400">
-                        <span className="text-zinc-200">zap@logicodix</span>:<span>~</span>$ {item.cmd}
+                      <div className="text-slate-600 dark:text-zinc-400">
+                        <span className="text-slate-900 dark:text-zinc-200 font-semibold">zap@logicodix</span>:<span>~</span>$ {item.cmd}
                       </div>
-                      <pre className="text-zinc-400 whitespace-pre-wrap leading-relaxed text-[11px]">
+                      <pre className="text-slate-700 dark:text-zinc-400 whitespace-pre-wrap leading-relaxed text-xs">
                         {item.out}
                       </pre>
                     </div>
                   ))}
                 </div>
-                <form onSubmit={handleTerminalSubmit} className="flex items-center gap-2 pt-2 border-t border-white/[0.06]">
-                  <span className="text-zinc-400 font-bold">$</span>
+                <form onSubmit={handleTerminalSubmit} className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-white/[0.06]">
+                  <span className="text-slate-600 dark:text-zinc-400 font-bold">$</span>
                   <input
                     type="text"
+                    aria-label="Perintah terminal SymPy CAS"
                     value={terminalInput}
                     onChange={(e) => setTerminalInput(e.target.value)}
                     placeholder="Ketik perintah (contoh: diagnose (x+3)^2-4)..."
-                    className="flex-1 bg-transparent text-zinc-100 focus:outline-none text-xs"
+                    className="flex-1 bg-transparent text-slate-900 dark:text-zinc-100 placeholder:text-slate-500 dark:placeholder:text-zinc-400 focus:outline-none text-xs"
                     autoFocus
                   />
                 </form>
@@ -4973,12 +5092,13 @@ export default function ZAPApp() {
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/[0.08] pb-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-slate-700 dark:text-zinc-300" />
-                <h3 className="font-semibold text-sm text-slate-900 dark:text-white">Plugins &amp; Model Connectors</h3>
+                <h2 className="font-semibold text-sm text-slate-900 dark:text-white">Plugins &amp; Model Connectors</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setShowPluginModal(false)}
-                className="text-slate-400 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white cursor-pointer"
+                aria-label="Tutup modal"
+                className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -5009,14 +5129,15 @@ export default function ZAPApp() {
                   <Clock className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sm text-slate-900 dark:text-white">Automation Tasks &amp; Invariants</h3>
-                  <p className="text-[10px] text-slate-500 dark:text-zinc-400">Pusat kendali otomatisasi SymPy CAS, pemeliharaan memori &amp; sinkronisasi</p>
+                  <h2 className="font-semibold text-sm text-slate-900 dark:text-white">Automation Tasks &amp; Invariants</h2>
+                  <p className="text-xs text-slate-500 dark:text-zinc-400">Pusat kendali otomatisasi SymPy CAS, pemeliharaan memori &amp; sinkronisasi</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowTasksModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
+                aria-label="Tutup modal"
+                className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -5029,7 +5150,7 @@ export default function ZAPApp() {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="font-semibold text-xs text-slate-900 dark:text-white">SymPy CAS Invariant Audit</div>
-                    <div className="text-[11px] text-slate-500 dark:text-zinc-400">Verifikasi 22 invarian aljabar deterministik &amp; whitelist parser</div>
+                    <div className="text-xs text-slate-500 dark:text-zinc-400">Verifikasi 22 invarian aljabar deterministik &amp; whitelist parser</div>
                   </div>
                   <button
                     type="button"
@@ -5042,7 +5163,7 @@ export default function ZAPApp() {
                   </button>
                 </div>
                 {casAuditResult && (
-                  <div className="p-2 rounded-lg bg-slate-200/60 dark:bg-white/[0.04] text-[11px] text-slate-800 dark:text-zinc-200 font-mono">
+                  <div className="p-2 rounded-lg bg-slate-200/60 dark:bg-white/[0.04] text-xs text-slate-800 dark:text-zinc-200 font-mono">
                     {casAuditResult}
                   </div>
                 )}
@@ -5053,7 +5174,7 @@ export default function ZAPApp() {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="font-semibold text-xs text-slate-900 dark:text-white">Pembersih Scratchpad &amp; Draft Telemetri</div>
-                    <div className="text-[11px] text-slate-500 dark:text-zinc-400">Bersihkan sisa draft lokal dan token cache sementara</div>
+                    <div className="text-xs text-slate-500 dark:text-zinc-400">Bersihkan sisa draft lokal dan token cache sementara</div>
                   </div>
                   <button
                     type="button"
@@ -5065,7 +5186,7 @@ export default function ZAPApp() {
                   </button>
                 </div>
                 {lastSweepResult && (
-                  <div className="p-2 rounded-lg bg-slate-200/60 dark:bg-white/[0.04] text-[11px] text-slate-800 dark:text-zinc-200 font-mono">
+                  <div className="p-2 rounded-lg bg-slate-200/60 dark:bg-white/[0.04] text-xs text-slate-800 dark:text-zinc-200 font-mono">
                     {lastSweepResult}
                   </div>
                 )}
@@ -5076,10 +5197,13 @@ export default function ZAPApp() {
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#1a1c22] border border-slate-200 dark:border-white/[0.06] flex items-center justify-between">
                   <div>
                     <div className="font-medium text-slate-900 dark:text-white text-xs">Auto-Sync Vault</div>
-                    <div className="text-[10px] text-slate-500 dark:text-zinc-400">Sinkronkan ke Cloud</div>
+                    <div className="text-xs text-slate-500 dark:text-zinc-400">Sinkronkan ke Cloud</div>
                   </div>
                   <button
                     type="button"
+                    role="switch"
+                    aria-checked={autoSyncEnabled}
+                    aria-label="Aktifkan Auto-Sync Vault"
                     onClick={() => setAutoSyncEnabled(!autoSyncEnabled)}
                     className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer ${
                       autoSyncEnabled ? "bg-slate-900 dark:bg-white" : "bg-slate-300 dark:bg-zinc-700"
@@ -5096,10 +5220,13 @@ export default function ZAPApp() {
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#1a1c22] border border-slate-200 dark:border-white/[0.06] flex items-center justify-between">
                   <div>
                     <div className="font-medium text-slate-900 dark:text-white text-xs">Auto-Format LaTeX</div>
-                    <div className="text-[10px] text-slate-500 dark:text-zinc-400">Format rumus baku</div>
+                    <div className="text-xs text-slate-500 dark:text-zinc-400">Format rumus baku</div>
                   </div>
                   <button
                     type="button"
+                    role="switch"
+                    aria-checked={autoLatexEnabled}
+                    aria-label="Aktifkan Auto-Format LaTeX"
                     onClick={() => setAutoLatexEnabled(!autoLatexEnabled)}
                     className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer ${
                       autoLatexEnabled ? "bg-slate-900 dark:bg-white" : "bg-slate-300 dark:bg-zinc-700"
@@ -5116,10 +5243,10 @@ export default function ZAPApp() {
 
               {/* Task Activity Logs */}
               <div className="space-y-1.5 pt-1">
-                <div className="text-[10px] uppercase font-mono tracking-wider text-slate-400 dark:text-zinc-500">
+                <div className="text-xs uppercase font-mono tracking-wider text-slate-500 dark:text-zinc-400">
                   Log Riwayat Tugas
                 </div>
-                <div className="max-h-32 overflow-y-auto space-y-1 pr-1 font-mono text-[11px]">
+                <div className="max-h-32 overflow-y-auto space-y-1 pr-1 font-mono text-xs">
                   {taskLogs.map((log) => (
                     <div
                       key={log.id}
@@ -5129,7 +5256,7 @@ export default function ZAPApp() {
                         <Check className="w-3 h-3 text-slate-500 dark:text-zinc-400 flex-shrink-0" />
                         <span className="truncate">{log.name}</span>
                       </div>
-                      <span className="text-[10px] text-slate-400 dark:text-zinc-500 flex-shrink-0 ml-2">
+                      <span className="text-xs text-slate-500 dark:text-zinc-400 flex-shrink-0 ml-2">
                         {log.time}
                       </span>
                     </div>
@@ -5148,12 +5275,13 @@ export default function ZAPApp() {
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/[0.08] pb-3">
               <div className="flex items-center gap-2">
                 <LayoutGrid className="w-4 h-4 text-slate-700 dark:text-zinc-300" />
-                <h3 className="font-semibold text-sm text-slate-900 dark:text-white">Alat &amp; Modul Ekstra</h3>
+                <h2 className="font-semibold text-sm text-slate-900 dark:text-white">Alat &amp; Modul Ekstra</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setShowMoreModal(false)}
-                className="text-slate-400 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white cursor-pointer"
+                aria-label="Tutup modal"
+                className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -5171,7 +5299,7 @@ export default function ZAPApp() {
               >
                 <Box className="w-4 h-4 text-slate-700 dark:text-zinc-300 mb-1" />
                 <div className="font-medium text-slate-900 dark:text-white">Papan Tulis 3D</div>
-                <div className="text-[10px] text-slate-500 dark:text-zinc-400">Simulasi grafik interaktif</div>
+                <div className="text-xs text-slate-500 dark:text-zinc-400">Simulasi grafik interaktif</div>
               </button>
               <button
                 type="button"
@@ -5184,7 +5312,7 @@ export default function ZAPApp() {
               >
                 <Terminal className="w-4 h-4 text-slate-700 dark:text-zinc-300 mb-1" />
                 <div className="font-medium text-slate-900 dark:text-white">Terminal CLI</div>
-                <div className="text-[10px] text-slate-500 dark:text-zinc-400">SymPy CAS command shell</div>
+                <div className="text-xs text-slate-500 dark:text-zinc-400">SymPy CAS command shell</div>
               </button>
             </div>
           </div>
@@ -5198,20 +5326,23 @@ export default function ZAPApp() {
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/[0.08] pb-3">
               <div className="flex items-center gap-2">
                 <FolderPlus className="w-4 h-4 text-slate-700 dark:text-zinc-300" />
-                <h3 className="font-semibold text-sm text-slate-900 dark:text-white">Buat Workspace Baru</h3>
+                <h2 className="font-semibold text-sm text-slate-900 dark:text-white">Buat Workspace Baru</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setShowNewWorkspaceModal(false)}
-                className="text-slate-400 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white cursor-pointer"
+                aria-label="Tutup modal"
+                className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div className="space-y-2">
-              <label className="text-xs text-slate-600 dark:text-zinc-400">Nama Workspace</label>
+              <label htmlFor="new-workspace-name" className="text-xs text-slate-600 dark:text-zinc-400">Nama Workspace</label>
               <input
+                id="new-workspace-name"
                 type="text"
+                aria-label="Nama Workspace Baru"
                 value={newWorkspaceName}
                 onChange={(e) => setNewWorkspaceName(e.target.value)}
                 onKeyDown={(e) => {
@@ -5256,7 +5387,7 @@ export default function ZAPApp() {
               <div className="flex items-center gap-2">
                 <FileText className="w-4 h-4 text-slate-500 dark:text-zinc-400" />
                 <span className="font-semibold text-sm text-slate-900 dark:text-white">{previewFile.name}</span>
-                <span className="text-xs font-mono text-slate-400 dark:text-zinc-500">
+                <span className="text-xs font-mono text-slate-500 dark:text-zinc-400">
                   ({Math.round(previewFile.size / 1024) || 1} KB)
                 </span>
               </div>
@@ -5293,8 +5424,9 @@ export default function ZAPApp() {
                       URL.revokeObjectURL(url);
                     }
                   }}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
+                  className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
                   title="Unduh berkas"
+                  aria-label="Unduh berkas"
                 >
                   <Download className="w-4 h-4" />
                 </button>
@@ -5313,8 +5445,9 @@ export default function ZAPApp() {
                       });
                       setPreviewFile(null);
                     }}
-                    className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
+                    className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
                     title="Hapus berkas dari workspace"
+                    aria-label="Hapus berkas dari workspace"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -5322,7 +5455,8 @@ export default function ZAPApp() {
                 <button
                   type="button"
                   onClick={() => setPreviewFile(null)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
+                  aria-label="Tutup pratinjau berkas"
+                  className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -5397,7 +5531,7 @@ export default function ZAPApp() {
                 }
 
                 return (
-                  <div className="text-center py-12 text-slate-400 dark:text-zinc-500">
+                  <div className="text-center py-12 text-slate-500 dark:text-zinc-400">
                     <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
                     <p className="text-sm font-medium text-slate-700 dark:text-zinc-300">{previewFile.name}</p>
                     <p className="text-xs mt-1">Pratinjau langsung tidak tersedia untuk format biner ini.</p>
@@ -5420,14 +5554,15 @@ export default function ZAPApp() {
                   <Settings className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sm text-slate-900 dark:text-white">Pengaturan &amp; Preferensi ChatZAP</h3>
-                  <p className="text-[10px] text-slate-500 dark:text-zinc-400">Atur tampilan, bahasa percakapan, dan sinkronisasi akun</p>
+                  <h2 className="font-semibold text-sm text-slate-900 dark:text-white">Pengaturan &amp; Preferensi ChatZAP</h2>
+                  <p className="text-xs text-slate-500 dark:text-zinc-400">Atur tampilan, bahasa percakapan, dan sinkronisasi akun</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowSettingsModal(false)}
-                className="p-1.5 rounded-lg text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
+                aria-label="Tutup modal pengaturan"
+                className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded-lg text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -5507,22 +5642,27 @@ export default function ZAPApp() {
                 {settingsTab === "appearance" && (
                   <div className="space-y-4">
                     <div>
-                      <h4 className="font-semibold text-xs text-slate-900 dark:text-white mb-1">Pilihan Mode Tampilan (Theme)</h4>
-                      <p className="text-[11px] text-slate-500 dark:text-zinc-400">Pilih tema antarmuka sesuai dengan kenyamanan mata Anda.</p>
+                      <h3 className="font-semibold text-xs text-slate-900 dark:text-white mb-1">Pilihan Mode Tampilan (Theme)</h3>
+                      <p className="text-xs text-slate-500 dark:text-zinc-400">Pilih tema antarmuka sesuai dengan kenyamanan mata Anda.</p>
                     </div>
 
                     {/* 3 Theme Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {/* Light Card */}
-                      <div
-                        onClick={() => setTheme("light")}
-                        className={`p-3.5 rounded-xl border-2 transition cursor-pointer flex flex-col justify-between ${
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTheme("light");
+                          if (currentUser) syncAccountBackup(currentUser, { configs: { theme: "light" } });
+                        }}
+                        aria-pressed={theme === "light"}
+                        className={`text-left p-3.5 rounded-xl border-2 transition cursor-pointer flex flex-col justify-between ${
                           theme === "light"
                             ? "border-slate-900 dark:border-white bg-slate-100/70 dark:bg-white/[0.08] shadow-md"
                             : "border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-white/[0.16] bg-slate-50 dark:bg-[#181a20]"
                         }`}
                       >
-                        <div className="space-y-2">
+                        <div className="space-y-2 w-full">
                           <div className="h-16 rounded-lg bg-white border border-slate-200 p-2 flex flex-col justify-between shadow-xs">
                             <div className="flex items-center justify-between">
                               <div className="w-3 h-3 rounded-full bg-slate-900" />
@@ -5541,23 +5681,28 @@ export default function ZAPApp() {
                               </span>
                               {theme === "light" && <Check className="w-3.5 h-3.5 text-slate-900 dark:text-white" />}
                             </div>
-                            <p className="text-[10px] text-slate-500 dark:text-zinc-400 mt-1 leading-normal">
+                            <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1 leading-normal">
                               Latar putih bersih dengan kontras tinggi, nyaman untuk membaca di siang hari.
                             </p>
                           </div>
                         </div>
-                      </div>
+                      </button>
 
                       {/* Dark Card */}
-                      <div
-                        onClick={() => setTheme("dark")}
-                        className={`p-3.5 rounded-xl border-2 transition cursor-pointer flex flex-col justify-between ${
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTheme("dark");
+                          if (currentUser) syncAccountBackup(currentUser, { configs: { theme: "dark" } });
+                        }}
+                        aria-pressed={theme === "dark"}
+                        className={`text-left p-3.5 rounded-xl border-2 transition cursor-pointer flex flex-col justify-between ${
                           theme === "dark"
                             ? "border-slate-900 dark:border-white bg-slate-100/70 dark:bg-white/[0.08] shadow-md"
                             : "border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-white/[0.16] bg-slate-50 dark:bg-[#181a20]"
                         }`}
                       >
-                        <div className="space-y-2">
+                        <div className="space-y-2 w-full">
                           <div className="h-16 rounded-lg bg-[#0e0f12] border border-white/[0.1] p-2 flex flex-col justify-between shadow-xs">
                             <div className="flex items-center justify-between">
                               <div className="w-3 h-3 rounded-full bg-white" />
@@ -5576,23 +5721,28 @@ export default function ZAPApp() {
                               </span>
                               {theme === "dark" && <Check className="w-3.5 h-3.5 text-slate-900 dark:text-white" />}
                             </div>
-                            <p className="text-[10px] text-slate-500 dark:text-zinc-400 mt-1 leading-normal">
+                            <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1 leading-normal">
                               Latar pekat hemat daya dan ramah mata, optimal untuk fokus dan malam hari.
                             </p>
                           </div>
                         </div>
-                      </div>
+                      </button>
 
                       {/* System Card */}
-                      <div
-                        onClick={() => setTheme("system")}
-                        className={`p-3.5 rounded-xl border-2 transition cursor-pointer flex flex-col justify-between ${
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTheme("system");
+                          if (currentUser) syncAccountBackup(currentUser, { configs: { theme: "system" } });
+                        }}
+                        aria-pressed={theme === "system"}
+                        className={`text-left p-3.5 rounded-xl border-2 transition cursor-pointer flex flex-col justify-between ${
                           theme === "system"
                             ? "border-slate-900 dark:border-white bg-slate-100/70 dark:bg-white/[0.08] shadow-md"
                             : "border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-white/[0.16] bg-slate-50 dark:bg-[#181a20]"
                         }`}
                       >
-                        <div className="space-y-2">
+                        <div className="space-y-2 w-full">
                           <div className="h-16 rounded-lg bg-gradient-to-r from-white via-slate-200 to-[#0e0f12] border border-slate-300 dark:border-white/[0.1] p-2 flex flex-col justify-between shadow-xs">
                             <div className="flex items-center justify-between">
                               <div className="w-3 h-3 rounded-full bg-slate-600 dark:bg-zinc-400" />
@@ -5611,24 +5761,27 @@ export default function ZAPApp() {
                               </span>
                               {theme === "system" && <Check className="w-3.5 h-3.5 text-slate-900 dark:text-white" />}
                             </div>
-                            <p className="text-[10px] text-slate-500 dark:text-zinc-400 mt-1 leading-normal">
+                            <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1 leading-normal">
                               Otomatis mengikuti preferensi tema dari perangkat atau browser Anda.
                             </p>
                           </div>
                         </div>
-                      </div>
+                      </button>
                     </div>
 
                     {/* Proyektor Switch */}
                     <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#181a20] border border-slate-200 dark:border-white/[0.06] flex items-center justify-between">
                       <div className="space-y-0.5">
                         <div className="font-semibold text-xs text-slate-900 dark:text-white">Mode Proyektor &amp; Papan Tulis Kelas</div>
-                        <p className="text-[10px] text-slate-500 dark:text-zinc-400">
+                        <p className="text-xs text-slate-500 dark:text-zinc-400">
                           Tingkatkan ketebalan garis koordinat dan kontras warna canvas 3D agar jelas terlihat di proyektor kelas.
                         </p>
                       </div>
                       <button
                         type="button"
+                        role="switch"
+                        aria-checked={isProjectorMode}
+                        aria-label="Aktifkan Mode Proyektor dan Papan Tulis Kelas"
                         onClick={() => setIsProjectorMode(!isProjectorMode)}
                         className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
                           isProjectorMode ? "bg-slate-900 dark:bg-white" : "bg-slate-300 dark:bg-zinc-700"
@@ -5648,24 +5801,24 @@ export default function ZAPApp() {
                 {settingsTab === "general" && (
                   <div className="space-y-4">
                     <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#181a20] border border-slate-200 dark:border-white/[0.06] space-y-3">
-                      <h4 className="font-semibold text-xs text-slate-900 dark:text-white">Identitas Pengguna</h4>
+                      <h3 className="font-semibold text-xs text-slate-900 dark:text-white">Identitas Pengguna</h3>
                       <div className="grid grid-cols-2 gap-3 text-xs">
                         <div>
-                          <label className="text-[10px] font-mono text-slate-400 dark:text-zinc-500 uppercase">Nama Lengkap</label>
+                          <span className="text-xs font-mono text-slate-500 dark:text-zinc-400 uppercase block">Nama Lengkap</span>
                           <div className="font-medium text-slate-900 dark:text-white mt-0.5">{currentUser?.name}</div>
                         </div>
                         <div>
-                          <label className="text-[10px] font-mono text-slate-400 dark:text-zinc-500 uppercase">{isGuestAccount(currentUser) ? "Email Akun" : "Email Google"}</label>
+                          <span className="text-xs font-mono text-slate-500 dark:text-zinc-400 uppercase block">{isGuestAccount(currentUser) ? "Email Akun" : "Email Google"}</span>
                           <div className="font-medium text-slate-900 dark:text-white mt-0.5 truncate">{currentUser?.email}</div>
                         </div>
                         {isGuestAccount(currentUser) && (
                           <>
                             <div>
-                              <label className="text-[10px] font-mono text-slate-400 dark:text-zinc-500 uppercase">Jenjang Pendidikan</label>
+                              <span className="text-xs font-mono text-slate-500 dark:text-zinc-400 uppercase block">Jenjang Pendidikan</span>
                               <div className="font-medium text-slate-900 dark:text-white mt-0.5">{currentUser?.jenjang || "Tamu"}</div>
                             </div>
                             <div>
-                              <label className="text-[10px] font-mono text-slate-400 dark:text-zinc-500 uppercase">Peran</label>
+                              <span className="text-xs font-mono text-slate-500 dark:text-zinc-400 uppercase block">Peran</span>
                               <div className="font-medium text-slate-900 dark:text-white mt-0.5">{currentUser?.role || "Tamu"}</div>
                             </div>
                           </>
@@ -5678,10 +5831,10 @@ export default function ZAPApp() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                          <h4 className="font-semibold text-xs text-slate-900 dark:text-white">Status Keamanan Akun</h4>
+                          <h3 className="font-semibold text-xs text-slate-900 dark:text-white">Status Keamanan Akun</h3>
                         </div>
                         <span
-                          className={`text-[9px] font-mono px-2 py-0.5 rounded-full border ${
+                          className={`text-xs font-mono px-2 py-0.5 rounded-full border ${
                             isAccountSuspended
                               ? "bg-rose-500/20 text-rose-700 dark:text-rose-400 border-rose-500/30"
                               : jailbreakStrikes > 0
@@ -5697,7 +5850,7 @@ export default function ZAPApp() {
                         </span>
                       </div>
 
-                      <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+                      <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
                         {isAccountSuspended
                           ? "Akun Anda saat ini ditangguhkan akibat terdeteksi melakukan percobaan manipulasi instruksi (jailbreak) berulang."
                           : jailbreakStrikes > 0
@@ -5707,7 +5860,7 @@ export default function ZAPApp() {
 
                       {(isAccountSuspended || jailbreakStrikes > 0) && (
                         <div className="pt-1 flex items-center justify-between border-t border-slate-200/60 dark:border-white/[0.06]">
-                          <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono">
+                          <span className="text-xs text-slate-500 dark:text-zinc-400 font-mono">
                             Admin: wakhidpangestu1@gmail.com
                           </span>
                           <button
@@ -5721,7 +5874,7 @@ export default function ZAPApp() {
                               }
                               alert("Status penangguhan akun berhasil dicabut! Strike direset ke 0.");
                             }}
-                            className="px-2.5 py-1 rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-[11px] font-medium hover:opacity-90 transition cursor-pointer"
+                            className="px-2.5 py-1 rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-medium hover:opacity-90 transition cursor-pointer"
                           >
                             Cabut Penangguhan &amp; Reset
                           </button>
@@ -5732,11 +5885,11 @@ export default function ZAPApp() {
                     <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#181a20] border border-slate-200 dark:border-white/[0.06] space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="font-semibold text-xs text-slate-900 dark:text-white">Konsistensi Bahasa Percakapan</div>
-                        <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.08] text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-white/[0.08]">
+                        <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.08] text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-white/[0.08]">
                           Aktif Otomatis
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+                      <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
                         AI akan secara konsisten merespons dengan bahasa yang Anda gunakan di 2–3 chat awal (misalnya Bahasa Indonesia), bahkan jika di tengah percakapan Anda menyisipkan instruksi dalam bahasa lain.
                       </p>
                     </div>
@@ -5744,12 +5897,15 @@ export default function ZAPApp() {
                     <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#181a20] border border-slate-200 dark:border-white/[0.06] flex items-center justify-between">
                       <div className="space-y-0.5">
                         <div className="font-semibold text-xs text-slate-900 dark:text-white">Auto-scroll Percakapan</div>
-                        <p className="text-[10px] text-slate-500 dark:text-zinc-400">
+                        <p className="text-xs text-slate-500 dark:text-zinc-400">
                           Otomatis menggulir layar ke bawah saat respons Sokratik baru tiba.
                         </p>
                       </div>
                       <button
                         type="button"
+                        role="switch"
+                        aria-checked={autoScrollChat}
+                        aria-label="Aktifkan Auto-scroll Percakapan"
                         onClick={() => setAutoScrollChat(!autoScrollChat)}
                         className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
                           autoScrollChat ? "bg-slate-900 dark:bg-white" : "bg-slate-300 dark:bg-zinc-700"
@@ -5775,19 +5931,19 @@ export default function ZAPApp() {
                         </div>
                         <div>
                           <div className="font-semibold text-xs text-slate-900 dark:text-white">Cadangan Akun Google Cloud</div>
-                          <div className="text-[11px] text-slate-500 dark:text-zinc-400">
+                          <div className="text-xs text-slate-500 dark:text-zinc-400">
                             Terhubung: <span className="font-mono text-slate-700 dark:text-zinc-300">{currentUser?.email}</span>
                           </div>
                         </div>
                       </div>
-                      <p className="text-[11px] text-slate-600 dark:text-zinc-300 leading-relaxed">
+                      <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed">
                         Semua data sesi belajar, preferensi tema ({theme}), konfigurasi model AI, dan berkas workspace otomatis dicadangkan setiap kali Anda berinteraksi.
                       </p>
                     </div>
 
                     <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#181a20] border border-slate-200 dark:border-white/[0.06] space-y-2">
-                      <h5 className="font-semibold text-xs text-slate-900 dark:text-white">Data yang Tersimpan:</h5>
-                      <ul className="space-y-1.5 text-[11px] text-slate-600 dark:text-zinc-400">
+                      <h3 className="font-semibold text-xs text-slate-900 dark:text-white">Data yang Tersimpan:</h3>
+                      <ul className="space-y-1.5 text-xs text-slate-600 dark:text-zinc-400">
                         <li className="flex items-center gap-2">
                           <Check className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-300" />
                           <span>Riwayat semua percakapan matematika ({conversations.length} sesi)</span>
@@ -5804,7 +5960,7 @@ export default function ZAPApp() {
                     </div>
 
                     <div className="flex items-center justify-between pt-2">
-                      <div className="text-[11px] text-slate-500 dark:text-zinc-400">
+                      <div className="text-xs text-slate-500 dark:text-zinc-400">
                         {syncSuccessToast ? (
                           <span className="text-slate-900 dark:text-white font-medium flex items-center gap-1">
                             <Check className="w-3.5 h-3.5" />
@@ -5836,11 +5992,11 @@ export default function ZAPApp() {
                     <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#181a20] border border-slate-200 dark:border-white/[0.06] space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="font-semibold text-xs text-slate-900 dark:text-white">22 Invarian Deterministic SymPy CAS</span>
-                        <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.08] text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-white/[0.08]">
+                        <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.08] text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-white/[0.08]">
                           22/22 Terverifikasi
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+                      <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
                         SymPy CAS bertindak sebagai satu-satunya penentu kebenaran matematis. Tidak ada LLM yang diizinkan menentukan apakah langkah penurunan rumus Anda valid.
                       </p>
                     </div>
@@ -5848,11 +6004,11 @@ export default function ZAPApp() {
                     <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#181a20] border border-slate-200 dark:border-white/[0.06] space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="font-semibold text-xs text-slate-900 dark:text-white">Zero Answer Policy (ZAP) Guardrail</span>
-                        <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.08] text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-white/[0.08]">
+                        <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.08] text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-white/[0.08]">
                           Aktif &amp; Terproteksi
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+                      <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
                         Sistem tidak pernah memberikan jawaban numerik instan kepada siswa, melainkan mengarahkan lewat kontra-contoh substitusi dan pertanyaan pemantik Sokratik.
                       </p>
                     </div>
@@ -5879,11 +6035,11 @@ export default function ZAPApp() {
                           <ShieldAlert className="w-4 h-4 text-rose-600" />
                           <span>Pusat Kendali Keamanan Superadmin (Wakhid Pangestu)</span>
                         </div>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-200 dark:bg-rose-900/60 text-rose-800 dark:text-rose-300">
+                        <span className="text-xs font-mono px-2 py-0.5 rounded bg-rose-200 dark:bg-rose-900/60 text-rose-800 dark:text-rose-300">
                           Superadmin Mode
                         </span>
                       </div>
-                      <p className="text-[11px] text-rose-700 dark:text-rose-300/90 leading-relaxed">
+                      <p className="text-xs text-rose-700 dark:text-rose-300/90 leading-relaxed">
                         Kelola permohonan pemulihan akun siswa yang terkena sanksi penangguhan akibat percobaan jailbreak.
                         Anda dapat membuka blokir langsung berdasarkan email atau menghasilkan link/kode pemulihan 1-klik untuk dibalas ke email siswa.
                       </p>
@@ -5891,10 +6047,11 @@ export default function ZAPApp() {
 
                     {/* Form Buka Blokir & Draf Balasan */}
                     <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#181a20] border border-slate-200 dark:border-white/[0.06] space-y-3">
-                      <h5 className="font-semibold text-xs text-slate-900 dark:text-white">Buka Blokir Pengguna Berdasarkan Email</h5>
+                      <h3 className="font-semibold text-xs text-slate-900 dark:text-white">Buka Blokir Pengguna Berdasarkan Email</h3>
                       <div className="flex gap-2">
                         <input
                           type="email"
+                          aria-label="Email siswa yang ingin dibuka blokirnya"
                           placeholder="Masukkan email siswa (misal: user@gmail.com)"
                           value={adminTargetEmail}
                           onChange={(e) => setAdminTargetEmail(e.target.value)}

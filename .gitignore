@@ -23,15 +23,18 @@ wheels/
 .installed.cfg
 *.egg
 
-# Testing
+# Testing & Logs
 .pytest_cache/
 .coverage
 htmlcov/
+pytest_output.txt
+backend/pytest_output.txt
 
-# Node
+# Node & Build Outputs
 node_modules/
 .next/
 out/
+*.tsbuildinfo
 
 # Environments & OS
 .env
@@ -39,17 +42,16 @@ out/
 .DS_Store
 Thumbs.db
 
-# Local user backups & vault
+# Local user backups, databases & vault
 .zap_vault/
 .data/
 *.db
+
+# Local Trash & Archive (Non-uploadable / Staged Files)
+/trash/
+Surat_Pernyataan_Preview.png
 
 # Agent local skills & codex
 .codex/
 .agents/skills/impeccable/
 .agents/skills/ui-taste/
-
-# Temporary local verification scripts
-test_bazaarlink.py
-test_mistral.py
-bazaarlink_claude_proxy.py

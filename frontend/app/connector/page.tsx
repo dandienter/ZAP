@@ -473,21 +473,21 @@ export default function ConnectorPage() {
   const ActiveModelBrandIcon = currentActiveModelObj.icon;
 
   return (
-    <div className="min-h-screen bg-[#07090e] text-zinc-100 font-sans selection:bg-zinc-800 selection:text-white pb-24">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#07090e] text-slate-900 dark:text-zinc-100 font-sans selection:bg-slate-200 dark:selection:bg-zinc-800 selection:text-slate-900 dark:selection:text-white pb-24 transition-colors duration-200">
       {/* 1. TOP NAVBAR */}
-      <nav className="h-14 px-4 sm:px-8 border-b border-white/[0.08] bg-[#0c0e14]/90 backdrop-blur-md sticky top-0 z-40 flex items-center justify-between">
+      <nav className="h-14 px-4 sm:px-8 border-b border-slate-200 dark:border-white/[0.08] bg-white/90 dark:bg-[#0c0e14]/90 backdrop-blur-md sticky top-0 z-40 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link
             href="/chat"
-            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition group py-1"
+            className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition group py-1.5 px-2 min-h-[28px] rounded-lg"
           >
             <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
             <span>Kembali ke ChatZAP</span>
           </Link>
-          <div className="w-[1px] h-4 bg-white/[0.1] hidden sm:block" />
+          <div className="w-[1px] h-4 bg-slate-200 dark:bg-white/[0.1] hidden sm:block" />
           <div className="flex items-center gap-2">
-            <ZapLogo className="w-5 h-5 text-white" />
-            <span className="font-semibold text-xs tracking-wide text-white">
+            <ZapLogo className="w-5 h-5 text-slate-900 dark:text-white" />
+            <span className="font-semibold text-xs tracking-wide text-slate-900 dark:text-white">
               ChatZAP Connector Hub
             </span>
           </div>
@@ -497,7 +497,7 @@ export default function ConnectorPage() {
           <button
             type="button"
             onClick={() => router.push("/chat")}
-            className="text-xs font-semibold px-3.5 py-1.5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+            className="text-xs font-semibold px-3.5 py-1.5 min-h-[32px] rounded-xl bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-zinc-200 text-white dark:text-zinc-950 transition flex items-center gap-1.5 cursor-pointer shadow-sm"
           >
             <span>Buka Chat</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -509,11 +509,11 @@ export default function ConnectorPage() {
       <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-8 space-y-8">
         {/* Page Title & Intro */}
         <div className="space-y-1.5">
-          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2.5">
-            <LocalEnclaveEmblem className="w-6 h-6 text-zinc-300" />
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+            <LocalEnclaveEmblem className="w-6 h-6 text-slate-700 dark:text-zinc-300" />
             <span>Model Connectors &amp; Pengaturan Kunci API</span>
           </h1>
-          <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed max-w-2xl">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-zinc-400 leading-relaxed max-w-2xl">
             Pilih model AI untuk sesi bimbingan Sokrates Anda dan kelola kredensial API. Kunci disimpan secara lokal di peramban Anda (Local Storage) dan dienkripsi saat transit.
           </p>
         </div>
@@ -521,19 +521,19 @@ export default function ConnectorPage() {
         {/* =================================================================== */}
         {/* SECTION 1: MODEL AKTIF SAAT INI (QUICK SWITCHER) */}
         {/* =================================================================== */}
-        <section className="p-4 sm:p-5 rounded-2xl bg-[#0f1118] border border-white/[0.08] shadow-sm space-y-3.5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-white/[0.06]">
+        <section className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#0f1118] border border-slate-200 dark:border-white/[0.08] shadow-sm space-y-3.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-slate-200 dark:border-white/[0.06]">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center shrink-0 shadow-sm">
+              <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] flex items-center justify-center shrink-0 shadow-sm">
                 <ActiveModelBrandIcon className="w-4 h-4" />
               </div>
               <div>
-                <span className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider block">
+                <span className="text-xs font-mono text-slate-600 dark:text-zinc-400 uppercase tracking-wider block">
                   Model Aktif Chat Saat Ini:
                 </span>
-                <div className="text-sm font-semibold text-white flex items-center gap-2">
+                <div className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                   <span>{currentActiveModelObj.name}</span>
-                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-white/[0.08] text-zinc-200 border border-white/[0.1] font-medium">
+                  <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/[0.08] text-slate-800 dark:text-zinc-200 border border-slate-300 dark:border-white/[0.1] font-medium">
                     Aktif
                   </span>
                 </div>
@@ -543,7 +543,7 @@ export default function ConnectorPage() {
             <button
               type="button"
               onClick={() => router.push("/chat")}
-              className="text-xs font-medium text-zinc-300 hover:text-white flex items-center gap-1 cursor-pointer transition self-start sm:self-auto"
+              className="text-xs font-medium text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] py-1.5 px-2.5 min-h-[28px] rounded-lg inline-flex items-center gap-1 cursor-pointer transition self-start sm:self-auto"
             >
               <span>Mulai chat sekarang</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -551,15 +551,15 @@ export default function ConnectorPage() {
           </div>
 
           {activeModelNotice && (
-            <div className="p-2.5 rounded-xl bg-white/[0.06] border border-white/[0.1] text-zinc-200 text-xs font-medium flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-zinc-300 shrink-0" />
+            <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/[0.1] text-slate-800 dark:text-zinc-200 text-xs font-medium flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-slate-700 dark:text-zinc-300 shrink-0" />
               <span>{activeModelNotice}</span>
             </div>
           )}
 
           {/* Clean Segmented Grid to Switch Active Model */}
           <div className="space-y-1.5">
-            <span className="text-xs text-zinc-400 block font-medium">
+            <span className="text-xs text-slate-600 dark:text-zinc-400 block font-medium">
               Pilih model untuk mengaktifkannya di chat:
             </span>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -580,8 +580,8 @@ export default function ConnectorPage() {
                     onClick={() => handleSelectActiveModel(item.id, item.label)}
                     className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center justify-between gap-2 ${
                       isSelected
-                        ? "bg-white/[0.08] border-white/[0.2] text-white shadow-sm"
-                        : "bg-white/[0.02] border-white/[0.06] text-zinc-300 hover:bg-white/[0.05] hover:border-white/[0.12]"
+                        ? "bg-slate-100 dark:bg-white/[0.08] border-slate-400 dark:border-white/[0.2] text-slate-900 dark:text-white shadow-sm"
+                        : "bg-slate-50/70 dark:bg-white/[0.02] border-slate-200 dark:border-white/[0.06] text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-white/[0.05] hover:border-slate-300 dark:hover:border-white/[0.12]"
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -590,10 +590,10 @@ export default function ConnectorPage() {
                       </div>
                       <div className="min-w-0">
                         <div className="text-xs font-medium truncate">{item.label}</div>
-                        <div className="text-[11px] text-zinc-500 truncate">{item.sub}</div>
+                        <div className="text-xs text-slate-600 dark:text-zinc-400 truncate">{item.sub}</div>
                       </div>
                     </div>
-                    {isSelected && <Check className="w-4 h-4 text-white shrink-0" />}
+                    {isSelected && <Check className="w-4 h-4 text-slate-900 dark:text-white shrink-0" />}
                   </button>
                 );
               })}
@@ -606,10 +606,10 @@ export default function ConnectorPage() {
         {/* =================================================================== */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-white tracking-wide uppercase">
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-white tracking-wide uppercase">
               Penyedia Model &amp; Kunci API
             </h2>
-            <span className="text-xs text-zinc-500">
+            <span className="text-xs text-slate-600 dark:text-zinc-400">
               {Object.values(keys).filter(Boolean).length} Kunci Tersimpan
             </span>
           </div>
@@ -627,26 +627,26 @@ export default function ConnectorPage() {
               return (
                 <div
                   key={provider.id}
-                  className="rounded-2xl bg-[#0f1118] border border-white/[0.08] transition overflow-hidden"
+                  className="rounded-2xl bg-white dark:bg-[#0f1118] border border-slate-200 dark:border-white/[0.08] shadow-sm transition overflow-hidden"
                 >
                   {/* Card Main Bar */}
                   <div className="p-4 sm:p-5 space-y-3.5">
                     {/* Header Row */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
                           <IconComp className="w-5 h-5" />
                         </div>
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="text-sm font-semibold text-white">
+                            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
                               {provider.name}
                             </h3>
-                            <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/[0.06] text-zinc-300 border border-white/[0.08]">
+                            <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.06] text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-white/[0.08]">
                               {provider.badge}
                             </span>
                           </div>
-                          <p className="text-xs text-zinc-400 leading-relaxed">
+                          <p className="text-xs text-slate-600 dark:text-zinc-400 leading-relaxed">
                             {provider.shortDesc}
                           </p>
                         </div>
@@ -655,16 +655,16 @@ export default function ConnectorPage() {
                       {/* Status Badge & Tutorial Trigger */}
                       <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
                         {hasKey ? (
-                          <span className="text-xs px-2.5 py-1 rounded-lg bg-white/[0.08] text-zinc-200 border border-white/[0.12] font-medium flex items-center gap-1">
+                          <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-white/[0.08] text-slate-800 dark:text-zinc-200 border border-slate-300 dark:border-white/[0.12] font-medium flex items-center gap-1">
                             <Check className="w-3.5 h-3.5" />
                             <span>Kunci Tersimpan</span>
                           </span>
                         ) : provider.id === "gemini" ? (
-                          <span className="text-xs px-2.5 py-1 rounded-lg bg-white/[0.06] text-zinc-300 border border-white/[0.08] font-medium">
+                          <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-white/[0.06] text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-white/[0.08] font-medium">
                             Auto Server Pool
                           </span>
                         ) : (
-                          <span className="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] text-zinc-500 font-medium">
+                          <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-zinc-400 font-medium">
                             Belum Dikonfigurasi
                           </span>
                         )}
@@ -672,7 +672,8 @@ export default function ConnectorPage() {
                         <button
                           type="button"
                           onClick={() => toggleTutorial(provider.id)}
-                          className="text-xs text-zinc-300 hover:text-white px-2.5 py-1 rounded-lg hover:bg-white/[0.06] transition cursor-pointer flex items-center gap-1"
+                          aria-expanded={isTutorialOpen}
+                          className="text-xs text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white px-2.5 py-1 min-h-[28px] rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer flex items-center gap-1"
                         >
                           <span>Panduan Setup</span>
                           {isTutorialOpen ? (
@@ -686,33 +687,33 @@ export default function ConnectorPage() {
 
                     {/* Tutorial / Panduan Step-by-Step (Accordion) */}
                     {isTutorialOpen && (
-                      <div className="p-3.5 rounded-xl bg-[#14151b] border border-white/[0.08] space-y-2.5 text-xs">
-                        <div className="flex items-center justify-between pb-1.5 border-b border-white/[0.06]">
-                          <span className="font-semibold text-zinc-200 flex items-center gap-1.5">
-                            <Key className="w-3.5 h-3.5 text-zinc-400" />
+                      <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#14151b] border border-slate-200 dark:border-white/[0.08] space-y-2.5 text-xs">
+                        <div className="flex items-center justify-between pb-1.5 border-b border-slate-200 dark:border-white/[0.06]">
+                          <span className="font-semibold text-slate-800 dark:text-zinc-200 flex items-center gap-1.5">
+                            <Key className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-400" />
                             <span>Cara Mendapatkan Kunci API {provider.name}:</span>
                           </span>
                           <a
                             href={provider.docUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-xs text-zinc-300 hover:text-white inline-flex items-center gap-1 font-medium underline"
+                            className="text-xs text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white py-1 px-1.5 min-h-[26px] inline-flex items-center gap-1 font-medium underline"
                           >
                             <span>Buka {provider.docLabel}</span>
-                            <ExternalLink className="w-3 h-3 text-zinc-400" />
+                            <ExternalLink className="w-3 h-3 text-slate-600 dark:text-zinc-400" />
                           </a>
                         </div>
 
-                        <ol className="space-y-1.5 text-zinc-300 list-decimal list-inside leading-relaxed pl-1">
+                        <ol className="space-y-1.5 text-slate-700 dark:text-zinc-300 list-decimal list-inside leading-relaxed pl-1">
                           {provider.tutorialSteps.map((step, idx) => (
                             <li key={idx}>
-                              <span className="text-zinc-200">{step}</span>
+                              <span className="text-slate-800 dark:text-zinc-200">{step}</span>
                             </li>
                           ))}
                         </ol>
 
                         {provider.note && (
-                          <div className="pt-1.5 text-[11px] text-zinc-400 border-t border-white/[0.06] italic">
+                          <div className="pt-1.5 text-xs text-slate-600 dark:text-zinc-400 border-t border-slate-200 dark:border-white/[0.06] italic">
                             💡 Catatan: {provider.note}
                           </div>
                         )}
@@ -725,53 +726,63 @@ export default function ConnectorPage() {
                       <div className="space-y-2.5 pt-1">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <div>
-                            <label className="text-[11px] text-zinc-400 block mb-1">
+                            <label htmlFor="custom-base-url" className="text-xs text-slate-600 dark:text-zinc-400 block mb-1">
                               Base URL (OpenAI-Compatible):
                             </label>
                             <input
+                              id="custom-base-url"
                               type="text"
+                              aria-label="Base URL (OpenAI-Compatible)"
                               value={customBaseUrl}
                               onChange={(e) => setCustomBaseUrl(e.target.value)}
                               placeholder="http://localhost:11434/v1"
-                              className="w-full bg-[#0a0c12] border border-white/[0.1] rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/40 font-mono transition"
+                              className="w-full bg-slate-50 dark:bg-[#0a0c12] border border-slate-300 dark:border-white/[0.1] rounded-xl px-3 py-1.5 min-h-[34px] text-xs text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-slate-400/50 dark:focus:ring-white/30 focus:border-slate-500 dark:focus:border-white/40 font-mono transition"
                             />
                           </div>
                           <div>
-                            <label className="text-[11px] text-zinc-400 block mb-1">
+                            <label htmlFor="custom-model-name" className="text-xs text-slate-600 dark:text-zinc-400 block mb-1">
                               Nama Model:
                             </label>
                             <input
+                              id="custom-model-name"
                               type="text"
+                              aria-label="Nama Model Lokal atau Kustom"
                               value={customModelName}
                               onChange={(e) => setCustomModelName(e.target.value)}
                               placeholder="llama3.3"
-                              className="w-full bg-[#0a0c12] border border-white/[0.1] rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/40 font-mono transition"
+                              className="w-full bg-slate-50 dark:bg-[#0a0c12] border border-slate-300 dark:border-white/[0.1] rounded-xl px-3 py-1.5 min-h-[34px] text-xs text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-slate-400/50 dark:focus:ring-white/30 focus:border-slate-500 dark:focus:border-white/40 font-mono transition"
                             />
                           </div>
                         </div>
 
                         <div className="flex gap-2">
+                          <label htmlFor="custom-api-key" className="sr-only">
+                            Kunci API Kustom (Opsional)
+                          </label>
                           <input
+                            id="custom-api-key"
                             type={isKeyVisible ? "text" : "password"}
+                            aria-label="Kunci API Kustom (Opsional)"
                             value={keys["custom"] || ""}
                             onChange={(e) =>
                               setKeys((prev) => ({ ...prev, custom: e.target.value }))
                             }
                             placeholder="API Key opsional (Bearer token jika endpoint memerlukan sandi)"
-                            className="flex-1 bg-[#0a0c12] border border-white/[0.1] rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/40 font-mono transition"
+                            className="flex-1 min-w-0 bg-slate-50 dark:bg-[#0a0c12] border border-slate-300 dark:border-white/[0.1] rounded-xl px-3 py-1.5 min-h-[34px] text-xs text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-slate-400/50 dark:focus:ring-white/30 focus:border-slate-500 dark:focus:border-white/40 font-mono transition"
                           />
                           <button
                             type="button"
                             onClick={() => toggleKeyVisibility("custom")}
-                            className="p-2 rounded-xl bg-white/[0.04] text-zinc-400 hover:text-white border border-white/[0.08] transition cursor-pointer"
+                            className="p-2 min-w-[34px] min-h-[34px] shrink-0 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/[0.08] transition cursor-pointer"
                             title={isKeyVisible ? "Sembunyikan sandi" : "Lihat sandi"}
+                            aria-label={isKeyVisible ? "Sembunyikan sandi" : "Lihat sandi"}
                           >
                             {isKeyVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                           </button>
                           <button
                             type="button"
                             onClick={handleSaveCustomSettings}
-                            className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 text-xs font-semibold transition cursor-pointer shrink-0"
+                            className="px-3.5 py-1.5 min-h-[34px] rounded-xl bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-zinc-200 text-white dark:text-zinc-950 text-xs font-semibold transition cursor-pointer shrink-0"
                           >
                             Simpan
                           </button>
@@ -780,23 +791,29 @@ export default function ConnectorPage() {
                     ) : (
                       /* Standard Provider API Key Input */
                       <div className="flex gap-2 pt-1">
-                        <div className="relative flex-1">
+                        <div className="relative flex-1 min-w-0">
+                          <label htmlFor={`api-key-${provider.id}`} className="sr-only">
+                            Kunci API {provider.name}
+                          </label>
                           <input
+                            id={`api-key-${provider.id}`}
                             type={isKeyVisible ? "text" : "password"}
+                            aria-label={`Kunci API ${provider.name}`}
                             value={keys[provider.id] || ""}
                             onChange={(e) =>
                               setKeys((prev) => ({ ...prev, [provider.id]: e.target.value }))
                             }
                             placeholder={provider.placeholder}
-                            className="w-full bg-[#0a0c12] border border-white/[0.1] rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/40 font-mono transition"
+                            className="w-full bg-slate-50 dark:bg-[#0a0c12] border border-slate-300 dark:border-white/[0.1] rounded-xl px-3 py-1.5 min-h-[34px] text-xs text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-slate-400/50 dark:focus:ring-white/30 focus:border-slate-500 dark:focus:border-white/40 font-mono transition"
                           />
                         </div>
 
                         <button
                           type="button"
                           onClick={() => toggleKeyVisibility(provider.id)}
-                          className="p-2 rounded-xl bg-white/[0.04] text-zinc-400 hover:text-white border border-white/[0.08] transition cursor-pointer"
+                          className="p-2 min-w-[34px] min-h-[34px] flex items-center justify-center rounded-xl bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/[0.08] transition cursor-pointer"
                           title={isKeyVisible ? "Sembunyikan sandi" : "Lihat sandi"}
+                          aria-label={isKeyVisible ? `Sembunyikan sandi ${provider.name}` : `Lihat sandi ${provider.name}`}
                         >
                           {isKeyVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                         </button>
@@ -811,7 +828,7 @@ export default function ConnectorPage() {
                               provider.name
                             )
                           }
-                          className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 text-xs font-semibold transition cursor-pointer shrink-0 shadow-sm"
+                          className="px-3.5 py-1.5 min-h-[34px] rounded-xl bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-zinc-200 text-white dark:text-zinc-950 text-xs font-semibold transition cursor-pointer shrink-0 shadow-sm"
                         >
                           Simpan
                         </button>
@@ -822,8 +839,9 @@ export default function ConnectorPage() {
                             onClick={() =>
                               handleDeleteKey(provider.id, provider.storageKey, provider.name)
                             }
-                            className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/[0.08] transition cursor-pointer"
+                            className="p-2 min-w-[34px] min-h-[34px] flex items-center justify-center rounded-xl bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/[0.08] transition cursor-pointer"
                             title="Hapus kunci API ini"
+                            aria-label={`Hapus kunci API ${provider.name}`}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -832,13 +850,13 @@ export default function ConnectorPage() {
                     )}
 
                     {/* Bottom Action Row: Test Connection & Set Active Model */}
-                    <div className="pt-2 border-t border-white/[0.06] flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div className="pt-2 border-t border-slate-200 dark:border-white/[0.06] flex flex-wrap items-center justify-between gap-2 text-xs">
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={() => handleTestConnection(provider)}
                           disabled={isTesting}
-                          className="text-xs font-medium text-zinc-300 hover:text-white inline-flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
+                          className="text-xs font-medium text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] py-1.5 px-2.5 min-h-[28px] rounded-lg inline-flex items-center gap-1.5 disabled:opacity-40 cursor-pointer transition"
                         >
                           {isTesting ? (
                             <>
@@ -847,7 +865,7 @@ export default function ConnectorPage() {
                             </>
                           ) : (
                             <>
-                              <Zap className="w-3.5 h-3.5 text-zinc-400" />
+                              <Zap className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-400" />
                               <span>Uji Koneksi API</span>
                             </>
                           )}
@@ -856,7 +874,7 @@ export default function ConnectorPage() {
 
                       <div className="flex items-center gap-2">
                         {isModelSelected ? (
-                          <span className="text-[11px] font-mono text-zinc-200 bg-white/[0.08] px-2 py-0.5 rounded border border-white/[0.1] flex items-center gap-1 font-medium">
+                          <span className="text-xs font-mono text-slate-800 dark:text-zinc-200 bg-slate-100 dark:bg-white/[0.08] px-2.5 py-1 min-h-[28px] rounded-lg border border-slate-300 dark:border-white/[0.1] flex items-center gap-1 font-medium">
                             <Check className="w-3 h-3" />
                             <span>Aktif di Chat</span>
                           </span>
@@ -866,7 +884,7 @@ export default function ConnectorPage() {
                             onClick={() =>
                               handleSelectActiveModel(provider.modelId, provider.name)
                             }
-                            className="text-xs text-zinc-400 hover:text-white px-2.5 py-1 rounded-lg hover:bg-white/[0.05] transition cursor-pointer"
+                            className="text-xs text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white px-2.5 py-1.5 min-h-[28px] rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.05] transition cursor-pointer"
                           >
                             Jadikan Model Chat
                           </button>
@@ -879,14 +897,14 @@ export default function ConnectorPage() {
                       <div
                         className={`p-2.5 rounded-xl text-xs leading-relaxed flex items-start gap-2 ${
                           testResult.success
-                            ? "bg-white/[0.06] border border-white/[0.1] text-zinc-200"
-                            : "bg-rose-950/40 border border-rose-800/40 text-rose-300"
+                            ? "bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/[0.1] text-slate-800 dark:text-zinc-200"
+                            : "bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 text-rose-700 dark:text-rose-300"
                         }`}
                       >
                         {testResult.success ? (
-                          <CheckCircle2 className="w-4 h-4 text-zinc-300 shrink-0 mt-0.5" />
+                          <CheckCircle2 className="w-4 h-4 text-slate-700 dark:text-zinc-300 shrink-0 mt-0.5" />
                         ) : (
-                          <XCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                          <XCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
                         )}
                         <span className="flex-1">{testResult.msg}</span>
                       </div>
@@ -901,9 +919,9 @@ export default function ConnectorPage() {
         {/* =================================================================== */}
         {/* SECTION 3: KEAMANAN & PRIVASI (PDP COMPLIANCE) */}
         {/* =================================================================== */}
-        <section className="p-4 sm:p-5 rounded-2xl bg-[#0f1118] border border-white/[0.08] space-y-2.5 text-xs text-zinc-400">
-          <div className="flex items-center gap-2 text-white font-semibold">
-            <ShieldCheck className="w-4 h-4 text-zinc-300" />
+        <section className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#0f1118] border border-slate-200 dark:border-white/[0.08] shadow-sm space-y-2.5 text-xs text-slate-600 dark:text-zinc-400">
+          <div className="flex items-center gap-2 text-slate-900 dark:text-white font-semibold">
+            <ShieldCheck className="w-4 h-4 text-slate-700 dark:text-zinc-300" />
             <span>Kepatuhan Privasi Data &amp; Kebijakan Zero-Answer (ZAP)</span>
           </div>
           <div className="space-y-1.5 leading-relaxed">

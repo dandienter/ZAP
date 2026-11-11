@@ -4,7 +4,7 @@
 [![Subtheme](https://img.shields.io/badge/Subtheme-Smart_%26_Fun_Education-0D9488?style=for-the-badge)](https://github.com/[your-team]/zap)
 [![License: MIT](https://img.shields.io/badge/License-MIT-38BDF8?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Web--First_(Projector_%26_Smartboard)-2563EB?style=for-the-badge)](https://github.com/[your-team]/zap)
-[![Pytest Passing](https://img.shields.io/badge/Pytest-22%2F22_Passing-059669?style=for-the-badge)](backend/tests/)
+[![Pytest Passing](https://img.shields.io/badge/Pytest-65%2F65_Passing-059669?style=for-the-badge)](backend/tests/)
 
 > **"Don't give them answers. Project the wonder to discover."**  
 > ZAP adalah platform pembelajaran matematika *Web-First* yang mengubah rumus dan persamaan aljabar menjadi **bangun ruang 3D interaktif secara real-time** (Three.js/WebGL), dipandu oleh **Tutor Sokratik berpagar Zero Answer Policy**, dan diverifikasi kebenaran matematisnya secara deterministik oleh mesin aljabar simbolik (**SymPy**).
@@ -55,11 +55,52 @@ ZAP mengusung arsitektur **Strict Separation of Concerns** yang memisahkan ranah
 
 ---
 
-## 🧪 Hasil Uji Otomatis (Pytest 22/22 Verified)
+## 📁 Struktur Repositori Terorganisir
 
-Rangkaian pengujian otomatis di [`backend/tests/`](backend/tests/) mencakup verifikasi logika simbolik dan integrasi API:
+```text
+logicodix/
+├── backend/                  # Layanan Backend FastAPI & Python
+│   ├── cfl/                  # Cognitive Fault Localization & SymPy Engine
+│   ├── data_engine/          # Pipeline Harvester & Kurikulum Matematika
+│   ├── zapcore/              # Auth SSO, Enkripsi AES-256-GCM, Gateway AI & Privasi
+│   ├── tests/                # Test suite verifikasi aljabar deterministik (23 tests)
+│   ├── tests_platform/       # Test suite platform, enkripsi, dan API gateway (42 tests)
+│   ├── main.py               # Entry point Microservice CFL (Port 8000)
+│   ├── platform_main.py      # Entry point Platform Core (Port 8001)
+│   └── requirements.txt      # Dependensi produksi backend
+├── data/                     # Basis data geometri dan korpus matematika
+├── docs/                     # Dokumentasi arsitektur, algoritma, dan blueprint
+│   ├── README.md             # Indeks utama seluruh dokumentasi
+│   ├── ARCHITECTURE.md       # Arsitektur sistem & diagram data flow
+│   ├── ALGORITHM.md          # Spesifikasi matematika simbolik CFL
+│   ├── BACKEND_SYSTEM.md     # Desain sistem backend platform
+│   ├── DESIGN_SYSTEM.md      # UI/UX design tokens & dual-mode specs
+│   ├── DATA_AND_LEARNING_POLICY.md # Kebijakan kurasi & data
+│   ├── PRIVACY_POLICY.md     # Kebijakan privasi resmi
+│   ├── TERMS_OF_SERVICE.md   # Ketentuan penggunaan layanan
+│   ├── ZAP_Product_Blueprint.pdf   # Blueprint resmi produk (4 halaman)
+│   └── ZAP_Product_Blueprint.html  # Versi web interaktif blueprint
+├── frontend/                 # Aplikasi Web Next.js 14 + Tailwind CSS + Three.js
+│   ├── app/                  # App Router (Chat, Connector, Login, Unban)
+│   ├── components/           # Komponen UI & Canvas 3D Interaktif
+│   └── utils/                # Sinkronisasi akun, chat memory & enkripsi
+├── scripts/                  # Skrip otomasi, regenerasi data & blueprint
+│   ├── fetch_math_data.py    # Generator & harvester korpus matematika
+│   └── generate_blueprint_pdf.py # Generator PDF blueprint resmi
+├── tests/                    # Forwarder pengujian root (pytest tests/)
+├── trash/                    # Arsip lokal berkas usang & non-upload (diabaikan Git)
+├── .gitignore                # Pengecualian berkas sistem, trash & environment
+├── AGENTS.md                 # Kontrak operasional agen AI & memori teruji
+└── README.md                 # Dokumentasi utama repositori
+```
 
-### A. Core Symbolic Reasoning (`test_cfl_engine.py` - 12 Tests)
+---
+
+## 🧪 Hasil Uji Otomatis (Pytest 65/65 Verified)
+
+Rangkaian pengujian otomatis mencakup verifikasi logika simbolik, mitigasi keamanan, enkripsi AES-256-GCM, dan integrasi API:
+
+### A. Core Symbolic Reasoning (`backend/tests/` - 23 Tests)
 * ✅ **Ekspansi Kuadrat:** Mendeteksi hilangnya suku perkalian silang pada $(x+3)^2 - 4$ (kontra-contoh terhitung: $21 \neq 9$).
 * ✅ **Persamaan Linear Valid:** Memvalidasi manipulasi ruas $2x + 3 = 7 \rightarrow 2x = 4 \rightarrow x = 2$.
 * ✅ **Persamaan Linear Galat:** Mendeteksi kesalahan tanda saat pindah ruas $2x + 3 = 7 \rightarrow 2x = 10$.
@@ -72,34 +113,20 @@ Rangkaian pengujian otomatis di [`backend/tests/`](backend/tests/) mencakup veri
 * ✅ **Regresi Guardrail:** Memastikan kalimat edukatif seperti `"Jika x = 2"` dan `"baris ke-2"` tidak tersensor keliru.
 * ✅ **Pencegahan Kebocoran Jawaban:** Menyaring pernyataan deklaratif jawaban final `"jawaban akhirnya adalah x = 2"`.
 * ✅ **Masking Kunci Eksplisit:** Menguji penyaringan pada `"Kunci adalah 5"` tanpa merusak frasa kontekstual `"baris ke-5"`.
+* ✅ **Penyaringan Diagonal Geometri:** Memastikan angka diagonal bidang/ruang kalkulasi disaring tanpa membocorkan jawaban akhir.
 
-### B. API Gateway & Endpoints (`test_api.py` - 10 Tests)
-* ✅ **Health Check (`GET /health`):** Verifikasi status gateway online.
-* ✅ **Diagnosa HTTP Patah Logika (`POST /api/v1/diagnose`):** Validasi penuh payload respons, kontra-contoh, dan masking Sokrates.
-* ✅ **Diagnosa HTTP Langkah Valid:** Mengonfirmasi `status: ALL_STEPS_VALID`.
-* ✅ **Validasi Payload Kosong (HTTP 422):** Menolak payload kosong `{}` maupun whitespace.
-* ✅ **Penolakan HTTP Code Injection (HTTP 422):** Menolak payload berbahaya sebelum dievaluasi.
-* ✅ **Kekebalan HTTP ConditionSet:** Menangani $\sin(x)=x$ tanpa memicu server crash (HTTP 500).
-* ✅ **Fleksibilitas Payload Dual-Schema:** Menerima parameter `confirmed_steps` (primer) maupun `lines` (alias).
-* ✅ **Penghormatan Alias `target_var`:** Memastikan variabel non-default (misal: `y`) dihormati dan tidak ter-overwrite oleh default `x`.
-* ✅ **Penolakan HTTP LaTeX Non-Matematika (HTTP 422):** Menolak input LaTeX eksploitatif pada API publik.
-* ✅ **Penolakan HTTP DoS Exponent (HTTP 422):** Menolak kiriman eksponen raksasa (`9^9^9`) secara instan.
+### B. Platform Security, Vault & Gateway (`backend/tests_platform/` - 42 Tests)
+* ✅ **Autentikasi Google SSO Terverifikasi Server:** Validasi tokeninfo Google, audiens, issuer, dan masa berlaku JWT.
+* ✅ **Enkripsi AES-256-GCM:** Verifikasi master vault roundtrip, isolasi per-pengguna, dan kestabilan pseudonim.
+* ✅ **Gateway Multi-Model AI:** Penanganan fallback Google Gemini, OpenAI, dan Anthropic via BYOK.
+* ✅ **Privasi & Ekspor Data:** Verifikasi ekspor data terenkripsi pengguna dan penghapusan menyeluruh (*right to be forgotten*).
+* ✅ **Self-Learning Flywheel:** Pipa kurasi bertahap berpagar SymPy, filter PII NIK/Email, dan persetujuan eksplisit.
 
-```bash
-$ cd backend
-$ python -m pytest -v -p no:cacheprovider tests/
-============================= 22 passed in 1.80s ==============================
+```powershell
+# Jalankan seluruh rangkaian uji (65/65 lolos)
+python -m pytest -v -p no:cacheprovider tests/
+python -m pytest -v -p no:cacheprovider backend/tests_platform/
 ```
-
----
-
-## 📌 Cakupan & Batasan Sistem Saat Ini (Current Scope & Limitations)
-
-> [!NOTE]
-> **Transparansi Status Pengembangan:**  
-> 1. **Cakupan Aljabar Simbolik Saat Ini:** Rangkaian 22 unit test backend mencakup verifikasi matematis deterministik pada **Aljabar Polinomial Univariat & Rasional** (persamaan linear, manipulasi ruas, pemfaktoran kuadrat, dan pembatasan derajat eksponen).  
-> 2. **Integrasi 3D Canvas:** Rendering 3D WebGL (Three.js) beroperasi di layer frontend dengan menerima data JSON koordinat dan matriks bidang iris dari SymPy.  
-> 3. **AI Provider:** Mendukung Google Gemini (OAuth 1-Click) sebagai baseline default, serta opsi integrasi ChatGPT (OpenAI) tanpa menurunkan model (*no downgrade*).
 
 ---
 
@@ -121,7 +148,7 @@ uvicorn main:app --reload --port 8000
 
 ### 2. Setup Frontend (Next.js 14 + Three.js)
 ```powershell
-cd docs/frontend
+cd frontend
 npm install
 npm run dev
 ```
@@ -129,7 +156,14 @@ Buka browser di `http://localhost:3000`.
 
 ---
 
-## 📄 Berkas Blueprint Produk
-Dokumen perancangan lengkap dan spesifikasi produk berstandar publikasi eksekutif:
-* 📄 [ZAP_Product_Blueprint.pdf](ZAP_Product_Blueprint.pdf) *(PDF 4 Halaman, Light Mode Minimalis, 4 Diagram SVG Lengkap)*
-* 🌐 [ZAP_Product_Blueprint.html](docs/ZAP_Product_Blueprint.html)
+## 📚 Indeks Dokumentasi & Blueprint Produk
+
+Kunjungi folder [`docs/`](docs/) untuk membaca dokumentasi lengkap:
+* 📖 [**Indeks Dokumentasi Lengkap**](docs/README.md)
+* 🏛️ [**Arsitektur Sistem (ARCHITECTURE.md)**](docs/ARCHITECTURE.md)
+* 📐 [**Algoritma Penalaran Simbolik (ALGORITHM.md)**](docs/ALGORITHM.md)
+* 💻 [**Sistem Backend & Gateway (BACKEND_SYSTEM.md)**](docs/BACKEND_SYSTEM.md)
+* 🎨 [**Design System & UI/UX (DESIGN_SYSTEM.md)**](docs/DESIGN_SYSTEM.md)
+* 🔒 [**Kebijakan Privasi (PRIVACY_POLICY.md)**](docs/PRIVACY_POLICY.md)
+* 📄 [**ZAP_Product_Blueprint.pdf**](docs/ZAP_Product_Blueprint.pdf) *(PDF 4 Halaman, Light Mode Minimalis)*
+* 🌐 [**ZAP_Product_Blueprint.html**](docs/ZAP_Product_Blueprint.html) *(Edisi Web Interaktif)*

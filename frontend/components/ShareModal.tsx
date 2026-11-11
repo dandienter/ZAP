@@ -180,7 +180,9 @@ export default function ShareModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 transition"
+            aria-label="Tutup modal bagikan"
+            title="Tutup"
+            className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -276,6 +278,7 @@ export default function ShareModal({
               <input
                 type="text"
                 readOnly
+                aria-label="Tautan Percakapan Publik"
                 value={
                   isGenerating
                     ? "Memproses..."
@@ -283,10 +286,10 @@ export default function ShareModal({
                     ? shareUrl
                     : "(Tautan dinonaktifkan oleh pemilik)"
                 }
-                className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-zinc-900 border text-xs font-mono select-all focus:outline-none ${
+                className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-zinc-900 border text-xs font-mono select-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 ${
                   isPublic
                     ? "border-slate-300 dark:border-zinc-700/80 text-slate-800 dark:text-zinc-200"
-                    : "border-slate-300 dark:border-zinc-700/80 text-slate-400 dark:text-zinc-500 line-through"
+                    : "border-slate-300 dark:border-zinc-700/80 text-slate-500 dark:text-zinc-400 line-through"
                 }`}
               />
               {isGenerating && (

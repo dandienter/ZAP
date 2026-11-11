@@ -21,7 +21,11 @@ export default function RichChatText({ content, className = "" }: RichChatTextPr
       return (
         <span
           key={key}
-          className={displayMode ? "inline-block px-1 font-medium text-slate-900 dark:text-white" : "inline-block px-0.5 font-medium text-slate-900 dark:text-white align-baseline"}
+          className={
+            displayMode
+              ? "inline-block max-w-full overflow-x-auto px-1 font-medium text-slate-900 dark:text-white"
+              : "inline-block max-w-full overflow-x-auto px-0.5 font-medium text-slate-900 dark:text-white align-baseline"
+          }
           dangerouslySetInnerHTML={{ __html: html }}
         />
       );
@@ -118,16 +122,16 @@ export default function RichChatText({ content, className = "" }: RichChatTextPr
           );
         }
 
-        // Heading 3: ### ...
+        // Heading 3: ### ... (rendered as h2 to preserve sequential h1 -> h2 hierarchy inside chat threads)
         if (line.startsWith("### ")) {
           const headingText = line.replace(/^###\s+/, "");
           return (
-            <h3
+            <h2
               key={index}
               className="text-base sm:text-[17px] font-semibold text-slate-900 dark:text-white pt-2.5 pb-0.5 tracking-tight"
             >
               {formatSegment(headingText, `h3_${index}`)}
-            </h3>
+            </h2>
           );
         }
 

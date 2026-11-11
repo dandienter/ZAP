@@ -345,12 +345,18 @@ export async function restoreAccountData<M = unknown, C = unknown, W = unknown, 
     if (mergedConfigs.customModelName) localStorage.setItem("zap_custom_model_name", mergedConfigs.customModelName);
     if (mergedConfigs.customApiKey) localStorage.setItem("zap_custom_api_key", mergedConfigs.customApiKey);
     if (mergedConfigs.selectedModelId) localStorage.setItem("zap_selected_model_id", mergedConfigs.selectedModelId);
-    if (mergedConfigs.theme) {
+    if (mergedConfigs.theme && !localStorage.getItem("zap_theme")) {
       localStorage.setItem("zap_theme", mergedConfigs.theme);
       if (typeof window !== "undefined") {
         const isDark = mergedConfigs.theme === "dark" || (mergedConfigs.theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
         document.documentElement.classList.toggle("dark", isDark);
         document.documentElement.classList.toggle("light", !isDark);
+        document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+        window.dispatchEvent(
+          new CustomEvent("zap_theme_change", {
+            detail: { theme: mergedConfigs.theme, resolved: isDark ? "dark" : "light" },
+          })
+        );
       }
     }
 

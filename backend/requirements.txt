@@ -1,4 +1,4 @@
-# NalarAI Backend Dependencies (Production Locked Versions)
+# ZAP Backend Dependencies (Production Locked Versions)
 
 # Core Deterministic Reasoning & Mathematical Verification
 sympy==1.14.0
