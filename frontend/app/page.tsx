@@ -19,8 +19,10 @@ import {
   Layers,
   Menu,
   MessageSquare,
+  Moon,
   ShieldCheck,
   Sparkles,
+  Sun,
   Users,
   X,
   Zap,
@@ -49,6 +51,7 @@ import {
 
 import dynamic from "next/dynamic";
 import ActionButton from "@/components/landing/ActionButton";
+import { useTheme } from "@/utils/theme";
 import HeroWorkspacePreview, {
   ContainerScroll,
 } from "@/components/landing/HeroWorkspacePreview";
@@ -596,6 +599,7 @@ const FAQ_ITEMS = [
  * ========================================================================== */
 export default function LandingPage() {
   const [lang, setLang] = useState<"id" | "en">("id");
+  const { isDark, toggleTheme } = useTheme();
   const [scrolled, setScrolled] = useState(false);
   const { scrollYProgress } = useScroll();
   const scrollProgressScaleX = useSpring(scrollYProgress, { stiffness: 120, damping: 26, mass: 0.4 });
@@ -795,11 +799,11 @@ export default function LandingPage() {
                       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
                       className="absolute left-1/2 -translate-x-1/2 top-full pt-3 w-[660px] z-50"
                     >
-                      <div className="bg-white/95 dark:bg-[#121317]/95 backdrop-blur-2xl rounded-3xl border border-zinc-200/90 dark:border-white/10 shadow-[0_24px_60px_-15px_rgba(9,9,11,0.12)] p-5 grid grid-cols-12 gap-5">
+                      <div className="bg-white dark:bg-[#141519] backdrop-blur-2xl rounded-3xl border border-zinc-200/90 dark:border-white/10 shadow-[0_24px_60px_-15px_rgba(9,9,11,0.12)] p-5 grid grid-cols-12 gap-5">
                         {/* Left Column: Live Modules */}
                         <div className="col-span-7 space-y-3">
                           <div className="flex items-center justify-between px-2">
-                            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-600 dark:text-zinc-400">
+                            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-600 dark:text-zinc-300">
                               {lang === "id" ? "Ruang Kerja & Mesin CAS" : "Workspace & CAS Engine"}
                             </span>
                             <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/70">
@@ -823,7 +827,7 @@ export default function LandingPage() {
                                   </span>
                                   <ArrowRight className="w-3.5 h-3.5 text-zinc-300 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-[#09090b] transition-all" />
                                 </div>
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed line-clamp-1">
+                                <p className="text-xs text-zinc-500 dark:text-zinc-300 leading-relaxed line-clamp-1">
                                   {lang === "id"
                                     ? "Scratchpad derivasi aljabar & dialog Sokrates tanpa bocoran jawaban"
                                     : "Algebraic derivation scratchpad & zero-spoiler Socratic dialogue"}
@@ -846,7 +850,7 @@ export default function LandingPage() {
                                   </span>
                                   <ArrowRight className="w-3.5 h-3.5 text-zinc-300 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-[#09090b] transition-all" />
                                 </div>
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed line-clamp-1">
+                                <p className="text-xs text-zinc-500 dark:text-zinc-300 leading-relaxed line-clamp-1">
                                   {lang === "id"
                                     ? "Visualisasi bangun ruang, irisan bidang, & grafik fungsi interaktif"
                                     : "Interactive 3D solids, plane cross-sections, & function plots"}
@@ -869,7 +873,7 @@ export default function LandingPage() {
                                   </span>
                                   <ArrowRight className="w-3.5 h-3.5 text-zinc-300 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-[#09090b] transition-all" />
                                 </div>
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed line-clamp-1">
+                                <p className="text-xs text-zinc-500 dark:text-zinc-300 leading-relaxed line-clamp-1">
                                   {lang === "id"
                                     ? "Uji langsung ekivalensi aljabar & konservasi akar di halaman ini"
                                     : "Test symbolic equivalence & root conservation live on this page"}
@@ -892,7 +896,7 @@ export default function LandingPage() {
                                   </span>
                                   <ArrowRight className="w-3.5 h-3.5 text-zinc-300 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-[#09090b] transition-all" />
                                 </div>
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed line-clamp-1">
+                                <p className="text-xs text-zinc-500 dark:text-zinc-300 leading-relaxed line-clamp-1">
                                   {lang === "id"
                                     ? "Hubungkan Gemini, OpenAI, Claude, DeepSeek, atau Ollama lokal"
                                     : "Connect Gemini, OpenAI, Claude, DeepSeek, or local Ollama"}
@@ -906,7 +910,7 @@ export default function LandingPage() {
                         <div className="col-span-5 bg-[#faf9f6] dark:bg-white/5 rounded-2xl p-4 border border-zinc-200/80 dark:border-white/10 flex flex-col justify-between">
                           <div>
                             <div className="flex items-center justify-between mb-3">
-                              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-600 dark:text-zinc-400">
+                              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-600 dark:text-zinc-300">
                                 {lang === "id" ? "Ekosistem Segera Hadir" : "Upcoming Ecosystem"}
                               </span>
                               <span className="text-[9px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[#faf4ed] text-[#8f5e32] border border-[#d4a574]/40">
@@ -947,7 +951,7 @@ export default function LandingPage() {
                                       <div className="text-xs font-semibold text-[#09090b] dark:text-white truncate">
                                         {wItem.name}
                                       </div>
-                                      <div className="text-[10px] text-zinc-500 truncate">
+                                      <div className="text-[10px] text-zinc-500 dark:text-zinc-300 truncate">
                                         {wItem.desc}
                                       </div>
                                     </div>
@@ -962,7 +966,7 @@ export default function LandingPage() {
                               <div className="text-[11px] font-semibold text-[#09090b] dark:text-white">
                                 {lang === "id" ? "Siap mencoba sekarang?" : "Ready to start?"}
                               </div>
-                              <div className="text-[10px] text-zinc-500">
+                              <div className="text-[10px] text-zinc-500 dark:text-zinc-300">
                                 {lang === "id" ? "Tanpa kartu kredit · Langsung aktif" : "No credit card · Instant access"}
                               </div>
                             </div>
@@ -1020,6 +1024,17 @@ export default function LandingPage() {
 
             {/* Right Actions: Language Pill Toggle + Dashboard CTA */}
             <div className="flex items-center gap-2 shrink-0">
+              {/* Theme Toggle (sinkron dengan toggle di Chat lewat zap_theme_v2) */}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                aria-label={isDark ? "Aktifkan mode terang" : "Aktifkan mode gelap"}
+                title={isDark ? "Mode terang" : "Mode gelap"}
+                className="w-9 h-9 rounded-full bg-zinc-900/5 dark:bg-white/10 hover:bg-zinc-900/10 dark:hover:bg-white/15 flex items-center justify-center text-zinc-700 dark:text-zinc-100 transition-colors cursor-pointer"
+              >
+                {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </button>
+
               {/* Language Switcher Pill (Exact ai.databyte.co.id style) */}
               <div className="inline-flex items-center bg-zinc-200/75 dark:bg-white/10 p-0.5 rounded-full text-xs font-medium border border-zinc-300/50 dark:border-white/10">
                 <button
@@ -1082,9 +1097,9 @@ export default function LandingPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
-              className="md:hidden mx-4 mt-2 rounded-3xl bg-white/95 dark:bg-[#121317]/95 backdrop-blur-xl border border-zinc-200 dark:border-white/10 shadow-xl p-5 space-y-4"
+              className="lg:hidden mx-4 mt-2 rounded-3xl bg-white dark:bg-[#141519] backdrop-blur-xl border border-zinc-200 dark:border-white/10 shadow-xl p-5 space-y-4"
             >
-              <div className="grid grid-cols-1 gap-1.5 text-sm font-medium text-zinc-700">
+              <div className="grid grid-cols-1 gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-100">
                 <Link prefetch={false}
                   href="/chat"
                   onClick={() => setMobileMenuOpen(false)}
@@ -1137,7 +1152,7 @@ export default function LandingPage() {
                   FAQ
                 </a>
               </div>
-              <div className="pt-2 border-t border-zinc-100 flex justify-center">
+              <div className="pt-2 border-t border-zinc-100 dark:border-white/10 flex justify-center">
                 <ActionButton href="/chat" variant="black" size="md" className="w-full justify-between">
                   {lang === "id" ? "Buka ChatZAP Sekarang" : "Open ChatZAP Now"}
                 </ActionButton>

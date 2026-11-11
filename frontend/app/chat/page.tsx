@@ -3844,7 +3844,7 @@ export default function ZAPApp() {
               </div>
 
               {/* Dropdown Pills above Composer (Interactive Workspace & Pedagogical Mode) */}
-              <div className="w-full max-w-3xl lg:max-w-4xl flex items-center gap-2 mb-2 px-1 text-xs text-slate-500 dark:text-zinc-400 justify-start relative overflow-x-auto no-scrollbar">
+              <div className="w-full max-w-3xl lg:max-w-4xl flex items-center gap-2 mb-2 px-1 text-xs text-slate-500 dark:text-zinc-400 justify-start relative">
                 {/* 1. Workspace Pill */}
                 <div className="relative shrink-0" ref={pillWorkspaceRef}>
                   <button
@@ -3945,7 +3945,7 @@ export default function ZAPApp() {
                     }`}
                   >
                     <Atom className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
-                    <span className="whitespace-nowrap">
+                    <span className="whitespace-nowrap max-w-[118px] min-[420px]:max-w-none truncate">
                       {interactionMode === "standard"
                         ? "Standard mode"
                         : interactionMode === "strict"
@@ -3959,7 +3959,7 @@ export default function ZAPApp() {
 
                   {/* Mode Dropdown Popover */}
                   {showPillModeMenu && (
-                    <div className="absolute left-0 top-full mt-1.5 w-64 liquid-glass-popup rounded-2xl py-1.5 z-50 text-xs animate-liquid-pop origin-top-left text-left">
+                    <div className="absolute left-0 max-sm:left-auto max-sm:right-0 top-full mt-1.5 w-64 liquid-glass-popup rounded-2xl py-1.5 z-50 text-xs animate-liquid-pop origin-top-left text-left">
                       <div className="px-3 py-1 text-[10px] uppercase font-mono tracking-wider text-slate-400 dark:text-zinc-500 border-b border-slate-100 dark:border-white/[0.06] mb-1">
                         Pilih Moda Pedagogi
                       </div>
