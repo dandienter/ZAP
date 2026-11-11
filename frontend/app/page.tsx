@@ -347,13 +347,13 @@ const CAROUSEL_PLANS: CarouselPlanCard[] = [
       "Scratchpad Derivasi Multi-Baris Interaktif",
       "Deteksi Akar Hilang & Ekivalensi Aljabar",
       "Counter-Example Otomatis Saat Langkah Keliru",
-      "70 Tes Backend & Parser Terverifikasi",
+      "116 Tes Backend & Parser Terverifikasi",
     ],
     featuresEn: [
       "Interactive Multi-Line Derivation Scratchpad",
       "Lost-Root & Algebraic Equivalence Detection",
       "Automatic Counter-Example on Invalid Steps",
-      "70 Verified Backend & Parser Tests",
+      "116 Verified Backend & Parser Tests",
     ],
     ctaTextId: "Buka ChatZAP",
     ctaTextEn: "Open ChatZAP",
@@ -369,7 +369,7 @@ const CAROUSEL_PLANS: CarouselPlanCard[] = [
     name: "CFL Engine + Guardrail",
     descId: "Kombinasi verifikasi simbolik deterministik & filter anti-bocoran jawaban akhir",
     descEn: "Deterministic symbolic verification paired with final-answer sanitization",
-    metricMain: "70 Tes",
+    metricMain: "116 Tes",
     metricUnitId: "/ semua lulus",
     metricUnitEn: "/ all passing",
     quotaRows: [
@@ -1770,8 +1770,8 @@ export default function LandingPage() {
                 </div>
                 <p className="text-[11px] text-zinc-500 mt-6 font-mono">
                   {lang === "id"
-                    ? "SymPy CAS < 1 ms Pre-Parse · 70 Automated Tests Passed · Zero Answer Leaks"
-                    : "SymPy CAS < 1 ms Pre-Parse · 70 Automated Tests Passed · Zero Answer Leaks"}
+                    ? "SymPy CAS < 1 ms Pre-Parse · 116 Automated Tests Passed · Zero Answer Leaks"
+                    : "SymPy CAS < 1 ms Pre-Parse · 116 Automated Tests Passed · Zero Answer Leaks"}
                 </p>
               </div>
             </SpotlightCard>
