@@ -4,7 +4,12 @@ Crawls, fetches, normalizes, and verifies open-source math benchmarks from the i
   1. OpenAI GSM8K (GitHub raw JSONL)
   2. HuggingFace Datasets Server API (openai/gsm8k, competition_math)
   3. Wikimedia REST API v1 (Canonical Mathematical Theorems & Identities)
-  4. Kurikulum Merdeka Indonesia (Verified Syllabus & Synthetic SymPy Fallback)
+  4. Kurikulum Merdeka Indonesia (Verified Syllabus)
+
+Verification is FAIL-CLOSED: an item is only marked ``is_valid: True`` when an
+actual SymPy/arithmetic check passed. Unknown formulas, unparsable solutions,
+and unreachable sources yield ``is_valid: False`` / no items at all - never a
+silently-invented "verified" fallback.
 
 All harvested items pass through SymPy symbolic validation and RobustZeroAnswerGuardrail
 so zero final answers are ever leaked in Socratic prompts.
@@ -100,65 +105,106 @@ def _build_socratic_prompt_for_problem(question: str, final_ans: Optional[str] =
 
 
 def _verify_theorem_with_sympy(expr_note: str) -> Dict[str, Any]:
-    """Deterministic SymPy check for canonical theorem identities."""
+    """Deterministic SymPy check for canonical theorem identities.
+
+    FAIL-CLOSED: identities without an implemented check return
+    ``is_valid: False`` with status ``"unverified"``.
+    """
     try:
         if expr_note == "(x + y)^2 = x^2 + 2*x*y + y^2":
             x, y = sp.symbols("x y")
             is_eq = sp.simplify(sp.expand((x + y) ** 2) - (x**2 + 2 * x * y + y**2)) == 0
-            return {"identity": expr_note, "is_valid": bool(is_eq), "engine": "SymPy CAS"}
+            return {"identity": expr_note, "is_valid": bool(is_eq), "status": "verified" if is_eq else "failed", "engine": "SymPy CAS"}
         if expr_note == "a^2 + b^2 = c^2":
             # Verify Pythagorean triple (3, 4, 5)
             is_eq = (3**2 + 4**2) == 5**2
-            return {"identity": expr_note, "triple_check": "3^2 + 4^2 = 5^2", "is_valid": bool(is_eq), "engine": "SymPy CAS"}
+            return {"identity": expr_note, "triple_check": "3^2 + 4^2 = 5^2", "is_valid": bool(is_eq), "status": "verified" if is_eq else "failed", "engine": "SymPy CAS"}
         if expr_note == "V - E + F = 2":
             # Verify Cube (V=8, E=12, F=6)
             is_eq = (8 - 12 + 6) == 2
-            return {"identity": expr_note, "cube_check": "8 - 12 + 6 = 2", "is_valid": bool(is_eq), "engine": "SymPy CAS"}
+            return {"identity": expr_note, "cube_check": "8 - 12 + 6 = 2", "is_valid": bool(is_eq), "status": "verified" if is_eq else "failed", "engine": "SymPy CAS"}
     except Exception:
         pass
-    return {"identity": expr_note, "is_valid": True, "engine": "SymPy CAS"}
+    return {"identity": expr_note, "is_valid": False, "status": "unverified", "engine": "SymPy CAS"}
 
 
-def _synthesized_verified_curriculum_fallback(source_key: str, max_items: int = 10) -> List[Dict[str, Any]]:
+_ANNOTATION_RE = re.compile(r"<<([^>]+)>>")
+
+
+def _eval_annotation_side(expr_str: str) -> Optional[float]:
+    """Evaluate one side of a GSM8K <<...>> calculator annotation safely."""
+    cleaned = expr_str.replace(",", "").replace("$", "").replace("%", "").strip()
+    if not cleaned or not re.fullmatch(r"[0-9+\-*/().\s]+", cleaned):
+        return None
+    try:
+        value = sp.sympify(cleaned, rational=True)
+        return float(value.evalf())
+    except Exception:
+        return None
+
+
+def _verify_gsm8k_solution(answer_str: str) -> Dict[str, Any]:
     """
-    Deterministic SymPy-verified fallback when an external URL is unreachable or offline.
-    Ensures continuous training pipelines always receive verified mathematical theorems.
+    Real GSM8K verification: every <<expr=result>> calculator annotation in the
+    rationale is re-evaluated, and the last annotation result must match the
+    final answer after ####. Anything else is FAIL-CLOSED (is_valid False).
     """
-    x = sp.Symbol("x")
-    fallback_items: List[Dict[str, Any]] = []
-    count = min(max_items, 8)
-    for i in range(1, count + 1):
-        a_val = i + 1
-        b_val = i + 3
-        expanded = sp.expand((x + a_val) * (x + b_val))
-        roots = sp.solveset(expanded, x, domain=sp.S.Reals)
-        fallback_items.append({
-            "id": f"verified_web_{source_key}_{i}",
-            "tier": "SMP" if i % 2 == 0 else "SD",
-            "topic": "Aljabar & Pemfaktoran Terverifikasi SymPy",
-            "subtopic": "Ekspansi & Akar Persamaan Kuadrat",
-            "dimension": "2D",
-            "shape_kind": "persegi_panjang" if i % 2 == 1 else None,
-            "question": f"Jabarkan bentuk aljabar (x + {a_val})(x + {b_val}) dan tentukan pembuat nolnya!",
-            "steps": [
-                f"(x + {a_val})(x + {b_val})",
-                f"x^2 + {a_val + b_val}*x + {a_val * b_val}",
-            ],
-            "target_variable": "x",
-            "sympy_verification": {
-                "expanded": str(expanded),
-                "expected_value": str(roots),
-                "is_valid": True,
-            },
-            "socratic_prompt": RobustZeroAnswerGuardrail.sanitize(
-                f"Jika kamu mengalikan setiap suku pada (x + {a_val}) dengan (x + {b_val}), "
-                f"berapakah hasil penjumlahan suku tengah {a_val}x dan {b_val}x?",
-                final_solution=str(roots),
-            ),
-            "source": f"Verified Curriculum Fallback ({source_key})",
-            "is_verified": True,
-        })
-    return fallback_items
+    final_ans = _extract_gsm8k_final_answer(answer_str)
+    annotations = _ANNOTATION_RE.findall(answer_str)
+    result: Dict[str, Any] = {
+        "expected_value": final_ans,
+        "is_valid": False,
+        "status": "unverified",
+        "engine": "SymPy CAS",
+        "annotations_checked": 0,
+    }
+    if final_ans is None or not annotations:
+        return result
+
+    try:
+        final_val = float(final_ans)
+    except (TypeError, ValueError):
+        return result
+
+    last_result: Optional[float] = None
+    checked = 0
+    for ann in annotations:
+        if "=" not in ann:
+            return result
+        lhs_str, rhs_str = ann.rsplit("=", 1)
+        lhs_val = _eval_annotation_side(lhs_str)
+        rhs_val = _eval_annotation_side(rhs_str)
+        if lhs_val is None or rhs_val is None:
+            return result
+        if abs(lhs_val - rhs_val) > 1e-6 * max(1.0, abs(rhs_val)):
+            return result
+        checked += 1
+        last_result = rhs_val
+
+    result["annotations_checked"] = checked
+    if last_result is not None and abs(last_result - final_val) <= 1e-6 * max(1.0, abs(final_val)):
+        result["is_valid"] = True
+        result["status"] = "verified"
+    return result
+
+
+def _normalize_question_text(question: Any) -> str:
+    """Normalize a question text for cross-source deduplication."""
+    return re.sub(r"\s+", " ", str(question or "").strip().lower())
+
+
+def dedupe_by_question(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Drop items whose normalized question text was already seen."""
+    seen: set = set()
+    unique: List[Dict[str, Any]] = []
+    for item in items:
+        key = _normalize_question_text(item.get("question"))
+        if key:
+            if key in seen:
+                continue
+            seen.add(key)
+        unique.append(item)
+    return unique
 
 
 def fetch_open_math_data(source_key: str, max_items: int = 25) -> List[Dict[str, Any]]:
@@ -207,9 +253,9 @@ def fetch_open_math_data(source_key: str, max_items: int = 25) -> List[Dict[str,
                         "sympy_verification": sympy_check,
                         "socratic_prompt": socratic_q,
                         "source": f"{source['description']} ({url})",
-                        "is_verified": True,
+                        "is_verified": bool(sympy_check.get("is_valid")),
                     })
-            return results
+            return dedupe_by_question(results)
 
         if fmt == "hf_rows":
             url = f"{source['url']}&length={min(max_items, 50)}"
@@ -225,6 +271,7 @@ def fetch_open_math_data(source_key: str, max_items: int = 25) -> List[Dict[str,
                         continue
                     final_ans = _extract_gsm8k_final_answer(str(a))
                     steps = _clean_gsm8k_steps(str(a))
+                    verification = _verify_gsm8k_solution(str(a))
                     results.append({
                         "id": f"{source_key}_{i}",
                         "tier": source["tier"],
@@ -235,15 +282,12 @@ def fetch_open_math_data(source_key: str, max_items: int = 25) -> List[Dict[str,
                         "question": str(q).strip(),
                         "steps": steps if steps else [str(a).strip()[:200]],
                         "target_variable": "x",
-                        "sympy_verification": {
-                            "expected_value": final_ans or "verified_steps",
-                            "is_valid": True,
-                        },
+                        "sympy_verification": verification,
                         "socratic_prompt": _build_socratic_prompt_for_problem(str(q), final_ans),
                         "source": source["description"],
-                        "is_verified": True,
+                        "is_verified": verification["is_valid"],
                     })
-            return results
+            return dedupe_by_question(results)
 
         # Default: JSONL format (e.g., gsm8k_sample)
         req = urllib.request.Request(source["url"], headers=headers)
@@ -258,6 +302,7 @@ def fetch_open_math_data(source_key: str, max_items: int = 25) -> List[Dict[str,
                     if "question" in data and "answer" in data:
                         final_ans = _extract_gsm8k_final_answer(data["answer"])
                         steps = _clean_gsm8k_steps(data["answer"])
+                        verification = _verify_gsm8k_solution(data["answer"])
                         results.append({
                             "id": f"{source_key}_{i}",
                             "tier": source["tier"],
@@ -268,21 +313,20 @@ def fetch_open_math_data(source_key: str, max_items: int = 25) -> List[Dict[str,
                             "question": data["question"],
                             "steps": steps,
                             "target_variable": "x",
-                            "sympy_verification": {
-                                "expected_value": final_ans or "verified",
-                                "is_valid": True,
-                            },
+                            "sympy_verification": verification,
                             "socratic_prompt": _build_socratic_prompt_for_problem(data["question"], final_ans),
                             "source": source["description"],
-                            "is_verified": True,
+                            "is_verified": verification["is_valid"],
                         })
                 except json.JSONDecodeError:
                     continue
     except (urllib.error.URLError, TimeoutError, Exception) as err:
-        print(f"[Harvester Notice] Network fetch from '{source_key}' fallback triggered ({err}).")
-        return _synthesized_verified_curriculum_fallback(source_key, max_items=min(max_items, 6))
+        # FAIL-CLOSED: an unreachable/missing source is skipped with a warning.
+        # No synthetic "verified" fallback is ever fabricated.
+        print(f"[Harvester Warning] Source '{source_key}' skipped: fetch failed ({err}). No fallback items generated.")
+        return []
 
-    return results
+    return dedupe_by_question(results)
 
 
 def crawl_all_verified_sources(max_items_per_source: int = 15) -> List[Dict[str, Any]]:
@@ -294,4 +338,6 @@ def crawl_all_verified_sources(max_items_per_source: int = 15) -> List[Dict[str,
     for key in OPEN_MATH_SOURCES.keys():
         fetched = fetch_open_math_data(key, max_items=max_items_per_source)
         all_items.extend(fetched)
-    return all_items
+    # Cross-source dedup: the same benchmark served by two mirrors (e.g.
+    # GSM8K via GitHub and via HuggingFace) must not enter the corpus twice.
+    return dedupe_by_question(all_items)

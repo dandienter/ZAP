@@ -169,8 +169,8 @@ export default function HeroWorkspacePreview({
       route: "/chat",
       title: isId ? "Zero-Answer Guardrail & UU PDP Vault" : "Zero-Answer Guardrail & Sovereign Vault",
       desc: isId
-        ? "Filter deterministik berlapis yang menyensor bocoran solusi akhir serta melindungi riwayat belajar dengan enkripsi lokal AES-256."
-        : "Multi-layer deterministic sanitizer preventing final answer leaks while protecting student sessions with local AES-256 encryption.",
+        ? "Filter deterministik berlapis yang menyensor bocoran solusi akhir. Riwayat belajar tersimpan lokal di peramban, dengan cadangan vault akun di server bagi pengguna yang masuk."
+        : "Multi-layer deterministic sanitizer preventing final answer leaks. Learning history is stored locally in the browser, with an account vault backup on the server for signed-in users.",
     },
     {
       id: "classroom-analytics",
@@ -231,7 +231,7 @@ export default function HeroWorkspacePreview({
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
           <span className="text-[#09090b] font-semibold">chatzap.ai</span>
-          <span className="text-zinc-400">/studio</span>
+          <span className="text-zinc-600">/studio</span>
         </div>
         <div className="w-4" />
       </div>
@@ -257,7 +257,7 @@ export default function HeroWorkspacePreview({
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
           <span className="text-[#09090b] font-medium">chatzap.ai</span>
-          <span className="text-zinc-400">/studio/{activeId}</span>
+          <span className="text-zinc-600">/studio/{activeId}</span>
         </div>
         <div className="w-[52px] hidden sm:block" />
       </div>
@@ -266,7 +266,7 @@ export default function HeroWorkspacePreview({
       <div className="flex md:hidden flex-1 overflow-hidden select-none bg-white">
         <div className="w-[122px] bg-[#faf9f6] border-r border-zinc-200/80 p-1.5 flex flex-col justify-between shrink-0 overflow-hidden">
           <div className="space-y-1.5 overflow-hidden">
-            <div className="text-[6px] font-mono font-bold uppercase tracking-wider text-zinc-400 px-1">
+            <div className="text-[9px] font-mono font-bold uppercase tracking-wider text-zinc-600 px-1">
               AI &amp; CAS ENGINE
             </div>
             {modules.slice(0, 6).map((item) => {
@@ -282,8 +282,8 @@ export default function HeroWorkspacePreview({
                       : "text-zinc-600"
                   }`}
                 >
-                  <span className="text-[7px] truncate">{item.name}</span>
-                  <span className="text-[5.5px] font-mono text-emerald-700 font-semibold shrink-0">
+                  <span className="text-[9px] truncate">{item.name}</span>
+                  <span className="text-[9px] font-mono text-emerald-700 font-semibold shrink-0">
                     {item.badge}
                   </span>
                 </button>
@@ -295,10 +295,10 @@ export default function HeroWorkspacePreview({
               <ZapLogo className="w-2.5 h-2.5" />
             </div>
             <div className="overflow-hidden text-left leading-none">
-              <div className="text-[6.5px] font-bold text-[#09090b] truncate">
-                ChatZAP <span className="text-[#c4956a] font-normal">CAS</span>
+              <div className="text-[9px] font-bold text-[#09090b] truncate">
+                ChatZAP <span className="text-[#7d551f] font-normal">CAS</span>
               </div>
-              <div className="text-[5px] text-zinc-400 font-mono truncate mt-0.5">
+              <div className="text-[9px] text-zinc-600 font-mono truncate mt-0.5">
                 Zero-Answer Mode
               </div>
             </div>
@@ -309,38 +309,38 @@ export default function HeroWorkspacePreview({
           <div className="flex items-center justify-between pb-1.5 border-b border-zinc-100">
             <div>
               <div className="flex items-center gap-1">
-                <h4 className="font-extrabold text-[10px] text-[#09090b] tracking-tight leading-none">
+                <h2 className="font-extrabold text-[10px] text-[#09090b] tracking-tight leading-none">
                   {activeModule.title}
-                </h4>
+                </h2>
               </div>
-              <p className="text-[6.5px] text-zinc-400 font-mono mt-0.5 line-clamp-1">
+              <p className="text-[9px] text-zinc-600 font-mono mt-0.5 line-clamp-1">
                 SymPy CAS • Zero-Answer Policy Enforced
               </p>
             </div>
-            <span className="px-1.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[6px] font-mono font-semibold shrink-0">
+            <span className="px-1.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[9px] font-mono font-semibold shrink-0">
               Live
             </span>
           </div>
 
           <div className="grid grid-cols-3 gap-1 my-1.5">
             <div className="p-1.5 rounded-md bg-[#faf9f6] border border-zinc-200/80">
-              <div className="text-[5px] font-mono font-bold uppercase text-zinc-400">PRE-PARSE</div>
-              <div className="text-[8.5px] font-bold text-[#09090b] font-mono mt-0.5">&lt; 1 ms</div>
-              <div className="text-[5px] text-emerald-600 font-medium">SymPy CAS</div>
+              <div className="text-[9px] font-mono font-bold uppercase text-zinc-600">PRE-PARSE</div>
+              <div className="text-[9px] font-bold text-[#09090b] font-mono mt-0.5">&lt; 1 ms</div>
+              <div className="text-[9px] text-emerald-700 font-medium">SymPy CAS</div>
             </div>
             <div className="p-1.5 rounded-md bg-[#faf9f6] border border-zinc-200/80">
-              <div className="text-[5px] font-mono font-bold uppercase text-zinc-400">GUARDRAIL</div>
-              <div className="text-[8.5px] font-bold text-[#8f5e32] font-mono mt-0.5">22 / 22</div>
-              <div className="text-[5px] text-zinc-500 font-medium">Tests Passed</div>
+              <div className="text-[9px] font-mono font-bold uppercase text-zinc-600">GUARDRAIL</div>
+              <div className="text-[9px] font-bold text-[#8f5e32] font-mono mt-0.5">70</div>
+              <div className="text-[9px] text-zinc-500 font-medium">Tests Passed</div>
             </div>
             <div className="p-1.5 rounded-md bg-[#faf9f6] border border-zinc-200/80">
-              <div className="text-[5px] font-mono font-bold uppercase text-zinc-400">KANVAS</div>
-              <div className="text-[8.5px] font-bold text-[#09090b] font-mono mt-0.5">2D &amp; 3D</div>
-              <div className="text-[5px] text-emerald-600 font-medium">Interactive</div>
+              <div className="text-[9px] font-mono font-bold uppercase text-zinc-600">KANVAS</div>
+              <div className="text-[9px] font-bold text-[#09090b] font-mono mt-0.5">2D &amp; 3D</div>
+              <div className="text-[9px] text-emerald-700 font-medium">Interactive</div>
             </div>
           </div>
 
-          <div className="flex-1 rounded-lg border border-zinc-200/90 p-2 bg-[#faf9f6]/80 font-mono text-[6.5px] space-y-1 flex flex-col justify-center">
+          <div className="flex-1 rounded-lg border border-zinc-200/90 p-2 bg-[#faf9f6]/80 font-mono text-[9px] space-y-1 flex flex-col justify-center">
             <div className="flex items-center justify-between text-emerald-700 font-bold">
               <span>#1 (x + 3)² - 4 = 0</span>
               <span>✓ Basis Valid</span>
@@ -367,7 +367,7 @@ export default function HeroWorkspacePreview({
               { title: isId ? "EKOSISTEM & PRIVASI" : "ECOSYSTEM & PRIVACY", category: "ecosystem" },
             ].map((section) => (
               <div key={section.category} className="space-y-1">
-                <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400 px-2 py-0.5">
+                <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-600 px-2 py-0.5">
                   {section.title}
                 </div>
                 <div className="space-y-0.5">
@@ -399,7 +399,7 @@ export default function HeroWorkspacePreview({
                                   : "text-emerald-700"
                                 : isSelected
                                 ? "bg-[#faf4ed] text-[#8f5e32] border border-[#d4a574]/40"
-                                : "text-zinc-400"
+                                : "text-zinc-600"
                             }`}
                           >
                             {item.badge}
@@ -418,9 +418,9 @@ export default function HeroWorkspacePreview({
             </div>
             <div className="overflow-hidden text-left">
               <div className="text-xs font-bold text-[#09090b] tracking-tight truncate flex items-center gap-1">
-                ChatZAP <span className="text-[#c4956a] font-normal">Studio</span>
+                ChatZAP <span className="text-[#7d551f] font-normal">Studio</span>
               </div>
-              <div className="text-[10px] text-zinc-400 font-mono truncate">
+              <div className="text-[10px] text-zinc-600 font-mono truncate">
                 Deterministic CAS Mode
               </div>
             </div>
@@ -435,9 +435,9 @@ export default function HeroWorkspacePreview({
                 <span className="w-8 h-8 rounded-lg bg-[#faf9f6] border border-zinc-200/80 text-[#09090b] flex items-center justify-center shrink-0">
                   {activeModule.icon}
                 </span>
-                <h4 className="font-extrabold text-lg sm:text-xl text-[#09090b] tracking-tight">
+                <h2 className="font-extrabold text-lg sm:text-xl text-[#09090b] tracking-tight">
                   {activeModule.title}
-                </h4>
+                </h2>
               </div>
               <p className="text-xs sm:text-sm text-zinc-500 mt-1 max-w-xl leading-relaxed">
                 {activeModule.desc}
@@ -477,18 +477,18 @@ export default function HeroWorkspacePreview({
             <div className="space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">
                     {isId ? "Mode Workspace" : "Workspace Mode"}
                   </div>
                   <div className="text-base font-bold text-[#09090b] font-mono mt-0.5">
                     Socratic Chat
                   </div>
-                  <div className="text-[11px] text-emerald-600 font-medium">
+                  <div className="text-[11px] text-emerald-700 font-medium">
                     {isId ? "Zero-Answer Aktif" : "Zero-Answer Enforced"}
                   </div>
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">Multi-Modal</div>
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">Multi-Modal</div>
                   <div className="text-base font-bold text-[#8f5e32] font-mono mt-0.5">
                     LaTeX &amp; 3D Mesh
                   </div>
@@ -497,18 +497,18 @@ export default function HeroWorkspacePreview({
                   </div>
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">
                     {isId ? "Hakim Aljabar" : "Algebra Arbiter"}
                   </div>
                   <div className="text-base font-bold text-[#09090b] font-mono mt-0.5">
                     SymPy CAS
                   </div>
-                  <div className="text-[11px] text-emerald-600 font-medium">
+                  <div className="text-[11px] text-emerald-700 font-medium">
                     {isId ? "Deterministik < 1 ms" : "Deterministic < 1 ms"}
                   </div>
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">
                     {isId ? "Integrasi" : "Integration"}
                   </div>
                   <div className="text-base font-bold text-emerald-700 font-mono mt-0.5">
@@ -534,18 +534,18 @@ export default function HeroWorkspacePreview({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
                   <div className="p-3 rounded-lg bg-white border border-zinc-200/80 font-mono text-[11px] space-y-1.5 shadow-sm">
-                    <div className="text-[10px] font-bold uppercase text-zinc-400">
+                    <div className="text-[10px] font-bold uppercase text-zinc-600">
                       {isId ? "Coretan Langkah Siswa" : "Student Derivation Steps"}
                     </div>
                     <div className="flex items-center justify-between text-zinc-800">
                       <span>#1 (x + 3)² - 4 = 0</span>
-                      <span className="text-emerald-600 font-sans font-semibold">✓ Basis</span>
+                      <span className="text-emerald-700 font-sans font-semibold">✓ Basis</span>
                     </div>
                     <div className="flex items-center justify-between text-amber-700 font-semibold">
                       <span>#2 x² + 9 - 4 = 0</span>
-                      <span className="text-amber-600 font-sans">⚠️ Galat Baris</span>
+                      <span className="text-amber-700 font-sans">⚠️ Galat Baris</span>
                     </div>
-                    <div className="flex items-center justify-between text-zinc-400">
+                    <div className="flex items-center justify-between text-zinc-600">
                       <span>#3 x² + 5 = 0</span>
                       <span className="font-sans">Tertahan</span>
                     </div>
@@ -577,24 +577,24 @@ export default function HeroWorkspacePreview({
             <div className="space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">Pre-Parse</div>
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">Pre-Parse</div>
                   <div className="text-base font-bold text-[#09090b] font-mono mt-0.5">&lt; 1 ms</div>
-                  <div className="text-[11px] text-emerald-600 font-medium">
+                  <div className="text-[11px] text-emerald-700 font-medium">
                     Whitelist First
                   </div>
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">Security Suite</div>
-                  <div className="text-base font-bold text-[#8f5e32] font-mono mt-0.5">22 / 22</div>
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">Security Suite</div>
+                  <div className="text-base font-bold text-[#8f5e32] font-mono mt-0.5">70</div>
                   <div className="text-[11px] text-zinc-500 font-medium">Anti-RCE &amp; DoS</div>
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">Test Coverage</div>
-                  <div className="text-base font-bold text-[#09090b] font-mono mt-0.5">64 Suites</div>
-                  <div className="text-[11px] text-emerald-600 font-medium">Pytest Verified</div>
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">Test Coverage</div>
+                  <div className="text-base font-bold text-[#09090b] font-mono mt-0.5">70 Tes</div>
+                  <div className="text-[11px] text-emerald-700 font-medium">Pytest Verified</div>
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">Batas Derajat</div>
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">Batas Derajat</div>
                   <div className="text-base font-bold text-emerald-700 font-mono mt-0.5">Deg ≤ 100</div>
                   <div className="text-[11px] text-zinc-500 font-medium">Safe Exponents</div>
                 </div>
@@ -624,22 +624,22 @@ export default function HeroWorkspacePreview({
             <div className="space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">Engine 3D</div>
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">Engine 3D</div>
                   <div className="text-base font-bold text-[#09090b] font-mono mt-0.5">Three.js WebGL</div>
-                  <div className="text-[11px] text-emerald-600 font-medium">60 FPS Orbit</div>
+                  <div className="text-[11px] text-emerald-700 font-medium">Orbit Interaktif</div>
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">Geometri</div>
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">Geometri</div>
                   <div className="text-base font-bold text-[#8f5e32] font-mono mt-0.5">Irisan Kerucut</div>
                   <div className="text-[11px] text-zinc-500 font-medium">Elips, Parabola, Hiperbola</div>
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">Plotter 2D</div>
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">Plotter 2D</div>
                   <div className="text-base font-bold text-[#09090b] font-mono mt-0.5">Multi-Kurva</div>
-                  <div className="text-[11px] text-emerald-600 font-medium">Akar &amp; Titik Ekstrem</div>
+                  <div className="text-[11px] text-emerald-700 font-medium">Akar &amp; Titik Ekstrem</div>
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">Papan Kapur</div>
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">Papan Kapur</div>
                   <div className="text-base font-bold text-emerald-700 font-mono mt-0.5">Stylus Ready</div>
                   <div className="text-[11px] text-zinc-500 font-medium">Mode Proyektor Kelas</div>
                 </div>
@@ -662,22 +662,22 @@ export default function HeroWorkspacePreview({
             <div className="space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">Penyedia</div>
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">Penyedia</div>
                   <div className="text-base font-bold text-[#09090b] font-mono mt-0.5">6+ Frontier</div>
-                  <div className="text-[11px] text-emerald-600 font-medium">Gemini, Claude, GPT</div>
+                  <div className="text-[11px] text-emerald-700 font-medium">Gemini, Claude, GPT</div>
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">Penyimpanan</div>
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">Penyimpanan</div>
                   <div className="text-base font-bold text-[#8f5e32] font-mono mt-0.5">BYOK Lokal</div>
-                  <div className="text-[11px] text-zinc-500 font-medium">Browser Enclave</div>
+                  <div className="text-[11px] text-zinc-500 font-medium">localStorage Browser</div>
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">Mode Offline</div>
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">Mode Offline</div>
                   <div className="text-base font-bold text-[#09090b] font-mono mt-0.5">Ollama Local</div>
-                  <div className="text-[11px] text-emerald-600 font-medium">Tanpa Kuota Cloud</div>
+                  <div className="text-[11px] text-emerald-700 font-medium">Tanpa Kuota Cloud</div>
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">Reasoning</div>
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">Reasoning</div>
                   <div className="text-base font-bold text-emerald-700 font-mono mt-0.5">Effort Control</div>
                   <div className="text-[11px] text-zinc-500 font-medium">Low / Med / High</div>
                 </div>
@@ -687,7 +687,7 @@ export default function HeroWorkspacePreview({
                   <span>Active Model Routing Table</span>
                   <span className="text-emerald-700 font-semibold">Zero-Answer Sanitizer Attached</span>
                 </div>
-                <div className="grid grid-cols-3 text-[11px] text-zinc-400 font-bold">
+                <div className="grid grid-cols-3 text-[11px] text-zinc-600 font-bold">
                   <span>Provider</span>
                   <span>Model ID</span>
                   <span>Role</span>
@@ -711,22 +711,22 @@ export default function HeroWorkspacePreview({
             <div className="space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">Dasar</div>
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">Dasar</div>
                   <div className="text-base font-bold text-[#09090b] font-mono mt-0.5">TK, SD &amp; SMP</div>
-                  <div className="text-[11px] text-emerald-600 font-medium">Visual CPA &amp; Neraca</div>
+                  <div className="text-[11px] text-emerald-700 font-medium">Visual CPA &amp; Neraca</div>
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">Menengah</div>
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">Menengah</div>
                   <div className="text-base font-bold text-[#8f5e32] font-mono mt-0.5">SMA &amp; SMK</div>
                   <div className="text-[11px] text-zinc-500 font-medium">Aljabar, Trigonometri, Limit</div>
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">Pendidikan Tinggi</div>
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">Pendidikan Tinggi</div>
                   <div className="text-base font-bold text-[#09090b] font-mono mt-0.5">S1, S2 &amp; S3</div>
-                  <div className="text-[11px] text-emerald-600 font-medium">Kalkulus Vektor &amp; Bukti</div>
+                  <div className="text-[11px] text-emerald-700 font-medium">Kalkulus Vektor &amp; Bukti</div>
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">Standar</div>
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">Standar</div>
                   <div className="text-base font-bold text-emerald-700 font-mono mt-0.5">Kurikulum</div>
                   <div className="text-[11px] text-zinc-500 font-medium">Merdeka &amp; Cambridge</div>
                 </div>
@@ -749,22 +749,22 @@ export default function HeroWorkspacePreview({
             <div className="space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">Enkripsi</div>
-                  <div className="text-base font-bold text-[#09090b] font-mono mt-0.5">AES-256</div>
-                  <div className="text-[11px] text-emerald-600 font-medium">Vault Lokal</div>
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">Penyimpanan</div>
+                  <div className="text-base font-bold text-[#09090b] font-mono mt-0.5">Vault Akun</div>
+                  <div className="text-[11px] text-emerald-700 font-medium">Lokal + Cadangan Server</div>
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">Kepatuhan</div>
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">Kepatuhan</div>
                   <div className="text-base font-bold text-[#8f5e32] font-mono mt-0.5">UU PDP RI</div>
                   <div className="text-[11px] text-zinc-500 font-medium">Right to Erasure</div>
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">Data Dijual</div>
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">Data Dijual</div>
                   <div className="text-base font-bold text-[#09090b] font-mono mt-0.5">0 Bytes</div>
-                  <div className="text-[11px] text-emerald-600 font-medium">Tanpa Pelacak Iklan</div>
+                  <div className="text-[11px] text-emerald-700 font-medium">Tanpa Pelacak Iklan</div>
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#faf9f6] border border-zinc-200/80">
-                  <div className="text-[11px] uppercase font-mono text-zinc-400">Status</div>
+                  <div className="text-[11px] uppercase font-mono text-zinc-600">Status</div>
                   <div className="text-base font-bold text-emerald-700 font-mono mt-0.5">
                     {activeModule.status === "live" ? "Live" : "Early Access"}
                   </div>
@@ -788,7 +788,7 @@ export default function HeroWorkspacePreview({
       </div>
 
       {/* Bottom Sample Caption */}
-      <div className="shrink-0 px-3.5 py-1.5 text-right text-[11px] text-zinc-400 bg-[#faf9f6] border-t border-zinc-100">
+      <div className="shrink-0 px-3.5 py-1.5 text-right text-[11px] text-zinc-600 bg-[#faf9f6] border-t border-zinc-100">
         {isId ? "Contoh tampilan interaktif" : "Interactive workspace preview"}
       </div>
     </div>

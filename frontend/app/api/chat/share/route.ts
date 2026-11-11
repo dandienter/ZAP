@@ -84,7 +84,10 @@ export async function GET(req: Request) {
         );
       }
 
-      return NextResponse.json({ exists: true, data });
+      // Jangan pernah mengekspos email pemilik ke pemegang tautan publik
+      const publicData = { ...data } as Record<string, unknown>;
+      delete publicData.authorEmail;
+      return NextResponse.json({ exists: true, data: publicData });
     }
 
     // STRICT: Jangan pernah fallback mencari di vault percakapan privat!
@@ -121,6 +124,35 @@ export async function POST(req: Request) {
 
     const normalizedAuthorEmail = authorEmail ? authorEmail.toString().toLowerCase().trim() : undefined;
 
+    // Pola shareId yang ketat: minimal 10 karakter alfanumerik + strip
+    const SHARE_ID_PATTERN = /^[a-z0-9-]{10,64}$/i;
+    if (
+      requestedShareId !== undefined &&
+      requestedShareId !== null &&
+      (typeof requestedShareId !== "string" || !SHARE_ID_PATTERN.test(requestedShareId.trim()))
+    ) {
+      return NextResponse.json(
+        { error: "shareId tidak valid: gunakan minimal 10 karakter alfanumerik atau strip" },
+        { status: 400 }
+      );
+    }
+
+    // Kepemilikan WAJIB untuk mengubah/menonaktifkan share yang sudah ada:
+    // authorEmail harus disertakan dan cocok dengan berkas tersimpan.
+    const assertOwnership = (existing: SharedConversationPayload): NextResponse | null => {
+      if (
+        !normalizedAuthorEmail ||
+        !existing.authorEmail ||
+        existing.authorEmail.toLowerCase().trim() !== normalizedAuthorEmail
+      ) {
+        return NextResponse.json(
+          { error: "Akses ditolak: kepemilikan percakapan tidak dapat diverifikasi." },
+          { status: 403 }
+        );
+      }
+      return null;
+    };
+
     // Jika ini adalah permintaan untuk menonaktifkan share yang sudah ada:
     if (requestedShareId && isPublic === false) {
       const cleanId = requestedShareId.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
@@ -128,14 +160,8 @@ export async function POST(req: Request) {
       if (fs.existsSync(filePath)) {
         const raw = fs.readFileSync(filePath, "utf-8");
         const existing: SharedConversationPayload = JSON.parse(raw);
-        // Validasi kepemilikan sebelum revoke
-        if (
-          normalizedAuthorEmail &&
-          existing.authorEmail &&
-          existing.authorEmail.toLowerCase().trim() !== normalizedAuthorEmail
-        ) {
-          return NextResponse.json({ error: "Anda bukan pemilik percakapan ini" }, { status: 403 });
-        }
+        const ownershipError = assertOwnership(existing);
+        if (ownershipError) return ownershipError;
         existing.isPublic = false;
         existing.updatedAt = Date.now();
         fs.writeFileSync(filePath, JSON.stringify(existing, null, 2), "utf-8");
@@ -155,30 +181,31 @@ export async function POST(req: Request) {
       );
     }
 
-    // Generate token shareId acak (UUID v4) independen, tidak boleh sama dengan private conversationId
+    // shareId dari klien sudah divalidasi pola ketat di atas; bila tidak ada, buat UUID acak.
+    // Tabrakan ID ditolak lewat pemeriksaan kepemilikan wajib di bawah.
     let shareId = requestedShareId;
-    if (!shareId || typeof shareId !== "string" || !/^[a-z0-9-]{8,}$/i.test(shareId)) {
+    if (!shareId || typeof shareId !== "string") {
       shareId = crypto.randomUUID();
     }
     shareId = shareId.toLowerCase();
 
-    // Jika file share sudah ada, pastikan hanya pemilik yang bisa memperbarui
+    // Jika file share sudah ada, hanya pemilik terverifikasi yang bisa memperbarui
     const filePath = getShareFilePath(shareId);
     if (fs.existsSync(filePath)) {
+      let existingData: SharedConversationPayload | null = null;
       try {
-        const existingRaw = fs.readFileSync(filePath, "utf-8");
-        const existingData: SharedConversationPayload = JSON.parse(existingRaw);
-        if (
-          normalizedAuthorEmail &&
-          existingData.authorEmail &&
-          existingData.authorEmail.toLowerCase().trim() !== normalizedAuthorEmail
-        ) {
-          return NextResponse.json(
-            { error: "Akses ditolak: Anda bukan pemilik percakapan ini." },
-            { status: 403 }
-          );
-        }
-      } catch {}
+        existingData = JSON.parse(fs.readFileSync(filePath, "utf-8")) as SharedConversationPayload;
+      } catch {
+        existingData = null;
+      }
+      if (!existingData) {
+        return NextResponse.json(
+          { error: "Data tautan yang sudah ada tidak dapat diverifikasi kepemilikannya." },
+          { status: 403 }
+        );
+      }
+      const ownershipError = assertOwnership(existingData);
+      if (ownershipError) return ownershipError;
     }
 
     const cleanTitle = (title || "Percakapan ZAP").toString().trim();

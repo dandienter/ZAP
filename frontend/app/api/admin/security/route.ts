@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
 import {
-  ADMIN_SECRET,
+  isValidAdminSecret,
   getUserSecurityStatus,
   unsuspendUserAccount,
   createRecoveryToken,
   verifyRecoveryToken,
+  consumeRecoveryToken,
   loadRegistryFromFile,
 } from "@/utils/security-vault";
 
 // GET Handler
+// CATATAN KEAMANAN: GET tidak pernah mengeksekusi token pemulihan.
+// Penebusan token hanya boleh lewat POST agar tautan di email tidak
+// mengeksekusi aksi hanya karena dibuka/pra-render oleh klien email.
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -18,42 +21,43 @@ export async function GET(req: Request) {
     const token = searchParams.get("token") || "";
     const adminKey = searchParams.get("secret") || "";
 
-    // 1. Verifikasi Token Pemulihan (untuk link email siswa: ?unban_token=...)
-    if (token) {
-      const verified = verifyRecoveryToken(token);
-      if (verified.valid) {
-        const targetEmail = verified.email || email;
-        if (targetEmail) {
-          unsuspendUserAccount(targetEmail, "Recovery Token");
-        }
-        return NextResponse.json({
-          success: true,
-          message: "Akun Anda berhasil dipulihkan secara penuh! Silakan buka kembali ChatZAP.",
-          email: targetEmail,
-        });
-      }
+    // 1. Token pemulihan TIDAK dieksekusi via GET
+    if (token && action !== "check") {
       return NextResponse.json(
-        { success: false, message: "Token pemulihan tidak valid atau sudah kedaluwarsa." },
-        { status: 400 }
+        {
+          success: false,
+          message:
+            "Penebusan token pemulihan hanya dapat dilakukan melalui POST. Buka halaman pemulihan dan konfirmasikan di sana.",
+        },
+        { status: 405 }
       );
     }
 
-    // 2. Cek status akun pengguna
+    // 2. Cek status akun pengguna (wajib admin secret ATAU token valid milik email tsb)
     if (action === "check" && email) {
+      const viaSecret = isValidAdminSecret(adminKey);
+      let viaToken = false;
+      if (!viaSecret && token) {
+        const verified = verifyRecoveryToken(token);
+        viaToken = Boolean(
+          verified.valid &&
+          verified.email &&
+          verified.email.toLowerCase() === email.trim().toLowerCase()
+        );
+      }
+      if (!viaSecret && !viaToken) {
+        return NextResponse.json(
+          { error: "Tidak terotorisasi. Sertakan secret admin atau token pemulihan yang valid." },
+          { status: 401 }
+        );
+      }
       const status = getUserSecurityStatus(email);
       return NextResponse.json(status);
     }
 
-    // 3. Admin: List suspended users (Wajib verifikasi admin secret secara timing-safe)
+    // 3. Admin: List suspended users (wajib admin secret, timing-safe)
     if (action === "list") {
-      const cleanSecret = (adminKey || "").trim();
-      const isAdmin = Boolean(
-        cleanSecret &&
-        ADMIN_SECRET &&
-        cleanSecret.length === ADMIN_SECRET.length &&
-        crypto.timingSafeEqual(Buffer.from(cleanSecret), Buffer.from(ADMIN_SECRET))
-      );
-      if (!isAdmin) {
+      if (!isValidAdminSecret(adminKey)) {
         return NextResponse.json({ error: "Akses ditolak. Secret administrator tidak valid." }, { status: 403 });
       }
       const all = loadRegistryFromFile();
@@ -67,26 +71,33 @@ export async function GET(req: Request) {
   }
 }
 
-// POST Handler: Admin Actions (Unban, Generate Token, Verify)
+// POST Handler: Admin Actions (Unban, Generate Token, Redeem Token)
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
     const { action, email, adminEmail, adminSecret, token } = body;
 
-    // A. Siswa memasukkan token pemulihan dari email
+    // A. Siswa menebus token pemulihan dari email (SEKALI PAKAI)
     if (action === "verify_token" || action === "redeem_token") {
-      const verified = verifyRecoveryToken(token);
-      if (!verified.valid) {
+      const consumed = consumeRecoveryToken(token);
+      if (!consumed.valid || !consumed.email) {
         return NextResponse.json(
-          { success: false, message: "Kode pemulihan tidak valid atau telah kedaluwarsa." },
+          { success: false, message: "Kode pemulihan tidak valid, telah kedaluwarsa, atau sudah pernah dipakai." },
           { status: 400 }
         );
       }
 
-      const targetEmail = verified.email || email;
-      if (targetEmail) {
-        unsuspendUserAccount(targetEmail, "Token Verifikasi");
+      // Email target SELALU diambil dari token (terikat saat token dibuat),
+      // tidak pernah dari input klien.
+      const targetEmail = consumed.email;
+      if (email && email.trim().toLowerCase() !== targetEmail.toLowerCase()) {
+        return NextResponse.json(
+          { success: false, message: "Token pemulihan tidak cocok dengan email yang diminta." },
+          { status: 400 }
+        );
       }
+
+      unsuspendUserAccount(targetEmail, "Token Verifikasi");
 
       return NextResponse.json({
         success: true,
@@ -95,16 +106,8 @@ export async function POST(req: Request) {
       });
     }
 
-    // B. Verifikasi Hak Admin (Wajib verifikasi admin secret secara timing-safe)
-    const cleanSecret = (adminSecret || "").trim();
-    const isSuperAdmin = Boolean(
-      cleanSecret &&
-      ADMIN_SECRET &&
-      cleanSecret.length === ADMIN_SECRET.length &&
-      crypto.timingSafeEqual(Buffer.from(cleanSecret), Buffer.from(ADMIN_SECRET))
-    );
-
-    if (!isSuperAdmin) {
+    // B. Verifikasi hak admin (timing-safe, fail-closed bila env belum diset)
+    if (!isValidAdminSecret(adminSecret)) {
       return NextResponse.json(
         { error: "Otorisasi ditolak. Tindakan ini hanya dapat dilakukan oleh Administrator resmi dengan kredensial valid." },
         { status: 403 }
@@ -144,7 +147,7 @@ export async function POST(req: Request) {
         email,
         recoveryToken,
         recoveryUrl,
-        emailTemplate: `Halo,\n\nPermohonan pemulihan akun ChatZAP Anda (${email}) telah disetujui oleh Administrator.\n\nKlik tautan berikut untuk memulihkan akun Anda secara otomatis:\n${recoveryUrl}\n\nAtau gunakan kode pemulihan berikut:\n${recoveryToken}\n\nSalam,\nWakhid Pangestu\nChatZAP Administrator`,
+        emailTemplate: `Halo,\n\nPermohonan pemulihan akun ChatZAP Anda (${email}) telah disetujui oleh Administrator.\n\nKlik tautan berikut untuk memulihkan akun Anda:\n${recoveryUrl}\n\nAtau gunakan kode pemulihan berikut (berlaku maksimal 24 jam dan hanya dapat dipakai satu kali):\n${recoveryToken}\n\nSalam,\nWakhid Pangestu\nChatZAP Administrator`,
       });
     }
 

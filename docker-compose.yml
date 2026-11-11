@@ -1,5 +1,12 @@
 version: "3.9"
 
+# CATATAN: Semua password/secret WAJIB diisi lewat file .env atau environment
+# host (sintaks ${VAR:?pesan} membuat `docker compose up` gagal bila kosong).
+# Tidak ada kredensial bawaan di file ini.
+# Data platform zapcore saat ini disimpan di SQLite (lihat
+# docs/DEPLOYMENT_GUIDE.md); service postgres di bawah bersifat opsional
+# untuk kebutuhan masa depan dan TIDAK diekspos ke jaringan host.
+
 services:
   # -------------------------------------------------------------
   # 1. ZAP Backend (FastAPI + SymPy CFL Engine)
@@ -11,21 +18,18 @@ services:
     container_name: zap-backend
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      # Hanya dapat dijangkau dari host lokal (reverse proxy), bukan publik.
+      - "127.0.0.1:8000:8000"
     environment:
       - PORT=8000
       - PYTHONUNBUFFERED=1
       - ZAP_DB_PATH=/app/data/zap_platform.db
-      - ZAP_JWT_SECRET=${ZAP_JWT_SECRET:-change-this-jwt-secret-in-production}
+      - ZAP_JWT_SECRET=${ZAP_JWT_SECRET:?ZAP_JWT_SECRET wajib diisi di .env}
       - ZAP_MASTER_KEY=${ZAP_MASTER_KEY:-}
-      - ZAP_GOOGLE_CLIENT_ID=${ZAP_GOOGLE_CLIENT_ID:-}
+      - ZAP_GOOGLE_CLIENT_ID=${ZAP_GOOGLE_CLIENT_ID:?ZAP_GOOGLE_CLIENT_ID wajib diisi di .env}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - DATABASE_URL=${DATABASE_URL:-postgresql://zap_user:zap_secure_pass@postgres:5432/zap_production}
     volumes:
       - ./data:/app/data
-    depends_on:
-      postgres:
-        condition: service_healthy
 
   # -------------------------------------------------------------
   # 2. ZAP Frontend (Next.js 14 App Router)
@@ -44,13 +48,19 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-https://api.chatzap.web.id}
+      # Rahasia server untuk route admin & verifikasi token Google di /api/user/sync
+      - ADMIN_SECRET=${ADMIN_SECRET:?ADMIN_SECRET wajib diisi di .env}
+      - ZAP_GOOGLE_CLIENT_ID=${ZAP_GOOGLE_CLIENT_ID:?ZAP_GOOGLE_CLIENT_ID wajib diisi di .env}
+      - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}
     volumes:
       - ./frontend/.zap_vault:/app/.zap_vault
     depends_on:
       - backend
 
   # -------------------------------------------------------------
-  # 3. PostgreSQL Database (Produksi / Self-Hosted di VPS DataByte)
+  # 3. PostgreSQL Database (OPSIONAL - belum dipakai kode saat ini)
+  #    Tidak ada port yang diterbitkan ke host: hanya dapat dijangkau
+  #    dari jaringan internal compose.
   # -------------------------------------------------------------
   postgres:
     image: postgres:16-alpine
@@ -59,13 +69,11 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-zap_production}
       POSTGRES_USER: ${POSTGRES_USER:-zap_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zap_secure_pass}
-    ports:
-      - "5432:5432"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD wajib diisi di .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U zap_user -d zap_production"]
+      test: ["CMD-SHELL", "pg_isready"]
       interval: 10s
       timeout: 5s
       retries: 5

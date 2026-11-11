@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { GoogleLogo } from "@/components/CompanyLogos";
-import { syncAccountBackup, restoreAccountData, clearLocalWorkingSession } from "@/utils/account-sync";
+import { syncAccountBackup, restoreAccountData, clearLocalWorkingSession, saveGoogleIdToken } from "@/utils/account-sync";
+import { markSessionCookie } from "@/lib/session-cookie";
 import {
   LogOut,
   ChevronDown,
@@ -85,6 +86,7 @@ export default function GoogleAuthButton({
   const [user, setUser] = useState<ZAPUser | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isGsiReady, setIsGsiReady] = useState(false);
+  const [gsiBusy, setGsiBusy] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const gsiNativeBtnRef = useRef<HTMLDivElement>(null);
@@ -94,6 +96,8 @@ export default function GoogleAuthButton({
     (response: { credential: string }) => {
       const payload = decodeGoogleJwt(response.credential);
       if (payload) {
+        // Simpan ID token agar sinkronisasi vault bisa diautentikasi ke server.
+        saveGoogleIdToken(response.credential);
         const realGoogleUser: ZAPUser = {
           id: payload.sub || "usr_" + Math.random().toString(36).substring(2, 9),
           name: payload.name || "Pengguna Google",
@@ -111,6 +115,7 @@ export default function GoogleAuthButton({
             clearLocalWorkingSession();
           }
           localStorage.setItem("zap_authenticated_user", JSON.stringify(realGoogleUser));
+          markSessionCookie();
           // Pulihkan data sesi & konfigurasi akun dari cloud
           restoreAccountData(realGoogleUser).finally(() => {
             if (window.location.pathname.includes("/login")) {
@@ -153,6 +158,31 @@ export default function GoogleAuthButton({
 
     let timer: NodeJS.Timeout;
 
+    // Muat skrip GSI secara malas: saat interaksi pertama pengguna, atau
+    // sesudah 6 detik diam (pengguna yang membaca dulu tetap mendapat
+    // tombol native tanpa perlu klik dua kali). Tombol kustom adalah
+    // tampilan awal di semua halaman. Skrip tidak pernah dimuat dua kali.
+    const idleHandle: { id?: ReturnType<typeof setTimeout> } = {};
+    const ensureGsiScript = (onReady: () => void) => {
+      if (typeof window === "undefined") return;
+      if (window.google?.accounts?.id) {
+        onReady();
+        return;
+      }
+      const existing = document.getElementById("gsi-client-script") as HTMLScriptElement | null;
+      if (existing) {
+        existing.addEventListener("load", onReady, { once: true });
+        return;
+      }
+      const s = document.createElement("script");
+      s.id = "gsi-client-script";
+      s.src = "https://accounts.google.com/gsi/client";
+      s.async = true;
+      s.defer = true;
+      s.addEventListener("load", onReady, { once: true });
+      document.head.appendChild(s);
+    };
+
     const setupGoogleGSI = () => {
       if (typeof window !== "undefined" && window.google?.accounts?.id) {
         try {
@@ -182,8 +212,17 @@ export default function GoogleAuthButton({
       }
     };
 
-    setupGoogleGSI();
-    return () => clearTimeout(timer);
+    const kickOff = () => ensureGsiScript(setupGoogleGSI);
+    const interactionEvents: Array<keyof DocumentEventMap> = ["pointerdown", "keydown", "touchstart"];
+    interactionEvents.forEach((ev) =>
+      document.addEventListener(ev, kickOff, { once: true, passive: true })
+    );
+    idleHandle.id = setTimeout(kickOff, 6000);
+    return () => {
+      clearTimeout(timer);
+      if (idleHandle.id) clearTimeout(idleHandle.id);
+      interactionEvents.forEach((ev) => document.removeEventListener(ev, kickOff));
+    };
   }, [user, handleGoogleCredentialResponse]);
 
   // Close dropdown saat klik di luar
@@ -197,17 +236,64 @@ export default function GoogleAuthButton({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // 1-Click Fast Google Sign-In (untuk kenyamanan siswa & pengujian instan)
-  const handleFastGoogleLogin = (customName?: string) => {
-    // Attempt One Tap in background if Google GSI initialized
-    if (typeof window !== "undefined" && window.google?.accounts?.id?.prompt) {
-      try {
-        window.google.accounts.id.prompt();
-      } catch (e) {
-        console.warn("One tap prompt:", e);
+  // Muat skrip GSI atas permintaan (dipakai jalur klik tombol fallback).
+  // Resolve true bila library Google siap dipakai, false bila gagal/timeout.
+  const loadGsiScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (typeof window === "undefined") return resolve(false);
+      if (window.google?.accounts?.id) return resolve(true);
+      const existing = document.getElementById("gsi-client-script") as HTMLScriptElement | null;
+      const script = existing ?? document.createElement("script");
+      let done = false;
+      const finish = (ok: boolean) => {
+        if (!done) {
+          done = true;
+          resolve(ok);
+        }
+      };
+      script.addEventListener("load", () => finish(!!window.google?.accounts?.id), { once: true });
+      script.addEventListener("error", () => finish(false), { once: true });
+      setTimeout(() => finish(!!window.google?.accounts?.id), 5000);
+      if (!existing) {
+        script.id = "gsi-client-script";
+        script.src = "https://accounts.google.com/gsi/client";
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
       }
-    }
+    });
+  };
 
+  // Inisialisasi GSI + render tombol native (cermin logika efek pemuatan).
+  const initAndRenderGsi = () => {
+    const envClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    if (typeof window === "undefined" || !window.google?.accounts?.id || !envClientId?.trim()) return;
+    try {
+      window.google.accounts.id.initialize({
+        client_id: envClientId.trim(),
+        callback: handleGoogleCredentialResponse,
+        auto_select: false,
+      });
+      if (gsiNativeBtnRef.current) {
+        gsiNativeBtnRef.current.innerHTML = "";
+        window.google.accounts.id.renderButton(gsiNativeBtnRef.current, {
+          theme: "outline",
+          size: "large",
+          shape: "pill",
+          text: "signin_with",
+          logo_alignment: "left",
+          width: 320,
+        });
+        setIsGsiReady(true);
+      }
+    } catch (err) {
+      console.warn("GSI initialization error:", err);
+    }
+  };
+
+  // Jalan terakhir bila skrip Google benar-benar tidak terjangkau (offline):
+  // profil lokal instan. BUKAN jalur normal tombol Google.
+  const applyFastFallbackUser = (customName?: string) => {
     const defaultUser: ZAPUser = {
       id: "usr_google_" + Date.now().toString(36),
       name: customName || "Pengguna Google",
@@ -224,6 +310,7 @@ export default function GoogleAuthButton({
         clearLocalWorkingSession();
       }
       localStorage.setItem("zap_authenticated_user", JSON.stringify(defaultUser));
+      markSessionCookie();
       // Pulihkan data sesi & konfigurasi akun dari cloud
       restoreAccountData(defaultUser).finally(() => {
         if (window.location.pathname.includes("/login")) {
@@ -234,6 +321,45 @@ export default function GoogleAuthButton({
     setUser(defaultUser);
     onUserChange?.(defaultUser);
     setDropdownOpen(false);
+  };
+
+  // Klik tombol fallback "Login dengan Google": jalur Google asli selalu
+  // didahulukan. Bila library GSI belum termuat (pemuatan malas), muat
+  // sekarang, render tombol native, dan picu One Tap. Profil instan hanya
+  // dipakai bila skrip Google gagal dimuat sama sekali.
+  const handleFastGoogleLogin = (customName?: string) => {
+    if (typeof window === "undefined") return;
+    const isLocalhost =
+      window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    if (isLocalhost) {
+      // Origin localhost tidak terdaftar di Google Cloud Console; pertahankan
+      // kenyamanan dev dengan profil instan.
+      applyFastFallbackUser(customName);
+      return;
+    }
+    if (window.google?.accounts?.id) {
+      initAndRenderGsi();
+      try {
+        window.google.accounts.id.prompt?.();
+      } catch (e) {
+        console.warn("One tap prompt:", e);
+      }
+      return;
+    }
+    setGsiBusy(true);
+    loadGsiScript().then((ok) => {
+      setGsiBusy(false);
+      if (ok && window.google?.accounts?.id) {
+        initAndRenderGsi();
+        try {
+          window.google.accounts.id.prompt?.();
+        } catch (e) {
+          console.warn("One tap prompt:", e);
+        }
+      } else {
+        applyFastFallbackUser(customName);
+      }
+    });
   };
 
   const handleLogout = async () => {
@@ -447,10 +573,11 @@ export default function GoogleAuthButton({
         <button
           type="button"
           onClick={() => handleFastGoogleLogin()}
-          className="w-full max-w-[320px] min-h-[40px] flex items-center justify-center gap-2.5 px-5 py-2.5 rounded-full bg-white hover:bg-slate-100 dark:bg-white dark:hover:bg-zinc-100 text-slate-900 font-medium text-xs transition shadow-sm active:scale-[0.98] cursor-pointer border border-slate-200 dark:border-zinc-200 select-none"
+          disabled={gsiBusy}
+          className="w-full max-w-[320px] min-h-[40px] flex items-center justify-center gap-2.5 px-5 py-2.5 rounded-full bg-white hover:bg-slate-100 dark:bg-white dark:hover:bg-zinc-100 text-slate-900 font-medium text-xs transition shadow-sm active:scale-[0.98] cursor-pointer border border-slate-200 dark:border-zinc-200 select-none disabled:opacity-60 disabled:cursor-wait"
         >
           <GoogleLogo className="w-4 h-4 flex-shrink-0" />
-          <span>Login dengan Google</span>
+          <span>{gsiBusy ? "Menghubungkan ke Google…" : "Login dengan Google"}</span>
         </button>
       )}
     </div>

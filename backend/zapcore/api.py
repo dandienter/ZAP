@@ -95,6 +95,9 @@ class Platform:
     def __init__(self, settings: Settings | None = None, store: Store | None = None,
                  vault: Vault | None = None, google_http_get=None, gateway_http_post=None):
         self.settings = settings or get_settings()
+        # Fail-fast: ZAP_ENV=production dengan rahasia bawaan = startup gagal,
+        # bukan sekadar status di health check.
+        self.settings.assert_production_ready()
         self.store = store or Store(self.settings.db_path)
         if vault is not None:
             self.vault = vault
@@ -353,8 +356,12 @@ def create_app(platform: Platform | None = None) -> FastAPI:
 
     @app.post("/api/v1/privacy/retention/run", tags=["Privacy"])
     def retention_run(user: dict = Depends(current_user)):
-        # Hanya untuk pemilik akun guru/dosen? Sementara: semua pengguna
-        # terautentikasi boleh memicu sapuan retensi global (idempoten).
+        # Sapuan retensi bersifat GLOBAL (menghapus data lama semua akun),
+        # jadi hanya email admin pada ZAP_ADMIN_EMAILS yang boleh memicu.
+        admin_emails = {e.lower() for e in pf.settings.admin_emails}
+        if (user.get("email") or "").lower() not in admin_emails:
+            raise HTTPException(
+                403, "Sapuan retensi global hanya boleh dipicu oleh admin")
         return run_retention_sweep(pf.store, pf.settings.retention_days)
 
     return app

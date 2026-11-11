@@ -1,10 +1,26 @@
 import { NextResponse } from "next/server";
+import { rateLimitByIp } from "@/utils/rate-limit";
 
 interface VerifyRequestBody {
   apiKey: string;
 }
 
+// Batas: maksimal 10 permintaan per menit per IP (endpoint pemeriksa kunci
+// tidak boleh menjadi oracle tebak-tebakan kunci tanpa batas).
+const VERIFY_KEY_LIMIT_PER_MINUTE = 10;
+
 export async function POST(req: Request) {
+  const limit = rateLimitByIp(req, "verify-key", VERIFY_KEY_LIMIT_PER_MINUTE);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { valid: false, error: "Terlalu banyak permintaan. Silakan coba lagi nanti." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(limit.retryAfterSeconds) },
+      }
+    );
+  }
+
   try {
     let body: VerifyRequestBody;
     try {
@@ -39,15 +55,11 @@ export async function POST(req: Request) {
     const latency = Date.now() - startTime;
 
     if (!res.ok) {
-      const errJson = await res.json().catch(() => null);
-      const errorMsg =
-        errJson?.error?.message ||
-        `Google API merespons dengan HTTP ${res.status} (${res.statusText})`;
-
+      // Pesan generik: jangan pantulkan pesan mentah dari Google ke klien.
       return NextResponse.json(
         {
           valid: false,
-          error: errorMsg,
+          error: "Kunci tidak valid atau tidak dapat diverifikasi. Periksa kembali kunci Anda.",
           statusCode: res.status,
           latencyMs: latency,
         },
@@ -75,12 +87,11 @@ export async function POST(req: Request) {
       sampleModels: contentModels.slice(0, 5),
       tier: has15Pro || has20Flash ? "Google Gemini Pro / Flash (Tier Aktif)" : "Google Gemini Standard",
     });
-  } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : String(err);
+  } catch {
     return NextResponse.json(
       {
         valid: false,
-        error: `Gagal menghubungi server Google: ${errorMsg}`,
+        error: "Gagal menghubungi layanan verifikasi. Silakan coba lagi nanti.",
       },
       { status: 200 }
     );

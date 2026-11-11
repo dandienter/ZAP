@@ -20,7 +20,7 @@ All project skills—including **Continuous Conversation Memory Learning**, **Ve
 
 | Pillar | Core Modules | Persistent Storage | Role in the ZAP Agent Harness |
 | :--- | :--- | :--- | :--- |
-| **1. Curriculum Ontology (`TK`–`S3`)** | [`backend/data_engine/taxonomy.py`](../../../backend/data_engine/taxonomy.py) | In-Memory Pydantic Graph | Defines 7 educational tiers (`TK`, `SD`, `SMP`, `SMA`, `S1`, `S2`, `S3`), 21 topics, 25 subtopics, formulas, and WebGL canvas targets. |
+| **1. Curriculum Ontology (`TK`–`S3`)** | [`backend/data_engine/taxonomy.py`](../../../backend/data_engine/taxonomy.py) | In-Memory Pydantic Graph | Defines 7 educational tiers (`TK`, `SD`, `SMP`, `SMA`, `S1`, `S2`, `S3`), 18 topics, 34 subtopics, formulas, and WebGL canvas targets. |
 | **2. SymPy Procedural & Web Crawler Corpus** | [`backend/data_engine/generators.py`](../../../backend/data_engine/generators.py)<br>[`backend/data_engine/harvester.py`](../../../backend/data_engine/harvester.py) | [`data/zap_math_corpus.jsonl`](../../../data/zap_math_corpus.jsonl)<br>`data/zap_math_corpus.db` | Synthesizes SymPy-verified derivations AND crawls verified internet math sources (`gsm8k_sample`, `hf_gsm8k_api`, `wikimedia_math_theorems`, `indo_kurikulum_sd`). |
 | **3. 2D/3D Spatial Geometry DB** | [`backend/cfl/geometry_db.py`](../../../backend/cfl/geometry_db.py)<br>[`frontend/data/geometry-database.ts`](../../../frontend/data/geometry-database.ts) | [`data/zap_geometry_database.json`](../../../data/zap_geometry_database.json) | Synchronizes 20 parametric 2D shapes, 3D solids, and 2D foldable nets between SymPy backend and Three.js WebGL smartboard. |
 | **4. CFL & Self-Learning Flywheel** | [`backend/cfl/`](../../../backend/cfl/)<br>[`backend/zapcore/learning.py`](../../../backend/zapcore/learning.py) | `zap_platform.db` (`knowledge_items`) | Deterministic SymPy fault localization, cognitive disequilibrium counter-examples, and Zero-Answer Guardrail (`RobustZeroAnswerGuardrail`). |
@@ -72,7 +72,7 @@ Unlike static chatbots, ZAP operates as a **Continuous-Learning Socratic Agent H
    - **Step 1 (Privacy Redaction):** `redact_pii()` strips emails, phone numbers, and API keys.
    - **Step 2 (Symbolic Extraction & CAS Diagnosis):** `extract_math_steps_from_text()` extracts equations/steps (`->`, multiline, or inline) and runs `isolate_first_fault_breakpoint()` in SymPy.
    - **Step 3 (Zero-Answer Sanitization):** Any Socratic resolution is sanitized through `RobustZeroAnswerGuardrail.sanitize()`.
-   - **Step 4 (Episodic Upsert & Corpus Promotion):** The pattern is deduplicated by `memory_id` in `data/zap_agent_memory.jsonl` and SQLite (`hit_count` incremented on recurring misconceptions), while valid multi-step derivations (`VALID_COMPLETE` / `VALID_PARTIAL`) are automatically promoted into `data/zap_math_corpus.jsonl`.
+   - **Step 4 (Episodic Upsert & Corpus Promotion):** The pattern is deduplicated by `memory_id` in `data/zap_agent_memory.jsonl` and SQLite (`hit_count` incremented on recurring misconceptions), while only multi-step derivations whose CFL classification is `ALL_STEPS_VALID` (and `is_valid` is true) are automatically promoted into `data/zap_math_corpus.jsonl`. A `FAULT_DETECTED` diagnosis is never promoted and never marked SymPy-verified.
 
 ---
 

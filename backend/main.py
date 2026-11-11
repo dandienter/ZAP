@@ -4,11 +4,14 @@ Framework: FastAPI (Production-Ready Spec)
 Rubrik LOGICODIX 2026: Anti-Halusinasi, Zero-Answer Policy, dan Human-in-the-Loop LaTeX Confirmation
 """
 
+import hmac
 import os
+import re
 import sys
 import uuid
 from typing import Any
-from fastapi import FastAPI, HTTPException, status
+import sympy as sp
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -20,7 +23,7 @@ from cfl import (
     isolate_first_fault_breakpoint,
     RobustZeroAnswerGuardrail
 )
-from cfl.parser import ALLOWED_VARS
+from cfl.parser import ALLOWED_VARS, parse_single_side
 from data_engine.agent_harness import ZAPAgentHarness
 
 agent_harness = ZAPAgentHarness()
@@ -31,12 +34,16 @@ app = FastAPI(
     version="2.2.0"
 )
 
-# CORS Middleware terkonfigurasi aman (mendukung domain produksi & fallback wildcard)
-cors_origins_env = os.environ.get("CORS_ORIGINS", "*").strip()
+# CORS Middleware: bawaan HANYA localhost dev/demo; domain lain wajib
+# dinyatakan eksplisit lewat env CORS_ORIGINS (wildcard hanya bila env
+# secara eksplisit berisi "*").
+cors_origins_env = os.environ.get("CORS_ORIGINS", "").strip()
 if cors_origins_env == "*":
     allowed_origins = ["*"]
-else:
+elif cors_origins_env:
     allowed_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
+else:
+    allowed_origins = ["http://localhost:3000", "http://localhost:3105"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -137,6 +144,87 @@ def health_check():
     }
 
 
+class VerifyRequest(BaseModel):
+    left: str = Field(..., max_length=200, description="Ekspresi ruas kiri")
+    right: str = Field(..., max_length=200, description="Ekspresi ruas kanan")
+
+
+class VerifyResponse(BaseModel):
+    isEquivalent: bool
+    verified: bool
+    method: str
+    message: str
+
+
+@app.post("/api/v1/verify", response_model=VerifyResponse, status_code=status.HTTP_200_OK, tags=["Diagnostics"])
+def verify_expression_equivalence(request: VerifyRequest):
+    """
+    Memverifikasi ekuivalensi dua ekspresi aljabar secara deterministik:
+    parsing whitelist CFL terlebih dahulu, lalu SymPy simplify(left - right).
+    Bila simplify tidak memutuskan, dipakai pembuktian numerik pada beberapa
+    titik uji. Input di luar whitelist ditolak aman (verified=False).
+    """
+    try:
+        lhs = parse_single_side(request.left)
+        rhs = parse_single_side(request.right)
+    except AssertionError:
+        raise
+    except Exception as err:
+        return VerifyResponse(
+            isEquivalent=False,
+            verified=False,
+            method="rejected",
+            message=f"Input ditolak pada tahap parsing whitelist: {err}",
+        )
+
+    diff = lhs - rhs
+    try:
+        simplified = sp.simplify(diff)
+    except Exception:
+        simplified = None
+
+    if simplified is not None and simplified == 0:
+        return VerifyResponse(
+            isEquivalent=True,
+            verified=True,
+            method="symbolic_simplify",
+            message="Selisih kedua ekspresi disederhanakan SymPy menjadi 0; keduanya ekuivalen.",
+        )
+
+    # Pembuktian numerik cadangan pada beberapa titik uji
+    symbols = sorted(diff.free_symbols, key=lambda s: s.name)
+    test_values = [2, 3, 5, 7, sp.Rational(1, 2), sp.Rational(3, 2), 11]
+    try:
+        numeric_decided = True
+        for i, val in enumerate(test_values):
+            subs = {sym: test_values[(i + j) % len(test_values)] for j, sym in enumerate(symbols)}
+            value = complex(diff.subs(subs).evalf())
+            if abs(value) > 1e-6:
+                return VerifyResponse(
+                    isEquivalent=False,
+                    verified=True,
+                    method="numeric_sampling",
+                    message=f"Pembuktian numerik menemukan selisih {value.real:.6g} pada titik uji {subs}; kedua ekspresi tidak ekuivalen.",
+                )
+    except Exception:
+        numeric_decided = False
+
+    if numeric_decided:
+        return VerifyResponse(
+            isEquivalent=True,
+            verified=True,
+            method="numeric_sampling",
+            message="Selisih kedua ekspresi bernilai 0 pada seluruh titik uji numerik; keduanya ekuivalen.",
+        )
+
+    return VerifyResponse(
+        isEquivalent=False,
+        verified=False,
+        method="undecided",
+        message="SymPy tidak dapat memutuskan ekuivalensi kedua ekspresi ini secara simbolik maupun numerik.",
+    )
+
+
 @app.post("/api/v1/diagnose", response_model=DiagnoseResponse, status_code=status.HTTP_200_OK, tags=["Diagnostics"])
 def diagnose_student_scratchpad(request: DiagnoseRequest):
     """
@@ -203,12 +291,15 @@ def diagnose_student_scratchpad(request: DiagnoseRequest):
         has_fault = True
         fault_type = diag.get("misconception_type", "GENERAL_ALGEBRAIC_DERIVATION_ERROR")
         ce = diag.get("counter_example")
+        # ce may legitimately be None (fault without a counter-example):
+        # read test_value defensively BEFORE any ce.get(...) call.
+        ce_test_value = ce.get("test_value", 2) if ce else 2
 
         if fault_type == "DISTRIBUTIVE_EXPANSION_ILLUSION":
             human_explanation = "Terdapat indikasi hilangnya suku perkalian silang saat mengekspansi kuadrat aljabar."
             raw_prompt = (
                 f"Di baris ke-{fault_line_num}, kamu mengekspansi kuadrat bentuk aljabar. "
-                f"Coba uji jika {target_var} = {ce.get('test_value', 2)}: "
+                f"Coba uji jika {target_var} = {ce_test_value}: "
                 f"berapakah nilai ekspresi awal dan berapakah nilai yang kamu tulis? "
                 "Mengapa kedua hasil perhitungan tersebut tidak sama?"
             )
@@ -273,6 +364,13 @@ def diagnose_student_scratchpad(request: DiagnoseRequest):
     # Filter Sokrates Prompt melalui Robust Zero-Answer Guardrail
     sanitized_prompt = RobustZeroAnswerGuardrail.sanitize(raw_prompt)
 
+    # Status guardrail dihitung dari hasil sanitasi NYATA: teks yang benar-benar
+    # dikirim ke siswa diperiksa ulang terhadap pola deklarasi jawaban akhir.
+    final_answer_suppressed = not any(
+        re.search(pattern, sanitized_prompt, flags=re.IGNORECASE)
+        for pattern in RobustZeroAnswerGuardrail.DECLARATIVE_ANSWER_PATTERNS
+    )
+
     diagnosis_payload = DiagnosisResult(
         has_fault=has_fault,
         first_fault_line=fault_line_num if has_fault else (fault_line_num if cfl_status == "UNDECIDABLE_STEP" else None),
@@ -292,7 +390,7 @@ def diagnose_student_scratchpad(request: DiagnoseRequest):
         ),
         diagnosis=diagnosis_payload,
         guardrail_status=GuardrailStatus(
-            final_answer_suppressed=True
+            final_answer_suppressed=final_answer_suppressed
         )
     )
 
@@ -316,14 +414,32 @@ class HarnessContextRequest(BaseModel):
 
 
 @app.post("/api/v1/harness/learn", status_code=status.HTTP_200_OK, tags=["Agent Harness"])
-def harness_learn_from_conversation(req: HarnessLearnRequest):
+def harness_learn_from_conversation(req: HarnessLearnRequest, http_request: Request):
     """
     Mempelajari percakapan pengguna secara berkelanjutan (Continuous Learning from Memory):
-    - Menyaring PII (Email, Telepon, NIK).
+    - Menyaring PII (Email, Telepon, NIK, API key).
     - Mengekstrak langkah aljabar dan memverifikasinya via SymPy CFL.
     - Menyaring petunjuk Sokratik dengan RobustZeroAnswerGuardrail.
     - Menyimpan ke Episodic Memory dan mempromosikan langkah valid ke MathCorpusStore.
+
+    Keamanan: bila env ZAP_HARNESS_SECRET terisi, header X-Harness-Secret yang
+    cocok wajib dikirim. Bila ZAP_ENV=production dan secret belum diatur,
+    endpoint menolak dengan 503 (fail-closed).
     """
+    harness_secret = os.environ.get("ZAP_HARNESS_SECRET", "").strip()
+    if harness_secret:
+        provided = http_request.headers.get("X-Harness-Secret", "")
+        if not provided or not hmac.compare_digest(provided, harness_secret):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Header X-Harness-Secret tidak ada atau tidak cocok.",
+            )
+    elif os.environ.get("ZAP_ENV", "").strip().lower() == "production":
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="ZAP_HARNESS_SECRET belum diatur; endpoint learn dinonaktifkan pada mode production.",
+        )
+
     result = agent_harness.learn_from_conversation(
         user_message=req.user_message,
         assistant_reply=req.assistant_reply,

@@ -177,7 +177,8 @@ export default function RootLayout({
   return (
     <html lang="id" className="light" suppressHydrationWarning>
       <head>
-        <script src="https://accounts.google.com/gsi/client" async defer></script>
+        {/* Skrip GSI Google dimuat malas oleh GoogleAuthButton (saat interaksi, atau segera di halaman login)
+            agar tidak membebani muatan awal setiap halaman. */}
         {/* GEO & Generative Engine Optimization Structured Knowledge Graph */}
         <script
           type="application/ld+json"

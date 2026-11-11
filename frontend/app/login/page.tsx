@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import GoogleAuthButton, { type ZAPUser } from "@/components/GoogleAuthButton";
 import ZapLogo from "@/components/ZapLogo";
 import { clearLocalWorkingSession } from "@/utils/account-sync";
+import { markSessionCookie } from "@/lib/session-cookie";
 import {
   ArrowRight,
   ChevronLeft,
@@ -33,6 +34,7 @@ export default function LoginPage() {
         try {
           const parsed: ZAPUser = JSON.parse(saved);
           if (parsed && parsed.name) {
+            markSessionCookie();
             setExistingUser(parsed);
           }
         } catch (e) {
@@ -77,6 +79,7 @@ export default function LoginPage() {
 
     if (typeof window !== "undefined") {
       localStorage.setItem("zap_authenticated_user", JSON.stringify(newUser));
+      markSessionCookie();
       window.location.href = "/chat";
     } else {
       router.push("/chat");

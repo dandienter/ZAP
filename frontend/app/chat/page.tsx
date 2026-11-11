@@ -4,8 +4,11 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter, useParams } from "next/navigation";
-import MathView from "@/components/MathView";
-import RichChatText from "@/components/RichChatText";
+// Renderer rumus/markdown dimuat lazy lewat wrapper: chunk KaTeX keluar
+// dari muatan awal halaman dan hanya diunduh saat ada konten yang
+// benar-benar mengandung rumus atau markdown.
+import MathView from "@/components/chat/LazyMathView";
+import RichChatText from "@/components/chat/LazyRichText";
 import ZapLogo from "@/components/ZapLogo";
 import { type ZAPUser } from "@/components/GoogleAuthButton";
 import type {
@@ -31,14 +34,20 @@ import {
   deriveTitle,
   type StoredConversation,
 } from "@/utils/chat-memory";
-import ShareModal from "@/components/ShareModal";
+// Modal bagikan hanya tampil saat dibuka pengguna; muat lazy agar tidak
+// ikut dalam muatan awal halaman chat.
+const ShareModal = dynamic(() => import("@/components/ShareModal"), {
+  ssr: false,
+});
 import {
   syncAccountBackup,
   restoreAccountData,
   clearLocalWorkingSession,
   recordDeletedConversation,
+  getGoogleIdToken,
 } from "@/utils/account-sync";
 import { useTheme } from "@/utils/theme";
+import { markSessionCookie } from "@/lib/session-cookie";
 import { resolveGeometricIntent } from "@/data/geometry-database";
 import {
   Plus,
@@ -831,6 +840,17 @@ interface DiagnoseResponse {
   };
 }
 
+interface CorpusReference {
+  id?: string;
+  title?: string;
+  snippet?: string;
+  question?: string;
+  socratic_prompt?: string;
+  tier?: string;
+  subtopic?: string;
+  source?: string;
+}
+
 interface Message {
   id: string;
   sender: "user" | "assistant";
@@ -843,6 +863,8 @@ interface Message {
   smartboardItem?: DetectedSmartboardItem | null;
   feedback?: "up" | "down" | null;
   attachedFiles?: UploadedFile[];
+  references?: CorpusReference[];
+  source?: string;
 }
 
 interface ActiveProblemContext {
@@ -1630,6 +1652,7 @@ export default function ZAPApp() {
         if (raw) {
           const parsed = JSON.parse(raw);
           if (parsed && (parsed.name || parsed.email)) {
+            markSessionCookie();
             setCurrentUser(parsed);
             setAuthChecked(true);
 
@@ -1849,7 +1872,25 @@ export default function ZAPApp() {
       }
     }
     setMemoryReady(true);
-    checkHealth();
+    // Cek status backend hanya indikator, bukan penentu tampilan awal:
+    // tunda sampai browser idle agar tidak merebut main thread saat boot.
+    let idleHandle: number | undefined;
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      idleHandle = (
+        window as unknown as {
+          requestIdleCallback: (cb: () => void, opts?: { timeout: number }) => number;
+        }
+      ).requestIdleCallback(() => checkHealth(), { timeout: 2000 });
+    } else {
+      timeoutHandle = setTimeout(() => checkHealth(), 1200);
+    }
+    return () => {
+      if (idleHandle !== undefined && typeof window !== "undefined" && "cancelIdleCallback" in window) {
+        (window as unknown as { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(idleHandle);
+      }
+      if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+    };
   }, [router]);
 
   // Keyboard shortcuts (Ctrl + Alt + P untuk Workspace files, Ctrl + ` untuk New terminal)
@@ -2052,9 +2093,13 @@ export default function ZAPApp() {
 
     // 3. Hapus permanen di server cloud vault
     if (currentUser) {
+      const idToken = getGoogleIdToken();
       fetch(
         `/api/user/sync?email=${encodeURIComponent(currentUser.email || "")}&userId=${encodeURIComponent(currentUser.id || "")}&convId=${encodeURIComponent(convId)}`,
-        { method: "DELETE" }
+        {
+          method: "DELETE",
+          headers: idToken ? { Authorization: `Bearer ${idToken}` } : undefined,
+        }
       ).catch((err) => console.warn("Gagal menghapus percakapan di server vault:", err));
 
       syncAccountBackup(currentUser, {
@@ -2247,7 +2292,7 @@ export default function ZAPApp() {
             isSuspended: isAccountSuspended,
             userEmail: currentUser?.email || "anonymous",
           }),
-          signal: AbortSignal.timeout(30000),
+          signal: AbortSignal.timeout(90000),
         });
 
         const chatData = await res.json().catch(() => null);
@@ -2323,6 +2368,10 @@ export default function ZAPApp() {
           modelName: chatData.model || selectedModel.name,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           smartboardItem: responseGeometry || detectedGeometry,
+          references: Array.isArray(chatData.corpus_references)
+            ? (chatData.corpus_references as CorpusReference[])
+            : undefined,
+          source: typeof chatData.source === "string" ? chatData.source : undefined,
         };
         setMessages((prev) => {
           const hasUser = prev.some((m) => m.id === userMsg.id);
@@ -4335,6 +4384,66 @@ export default function ZAPApp() {
                           </div>
                         )}
 
+                        {/* Sitasi: chip sumber balasan */}
+                        {msg.sender === "assistant" && msg.source && (
+                          <div className="pt-1">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/[0.08] text-[11px] font-sans font-medium text-slate-600 dark:text-zinc-400">
+                              Sumber: {msg.source}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Sitasi: daftar referensi korpus yang bisa dilipat */}
+                        {msg.sender === "assistant" && msg.references && msg.references.length > 0 && (
+                          <details className="group w-full rounded-2xl border border-slate-200/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.03] backdrop-blur-xl shadow-sm">
+                            <summary className="cursor-pointer list-none px-3.5 py-2.5 text-xs font-semibold text-slate-700 dark:text-zinc-300 flex items-center justify-between gap-2">
+                              <span>Sumber &amp; acuan ({msg.references.length})</span>
+                              <span className="text-slate-400 dark:text-zinc-500 transition-transform group-open:rotate-180">▾</span>
+                            </summary>
+                            <ul className="px-3.5 pb-3 pt-0.5 space-y-2.5">
+                              {msg.references.map((ref, idx) => {
+                                const refTitle =
+                                  ref.title ||
+                                  (ref.tier || ref.subtopic
+                                    ? [ref.tier, ref.subtopic].filter(Boolean).join(" / ")
+                                    : ref.id
+                                      ? `Referensi ${ref.id}`
+                                      : `Referensi ${idx + 1}`);
+                                const refSnippet =
+                                  ref.snippet ||
+                                  ref.question?.slice(0, 180) ||
+                                  ref.socratic_prompt?.slice(0, 180) ||
+                                  "";
+                                return (
+                                  <li
+                                    key={ref.id || idx}
+                                    className="border-l-2 border-emerald-500/50 pl-3 py-0.5"
+                                  >
+                                    <div className="text-xs font-semibold text-slate-800 dark:text-zinc-200">
+                                      {refTitle}
+                                      {ref.id && (
+                                        <span className="ml-1.5 font-mono text-[10px] font-normal text-slate-400 dark:text-zinc-500">
+                                          #{ref.id}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {refSnippet && (
+                                      <p className="text-xs leading-relaxed text-slate-500 dark:text-zinc-400 mt-0.5">
+                                        {refSnippet}
+                                      </p>
+                                    )}
+                                    {ref.source && (
+                                      <div className="text-[10px] font-mono text-slate-400 dark:text-zinc-500 mt-0.5">
+                                        {ref.source}
+                                      </div>
+                                    )}
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </details>
+                        )}
+
                         {/* Aksi Khusus: Buka Papan Tulis Virtual jika ada bentuk geometri terdeteksi */}
                         {msg.smartboardItem && (
                           <button
@@ -6260,14 +6369,16 @@ export default function ZAPApp() {
         </div>
       )}
 
-      {/* Share Modal Dialog */}
-      <ShareModal
-        isOpen={shareModalOpen}
-        onClose={() => setShareModalOpen(false)}
-        conversation={sharingConv}
-        currentUser={currentUser}
-        active3DModel={active3DModel}
-      />
+      {/* Share Modal Dialog (lazy, hanya dirender saat dibuka) */}
+      {shareModalOpen && (
+        <ShareModal
+          isOpen={shareModalOpen}
+          onClose={() => setShareModalOpen(false)}
+          conversation={sharingConv}
+          currentUser={currentUser}
+          active3DModel={active3DModel}
+        />
+      )}
     </div>
   );
 }
