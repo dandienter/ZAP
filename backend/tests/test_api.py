@@ -212,3 +212,66 @@ class TestZAPAPI:
         response = client.post("/api/v1/diagnose", json=payload)
         assert response.status_code == 422
         assert "melebihi batas aman" in response.json()["detail"]
+
+    def test_agent_harness_learn_from_conversation_misconception(self):
+        """
+        Memverifikasi bahwa ZAPAgentHarness (/api/v1/harness/learn) mampu belajar
+        secara terus-menerus dari percakapan pengguna, menyensor PII, mendiagnosa
+        miskonsepsi via SymPy CAS, dan menerapkan Zero-Answer Guardrail.
+        """
+        payload = {
+            "user_message": "Halo email saya budi@test.com, bantu cek coretan saya: 2x + 6 = 14 -> 2x = 20 -> x = 10",
+            "assistant_reply": "Jawaban akhirnya adalah x = 4. Coba perhatikan saat +6 pindah ruas, tandanya berubah menjadi apa?",
+            "target_variable": "x"
+        }
+        response = client.post("/api/v1/harness/learn", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["learned"] is True
+        assert data["misconception_type"] == "SIGN_INVERSION_OR_TRANSPOSITION_ERROR"
+        assert "budi@test.com" not in data["socratic_resolution"]
+        assert "x = 4" not in data["socratic_resolution"]
+
+    def test_agent_harness_context_retrieval(self):
+        """
+        Memverifikasi bahwa /api/v1/harness/context mengembalikan memori episodik
+        dan konteks terverifikasi (<ZAP_AGENT_HARNESS_CONTEXT>) untuk kueri percakapan.
+        """
+        response = client.post(
+            "/api/v1/harness/context",
+            json={"query": "pindah ruas 2x + 6 = 14", "top_k": 3}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert "<ZAP_AGENT_HARNESS_CONTEXT>" in data["harness_context"]
+
+    def test_agent_harness_stats_endpoint(self):
+        """
+        Memverifikasi bahwa /api/v1/harness/stats mengembalikan metrik memori episodik.
+        """
+        response = client.get("/api/v1/harness/stats")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["total_episodic_memories"] >= 1
+        assert "by_misconception" in data
+
+    def test_diagnose_rejects_exceeded_step_count(self):
+        """Memverifikasi proteksi DoS: payload langkah > 50 baris ditolak dengan 422."""
+        excessive_steps = [f"x + {i} = {i + 1}" for i in range(55)]
+        response = client.post("/api/v1/diagnose", json={"confirmed_steps": excessive_steps})
+        assert response.status_code == 422
+        assert "melebihi batas" in response.json()["detail"].lower()
+
+    def test_diagnose_rejects_unsupported_target_variable(self):
+        """Memverifikasi bahwa target_variable di luar whitelist alfabet di-reject dengan 422."""
+        response = client.post(
+            "/api/v1/diagnose",
+            json={"confirmed_steps": ["2*x + 4 = 10", "2*x = 6"], "target_variable": "foo"}
+        )
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        detail_str = str(detail).lower()
+        assert "tidak diizinkan" in detail_str
+

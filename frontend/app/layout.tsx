@@ -175,7 +175,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className="dark" suppressHydrationWarning>
+    <html lang="id" className="light" suppressHydrationWarning>
       <head>
         <script src="https://accounts.google.com/gsi/client" async defer></script>
         {/* GEO & Generative Engine Optimization Structured Knowledge Graph */}
@@ -188,7 +188,7 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  var t = localStorage.getItem('zap_theme') || 'dark';
+                  var t = localStorage.getItem('zap_theme_v2') || 'light';
                   var isDark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
                   if (isDark) {
                     document.documentElement.classList.add('dark');
@@ -206,7 +206,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-150`}
+        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased bg-[#faf9f6] dark:bg-[#090a0f] text-[#09090b] dark:text-zinc-100 min-h-screen transition-colors duration-150`}
       >
         {children}
       </body>

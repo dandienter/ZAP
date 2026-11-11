@@ -123,9 +123,13 @@ class Store:
         # check_same_thread=False: koneksi dipakai lintas thread oleh
         # threadpool FastAPI; penulisan SQLite terserialisasi di level
         # berkas dan pola aksesnya per-permintaan.
-        self.conn = sqlite3.connect(db_path, check_same_thread=False)
+        self.conn = sqlite3.connect(db_path, check_same_thread=False, timeout=5.0)
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA foreign_keys = ON")
+        if db_path != ":memory:":
+            self.conn.execute("PRAGMA journal_mode = WAL")
+            self.conn.execute("PRAGMA synchronous = NORMAL")
+        self.conn.execute("PRAGMA busy_timeout = 5000")
         self.conn.executescript(SCHEMA)
         self.conn.commit()
 

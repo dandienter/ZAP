@@ -8,6 +8,7 @@ interface ActiveProblemContext {
   misconceptionType?: string;
   explanation?: string;
   socraticHint?: string;
+  harnessMemoryContext?: string;
   counterExample?: {
     test_variable?: string;
     test_value?: number;
@@ -15,6 +16,48 @@ interface ActiveProblemContext {
     rhs_calculated?: string;
     contradiction_statement?: string;
   };
+}
+
+const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
+
+async function fetchHarnessMemoryContext(query: string): Promise<string> {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/harness/context`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: query.slice(0, 300), limit: 3 }),
+      signal: AbortSignal.timeout(1200),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (typeof data?.prompt_injection === "string") {
+        return data.prompt_injection;
+      }
+    }
+  } catch {
+    // Non-blocking fallback when local Python backend is offline
+  }
+  return "";
+}
+
+function recordTurnToAgentHarness(
+  userMessage: string,
+  assistantReply: string,
+  activeProblem?: ActiveProblemContext | null
+): void {
+  void fetch(`${API_BASE}/api/v1/harness/learn`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_message: userMessage.slice(0, 500),
+      assistant_reply: assistantReply.slice(0, 600),
+      explicit_steps: activeProblem?.steps || undefined,
+      target_variable: activeProblem?.counterExample?.test_variable || "x",
+    }),
+    signal: AbortSignal.timeout(1500),
+  }).catch(() => {
+    // Silent fire-and-forget telemetry
+  });
 }
 
 interface ChatRequestBody {
@@ -402,6 +445,10 @@ ${activeProblem.counterExample?.contradiction_statement ? `- Kontra-contoh aritm
 Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentang perbaikan langkahnya.`;
   }
 
+  if (activeProblem?.harnessMemoryContext) {
+    prompt += `\n\nMEMORI EPISODIK & BASIS PENGETAHUAN TERVERIFIKASI ZAP:\n${activeProblem.harnessMemoryContext}\nGunakan pola bimbingan Sokratik dan rumus terverifikasi di atas sebagai rujukan tanpa membocorkan jawaban akhir.`;
+  }
+
   if (workspaceMode === "read") {
     prompt += `\n\nMODE WORKSPACE: READ-ONLY (Hanya lakukan bimbingan Sokratik dan verifikasi matematis tanpa menulis atau memodifikasi berkas workspace).`;
   } else {
@@ -428,7 +475,7 @@ export async function POST(req: Request) {
       message: rawMessage,
       attachedFiles,
       conversationHistory,
-      activeProblem,
+      activeProblem: rawActiveProblem,
       apiKey,
       mistralApiKey,
       bazaarlinkApiKey,
@@ -506,6 +553,17 @@ export async function POST(req: Request) {
         });
       }
     }
+
+    // 0c. ZAP MODEL AGENT HARNESS: Ambil Memori Episodik & Rekam Pembelajaran Kontinu dari Percakapan
+    const harnessMemoryContext = await fetchHarnessMemoryContext(rawMessage);
+    const activeProblem: ActiveProblemContext | null | undefined = rawActiveProblem
+      ? { ...rawActiveProblem, harnessMemoryContext: harnessMemoryContext || undefined }
+      : harnessMemoryContext
+      ? { harnessMemoryContext }
+      : rawActiveProblem;
+    const previousAssistantTurn =
+      conversationHistory?.slice().reverse().find((t) => t.role === "assistant")?.content || "";
+    recordTurnToAgentHarness(rawMessage, previousAssistantTurn, rawActiveProblem);
 
     let message = rawMessage;
     const textAttachments: Array<{ name: string; content: string }> = [];
@@ -736,7 +794,7 @@ export async function POST(req: Request) {
           conversationHistory,
           activeProblem,
           userName,
-          22000,
+          14000,
           sessionLanguage,
           targetFriendlyName,
           imageAttachments
@@ -754,7 +812,7 @@ export async function POST(req: Request) {
             conversationHistory,
             activeProblem,
             userName,
-            22000,
+            14000,
             sessionLanguage,
             targetFriendlyName,
             imageAttachments
@@ -772,7 +830,7 @@ export async function POST(req: Request) {
             conversationHistory,
             activeProblem,
             userName,
-            12000,
+            10000,
             sessionLanguage,
             "Nemotron-3.5 Bolt (Fast Fallback)",
             imageAttachments

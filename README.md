@@ -4,7 +4,7 @@
 [![Subtheme](https://img.shields.io/badge/Subtheme-Smart_%26_Fun_Education-0D9488?style=for-the-badge)](https://github.com/wakhidpangestu/ZAP)
 [![Kategori](https://img.shields.io/badge/Kategori-Web_Application_(MVP)-2563EB?style=for-the-badge)](https://github.com/wakhidpangestu/ZAP)
 [![License: MIT](https://img.shields.io/badge/License-MIT-38BDF8?style=for-the-badge)](LICENSE)
-[![Pytest Passing](https://img.shields.io/badge/Pytest-65%2F65_Passing-059669?style=for-the-badge)](backend/tests/)
+[![Pytest Passing](https://img.shields.io/badge/Pytest-68%2F68_Passing-059669?style=for-the-badge)](backend/tests/)
 
 > **"Don't give them answers. Project the wonder to discover."**  
 > ZAP adalah platform pembelajaran matematika *Web-First* yang mengubah rumus dan persamaan aljabar menjadi **bangun ruang 3D interaktif secara real-time** (Three.js/WebGL), dipandu oleh **Tutor Sokratik berpagar Zero Answer Policy**, dan diverifikasi kebenaran matematisnya secara deterministik oleh mesin aljabar simbolik (**SymPy**).
@@ -184,7 +184,7 @@ python -m venv venv
 .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
-# Jalankan pengujian verifikasi (65 tests)
+# Jalankan pengujian verifikasi (68 tests)
 python -m pytest -v -p no:cacheprovider tests/ tests_platform/
 
 # Jalankan layanan backend CFL (Port 8000)
@@ -290,21 +290,23 @@ Sesuai regulasi Buku Panduan (Halaman 16 & 20), seluruh pustaka, template, aset,
 
 ```text
 logicodix/
-├── .agents/                  # Agent skills & cognitive testing workflows
+├── .agents/skills/           # Unified AI Agent Skill & Harness untuk otomasi & upgrade ZAP
+│   └── zap-skills/           # Master Skill: Agent Memory Harness, Web Crawler, Training & Verification (68/68 Pytest)
 ├── .codex/                   # Codex assistant configurations
 ├── backend/                  # Layanan Backend FastAPI & SymPy Reasoning CAS
 │   ├── cfl/                  # Core Cognitive Fault Localization (Parser, Classifier, Guardrail)
-│   ├── data_engine/          # Pipeline Harvester & Kurikulum Matematika (TK–S3)
+│   ├── data_engine/          # Agent Memory Harness, Internet Crawler & Kurikulum (TK–S3)
 │   ├── zapcore/              # Auth SSO, AES-256-GCM Vault, Multi-Model Gateway, Privacy
-│   ├── tests/                # 23 Automated Tests: verifikasi aljabar & keamanan parser
+│   ├── tests/                # 26 Automated Tests: verifikasi aljabar, keamanan parser & agent harness
 │   ├── tests_platform/       # 42 Automated Tests: auth tokeninfo, vault crypto & privasi
 │   ├── main.py               # Titik masuk Microservice CFL Engine (Port 8000)
 │   ├── platform_main.py      # Titik masuk Zapcore Platform Services (Port 8001)
 │   ├── .env.example          # Template konfigurasi variabel lingkungan backend
 │   └── requirements.txt      # Daftar dependensi produksi Python
-├── data/                     # Basis data geometri parametrik & korpus matematika
+├── data/                     # Basis data geometri parametrik, memori agen & korpus matematika
+│   ├── zap_agent_memory.jsonl     # Memori episodik pembelajaran percakapan agen ZAP
 │   ├── zap_geometry_database.json # Katalog bangun ruang, sudut, rusuk, & rumus
-│   └── zap_math_corpus.jsonl      # Korpus aljabar bertingkat dari TK hingga S3
+│   └── zap_math_corpus.jsonl      # Korpus aljabar & teorema terverifikasi (TK hingga S3)
 ├── docs/                     # Dokumentasi arsitektur, spesifikasi teknis, & blueprint resmi
 │   ├── README.md             # Indeks utama seluruh dokumentasi teknis
 │   ├── ARCHITECTURE.md       # Arsitektur sistem & diagram data flow

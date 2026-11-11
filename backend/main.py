@@ -4,16 +4,26 @@ Framework: FastAPI (Production-Ready Spec)
 Rubrik LOGICODIX 2026: Anti-Halusinasi, Zero-Answer Policy, dan Human-in-the-Loop LaTeX Confirmation
 """
 
+import os
+import sys
 import uuid
 from typing import Any
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
 from cfl import (
     isolate_first_fault_breakpoint,
     RobustZeroAnswerGuardrail
 )
+from cfl.parser import ALLOWED_VARS
+from data_engine.agent_harness import ZAPAgentHarness
+
+agent_harness = ZAPAgentHarness()
 
 app = FastAPI(
     title="ZAP Cognitive Diagnostics API",
@@ -21,12 +31,18 @@ app = FastAPI(
     version="2.2.0"
 )
 
-# CORS Middleware untuk integrasi mulus dengan Client Tier (Next.js 14)
+# CORS Middleware terkonfigurasi aman (mendukung domain produksi & fallback wildcard)
+cors_origins_env = os.environ.get("CORS_ORIGINS", "*").strip()
+if cors_origins_env == "*":
+    allowed_origins = ["*"]
+else:
+    allowed_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=False,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -136,9 +152,19 @@ def diagnose_student_scratchpad(request: DiagnoseRequest):
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Daftar langkah aljabar tidak boleh kosong."
         )
+    if len(raw_steps) > 50:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Jumlah langkah aljabar melebihi batas maksimum (maksimal 50 langkah per sesi)."
+        )
 
     session_id = f"sess_{uuid.uuid4().hex[:8]}"
     chosen_var = (request.target_variable or request.target_var or "x").strip() or "x"
+    if chosen_var not in ALLOWED_VARS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"Variabel target '{chosen_var}' tidak diizinkan. Variabel yang didukung: {', '.join(sorted(ALLOWED_VARS))}."
+        )
     target_var = chosen_var
 
     # Jalankan Symbolic CFL Engine
@@ -269,3 +295,62 @@ def diagnose_student_scratchpad(request: DiagnoseRequest):
             final_answer_suppressed=True
         )
     )
+
+
+# ==========================================
+# ZAP Agent Harness — Continuous Memory & RAG Endpoints
+# ==========================================
+
+class HarnessLearnRequest(BaseModel):
+    user_message: str = Field(..., description="Pesan atau pertanyaan dari siswa/pengguna")
+    assistant_reply: str = Field(default="", description="Balasan Sokratik dari asisten")
+    explicit_steps: list[str] | None = Field(default=None, description="Langkah aljabar eksplisit jika ada")
+    target_variable: str = Field(default="x", max_length=5, description="Variabel target")
+    tier_hint: str | None = Field(default=None, description="Jenjang pendidikan opsional (TK s/d S3)")
+
+
+class HarnessContextRequest(BaseModel):
+    query: str = Field(..., description="Kueri atau pesan pengguna yang akan diperkaya dengan memori")
+    limit: int | None = Field(default=None, ge=1, le=10, description="Jumlah memori relevan maksimum")
+    top_k: int | None = Field(default=None, ge=1, le=10, description="Alias untuk limit")
+
+
+@app.post("/api/v1/harness/learn", status_code=status.HTTP_200_OK, tags=["Agent Harness"])
+def harness_learn_from_conversation(req: HarnessLearnRequest):
+    """
+    Mempelajari percakapan pengguna secara berkelanjutan (Continuous Learning from Memory):
+    - Menyaring PII (Email, Telepon, NIK).
+    - Mengekstrak langkah aljabar dan memverifikasinya via SymPy CFL.
+    - Menyaring petunjuk Sokratik dengan RobustZeroAnswerGuardrail.
+    - Menyimpan ke Episodic Memory dan mempromosikan langkah valid ke MathCorpusStore.
+    """
+    result = agent_harness.learn_from_conversation(
+        user_message=req.user_message,
+        assistant_reply=req.assistant_reply,
+        explicit_steps=req.explicit_steps,
+        target_var=req.target_variable,
+        tier_hint=req.tier_hint,
+    )
+    return result
+
+
+@app.post("/api/v1/harness/context", status_code=status.HTTP_200_OK, tags=["Agent Harness"])
+def harness_retrieve_context(req: HarnessContextRequest):
+    """
+    Mengambil konteks memori relevan (<ZAP_AGENT_HARNESS_CONTEXT>) dari Episodic Memory,
+    MathCorpusStore, dan 2D/3D Geometry Database untuk disuntikkan ke prompt agen.
+    """
+    effective_limit = req.limit or req.top_k or 3
+    return agent_harness.build_harness_context(query=req.query, limit=effective_limit)
+
+
+@app.get("/api/v1/harness/stats", status_code=status.HTTP_200_OK, tags=["Agent Harness"])
+def harness_memory_stats():
+    """Mengambil statistik memori agen dan korpus pembelajaran berkelanjutan."""
+    mem_stats = agent_harness.get_memory_stats()
+    return {
+        "status": "success",
+        **mem_stats,
+        "memory": mem_stats,
+        "corpus": agent_harness.corpus_store.get_statistics(),
+    }

@@ -5,21 +5,21 @@ import { useEffect, useState, useCallback } from "react";
 export type ThemeMode = "dark" | "light" | "system";
 export type ResolvedTheme = "dark" | "light";
 
-const THEME_STORAGE_KEY = "zap_theme";
+const THEME_STORAGE_KEY = "zap_theme_v2";
 
 /**
- * Resolves system preference
+ * Resolves system preference (defaults to light on SSR)
  */
 export function getSystemTheme(): ResolvedTheme {
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === "undefined") return "light";
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 /**
- * Reads stored theme from localStorage safely
+ * Reads stored theme from localStorage safely (defaults to light mode)
  */
 export function getStoredTheme(): ThemeMode {
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === "undefined") return "light";
   try {
     const saved = localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null;
     if (saved === "dark" || saved === "light" || saved === "system") {
@@ -28,14 +28,14 @@ export function getStoredTheme(): ThemeMode {
   } catch (err) {
     console.warn("Gagal membaca tema dari localStorage:", err);
   }
-  return "dark";
+  return "light";
 }
 
 /**
  * Applies the theme to the <html> document root element
  */
 export function applyTheme(theme: ThemeMode): ResolvedTheme {
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === "undefined") return "light";
   const resolved = theme === "system" ? getSystemTheme() : theme;
   const root = document.documentElement;
 
@@ -51,7 +51,6 @@ export function applyTheme(theme: ThemeMode): ResolvedTheme {
 
   try {
     localStorage.setItem(THEME_STORAGE_KEY, theme);
-    // Dispatch custom event for same-tab listeners
     window.dispatchEvent(new CustomEvent("zap_theme_change", { detail: { theme, resolved } }));
   } catch (err) {
     console.warn("Gagal menyimpan tema:", err);
@@ -61,20 +60,18 @@ export function applyTheme(theme: ThemeMode): ResolvedTheme {
 }
 
 /**
- * Hook to manage theme state across components
+ * Hook to manage theme state across components (default: light)
  */
 export function useTheme() {
-  const [theme, setThemeState] = useState<ThemeMode>("dark");
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("dark");
+  const [theme, setThemeState] = useState<ThemeMode>("light");
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("light");
 
   useEffect(() => {
-    // Initial read
     const initial = getStoredTheme();
     setThemeState(initial);
     const resolved = applyTheme(initial);
     setResolvedTheme(resolved);
 
-    // Listener for system preference changes when in 'system' mode
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleMediaChange = () => {
       const current = getStoredTheme();
@@ -84,7 +81,6 @@ export function useTheme() {
       }
     };
 
-    // Listener for custom theme change events in same or other components
     const handleThemeChange = (e: Event) => {
       const customEvent = e as CustomEvent<{ theme: ThemeMode; resolved: ResolvedTheme }>;
       if (customEvent.detail) {
@@ -93,7 +89,6 @@ export function useTheme() {
       }
     };
 
-    // Listener for cross-window / cross-tab changes
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === THEME_STORAGE_KEY && e.newValue) {
         const next = e.newValue as ThemeMode;

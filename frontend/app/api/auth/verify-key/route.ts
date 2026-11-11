@@ -26,7 +26,7 @@ export async function POST(req: Request) {
 
     // 1. Verifikasi langsung ke Google Generative Language API
     const startTime = Date.now();
-    const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`;
 
     const res = await fetch(url, {
       method: "GET",

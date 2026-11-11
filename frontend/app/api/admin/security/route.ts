@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import {
-  ADMIN_EMAIL,
   ADMIN_SECRET,
   getUserSecurityStatus,
   unsuspendUserAccount,
@@ -44,11 +44,17 @@ export async function GET(req: Request) {
       return NextResponse.json(status);
     }
 
-    // 3. Admin: List suspended users
+    // 3. Admin: List suspended users (Wajib verifikasi admin secret secara timing-safe)
     if (action === "list") {
-      const isAdmin = adminKey === ADMIN_SECRET || email.toLowerCase() === ADMIN_EMAIL;
+      const cleanSecret = (adminKey || "").trim();
+      const isAdmin = Boolean(
+        cleanSecret &&
+        ADMIN_SECRET &&
+        cleanSecret.length === ADMIN_SECRET.length &&
+        crypto.timingSafeEqual(Buffer.from(cleanSecret), Buffer.from(ADMIN_SECRET))
+      );
       if (!isAdmin) {
-        return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
+        return NextResponse.json({ error: "Akses ditolak. Secret administrator tidak valid." }, { status: 403 });
       }
       const all = loadRegistryFromFile();
       const list = Object.values(all);
@@ -89,14 +95,18 @@ export async function POST(req: Request) {
       });
     }
 
-    // B. Verifikasi Hak Admin
-    const isSuperAdmin =
-      (adminEmail && adminEmail.toLowerCase().trim() === ADMIN_EMAIL) ||
-      (adminSecret && adminSecret.trim() === ADMIN_SECRET);
+    // B. Verifikasi Hak Admin (Wajib verifikasi admin secret secara timing-safe)
+    const cleanSecret = (adminSecret || "").trim();
+    const isSuperAdmin = Boolean(
+      cleanSecret &&
+      ADMIN_SECRET &&
+      cleanSecret.length === ADMIN_SECRET.length &&
+      crypto.timingSafeEqual(Buffer.from(cleanSecret), Buffer.from(ADMIN_SECRET))
+    );
 
     if (!isSuperAdmin) {
       return NextResponse.json(
-        { error: "Otorisasi ditolak. Tindakan ini hanya dapat dilakukan oleh Administrator resmi." },
+        { error: "Otorisasi ditolak. Tindakan ini hanya dapat dilakukan oleh Administrator resmi dengan kredensial valid." },
         { status: 403 }
       );
     }

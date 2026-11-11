@@ -1,0 +1,75 @@
+version: "3.9"
+
+services:
+  # -------------------------------------------------------------
+  # 1. ZAP Backend (FastAPI + SymPy CFL Engine)
+  # -------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: zap-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - PYTHONUNBUFFERED=1
+      - ZAP_DB_PATH=/app/data/zap_platform.db
+      - ZAP_JWT_SECRET=${ZAP_JWT_SECRET:-change-this-jwt-secret-in-production}
+      - ZAP_MASTER_KEY=${ZAP_MASTER_KEY:-}
+      - ZAP_GOOGLE_CLIENT_ID=${ZAP_GOOGLE_CLIENT_ID:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://zap_user:zap_secure_pass@postgres:5432/zap_production}
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # -------------------------------------------------------------
+  # 2. ZAP Frontend (Next.js 14 App Router)
+  # -------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-https://api.chatzap.web.id}
+    container_name: zap-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-https://api.chatzap.web.id}
+    volumes:
+      - ./frontend/.zap_vault:/app/.zap_vault
+    depends_on:
+      - backend
+
+  # -------------------------------------------------------------
+  # 3. PostgreSQL Database (Produksi / Self-Hosted di VPS DataByte)
+  # -------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: zap-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-zap_production}
+      POSTGRES_USER: ${POSTGRES_USER:-zap_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zap_secure_pass}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zap_user -d zap_production"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local

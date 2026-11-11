@@ -91,7 +91,7 @@ export function collectLocalUserData(user: ZAPUser): UserAccountBackupPayload {
     customApiKey: localStorage.getItem("zap_custom_api_key") || undefined,
     selectedModelId: localStorage.getItem("zap_selected_model_id") || undefined,
     reasoningEffort: localStorage.getItem("zap_reasoning_effort") || undefined,
-    theme: localStorage.getItem("zap_theme") || undefined,
+    theme: localStorage.getItem("zap_theme_v2") || "light",
   };
 
   // 3. Workspaces & files (Filter out any legacy "default" or "Default workspace")
@@ -222,6 +222,7 @@ export async function syncAccountBackup(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(6000),
     });
     return res.ok;
   } catch (netErr) {
@@ -249,7 +250,7 @@ export async function restoreAccountData<M = unknown, C = unknown, W = unknown, 
   // 1. Coba ambil dari cloud endpoint
   try {
     const url = `/api/user/sync?email=${encodeURIComponent(user.email || "")}&userId=${encodeURIComponent(user.id || "")}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
     if (res.ok) {
       const json = await res.json();
       if (json.exists && json.data) {
@@ -345,16 +346,15 @@ export async function restoreAccountData<M = unknown, C = unknown, W = unknown, 
     if (mergedConfigs.customModelName) localStorage.setItem("zap_custom_model_name", mergedConfigs.customModelName);
     if (mergedConfigs.customApiKey) localStorage.setItem("zap_custom_api_key", mergedConfigs.customApiKey);
     if (mergedConfigs.selectedModelId) localStorage.setItem("zap_selected_model_id", mergedConfigs.selectedModelId);
-    if (mergedConfigs.theme && !localStorage.getItem("zap_theme")) {
-      localStorage.setItem("zap_theme", mergedConfigs.theme);
+    if (!localStorage.getItem("zap_theme_v2")) {
+      localStorage.setItem("zap_theme_v2", "light");
       if (typeof window !== "undefined") {
-        const isDark = mergedConfigs.theme === "dark" || (mergedConfigs.theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-        document.documentElement.classList.toggle("dark", isDark);
-        document.documentElement.classList.toggle("light", !isDark);
-        document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+        document.documentElement.classList.remove("dark");
+        document.documentElement.classList.add("light");
+        document.documentElement.style.colorScheme = "light";
         window.dispatchEvent(
           new CustomEvent("zap_theme_change", {
-            detail: { theme: mergedConfigs.theme, resolved: isDark ? "dark" : "light" },
+            detail: { theme: "light", resolved: "light" },
           })
         );
       }

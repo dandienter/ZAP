@@ -18,8 +18,16 @@ class MathCorpusStore:
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         self._init_db()
 
+    def _get_connection(self) -> sqlite3.Connection:
+        """Koneksi SQLite berkinerja tinggi: WAL mode, synchronous NORMAL, dan timeout 5000ms."""
+        conn = sqlite3.connect(self.db_path, timeout=5.0)
+        conn.execute("PRAGMA journal_mode = WAL")
+        conn.execute("PRAGMA synchronous = NORMAL")
+        conn.execute("PRAGMA busy_timeout = 5000")
+        return conn
+
     def _init_db(self):
-        with sqlite3.connect(self.db_path) as conn:
+        with self._get_connection() as conn:
             cur = conn.cursor()
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS math_corpus (
@@ -45,7 +53,7 @@ class MathCorpusStore:
             conn.commit()
 
     def insert_batch(self, items: List[Dict[str, Any]]):
-        with sqlite3.connect(self.db_path) as conn:
+        with self._get_connection() as conn:
             cur = conn.cursor()
             for it in items:
                 cur.execute("""
@@ -75,7 +83,7 @@ class MathCorpusStore:
                 f.write(json.dumps(it, ensure_ascii=False) + "\n")
 
     def query_by_tier(self, tier: str, limit: int = 50) -> List[Dict[str, Any]]:
-        with sqlite3.connect(self.db_path) as conn:
+        with self._get_connection() as conn:
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             cur.execute("SELECT * FROM math_corpus WHERE tier = ? ORDER BY id LIMIT ?", (tier.upper(), limit))
@@ -83,7 +91,7 @@ class MathCorpusStore:
             return [dict(r) for r in rows]
 
     def query_by_shape(self, shape_kind: str) -> List[Dict[str, Any]]:
-        with sqlite3.connect(self.db_path) as conn:
+        with self._get_connection() as conn:
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             cur.execute("SELECT * FROM math_corpus WHERE shape_kind = ?", (shape_kind.lower(),))
@@ -92,7 +100,7 @@ class MathCorpusStore:
 
     def search_by_keyword(self, query: str, limit: int = 20) -> List[Dict[str, Any]]:
         pattern = f"%{query}%"
-        with sqlite3.connect(self.db_path) as conn:
+        with self._get_connection() as conn:
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             cur.execute("""
@@ -104,7 +112,7 @@ class MathCorpusStore:
             return [dict(r) for r in rows]
 
     def get_statistics(self) -> Dict[str, Any]:
-        with sqlite3.connect(self.db_path) as conn:
+        with self._get_connection() as conn:
             cur = conn.cursor()
             cur.execute("SELECT COUNT(*) FROM math_corpus")
             total = cur.fetchone()[0]

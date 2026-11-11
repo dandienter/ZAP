@@ -40,8 +40,16 @@ function getSharesDir(): string {
 }
 
 function getShareFilePath(shareId: string): string {
-  const cleanId = shareId.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
-  return path.join(getSharesDir(), `${cleanId}.json`);
+  const cleanId = shareId.trim().toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 64);
+  if (!cleanId) return "";
+  const dir = getSharesDir();
+  if (!dir) return "";
+  const targetPath = path.resolve(dir, `${cleanId}.json`);
+  const resolvedDir = path.resolve(dir);
+  if (!targetPath.startsWith(resolvedDir + path.sep)) {
+    return "";
+  }
+  return targetPath;
 }
 
 // GET /api/chat/share?id=<shareId>

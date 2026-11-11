@@ -61,13 +61,24 @@ function getVaultDir(): string {
 
 function getVaultSafeKey(email: string, userId: string): string {
   const rawKey = (email || userId || "anonymous").trim().toLowerCase();
-  return rawKey.replace(/[^a-z0-9._-]/g, "_");
+  return rawKey
+    .replace(/[\0/\\]/g, "")
+    .replace(/\.+/g, "_")
+    .replace(/[^a-z0-9_-]/g, "_")
+    .slice(0, 80);
 }
 
 function getVaultFilePath(email: string, userId: string): string {
   const safeKey = getVaultSafeKey(email, userId);
+  if (!safeKey) return "";
   const dir = getVaultDir();
-  return dir ? path.join(dir, `${safeKey}.json`) : "";
+  if (!dir) return "";
+  const targetPath = path.resolve(dir, `${safeKey}.json`);
+  const resolvedDir = path.resolve(dir);
+  if (!targetPath.startsWith(resolvedDir + path.sep)) {
+    return "";
+  }
+  return targetPath;
 }
 
 // GET: Ambil backup data pengguna berdasarkan email / userId

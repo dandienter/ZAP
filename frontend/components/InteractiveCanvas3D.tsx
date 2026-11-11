@@ -4575,52 +4575,57 @@ export default function InteractiveCanvas3D({
         {/* F. FLOATING ZAP AI COPILOT ASSISTANT (Bottom-Right Chatbot Widget) */}
         <div className="absolute bottom-4 right-4 z-30 flex flex-col items-end">
           {isAiWidgetOpen ? (
-            <div className="w-[360px] max-w-[calc(100vw-32px)] rounded-3xl liquid-glass-popup border border-white/50 dark:border-white/15 shadow-2xl p-4.5 animate-liquid-pop origin-bottom-right space-y-3.5 select-none text-slate-800 dark:text-zinc-200 backdrop-blur-2xl">
+            <div className="w-[380px] max-w-[calc(100vw-32px)] rounded-3xl bg-white dark:bg-[#121520] border border-slate-200 dark:border-white/10 shadow-2xl p-4.5 animate-liquid-pop origin-bottom-right space-y-3.5 select-none text-slate-800 dark:text-zinc-200 ring-1 ring-black/5 dark:ring-white/5">
               {/* Header */}
-              <div className="flex items-center justify-between pb-2.5 border-b border-slate-200/60 dark:border-white/[0.08]">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/[0.06]">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/15 dark:bg-amber-400/20 border border-amber-500/30 flex items-center justify-center text-amber-500 dark:text-amber-400 shadow-sm">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/15 dark:bg-amber-400/20 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-xs">
                     <ZapLogo className="w-4.5 h-4.5" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
-                      ZAP Geometry Copilot
-                      <span className="text-[9px] px-1.5 py-0.2 bg-amber-500/15 text-amber-600 dark:text-amber-300 rounded-md font-mono font-medium">
+                    <div className="flex items-center gap-1.5">
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white tracking-tight">
+                        ZAP Geometry Copilot
+                      </h4>
+                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-amber-500/10 dark:bg-amber-400/15 text-amber-700 dark:text-amber-300 font-semibold border border-amber-500/20">
                         AI
                       </span>
-                    </h4>
-                    <p className="text-[10px] text-slate-500 dark:text-zinc-400">
-                      Sekali minta, langsung digambar di papan
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-zinc-400">
+                      Sintesis bangun ruang & rumus instan
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsAiWidgetOpen(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
-                  title="Tutup ZAP AI Copilot"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+                  title="Tutup ZAP Copilot"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               {/* Suggestion Chips */}
-              <div className="space-y-1.5">
-                <div className="text-[10px] uppercase font-mono tracking-wider text-slate-400 dark:text-zinc-500 font-semibold">
-                  Pilihan Cepat:
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono font-semibold tracking-wider uppercase text-slate-400 dark:text-zinc-500">
+                    Template Siap Pakai
+                  </span>
+                  <span className="text-[10px] text-slate-400 dark:text-zinc-500">Klik untuk pasang</span>
                 </div>
-                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto no-scrollbar">
+                <div className="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto pr-0.5">
                   {[
+                    { label: "Kubus 10 cm", query: "kubus 10cm" },
                     { label: "Prisma Segitiga 3D", query: "prisma segitiga 3d 10cm" },
-                    { label: "Jaring Prisma 2D", query: "jaring-jaring prisma 2d" },
-                    { label: "Kubus 10cm", query: "kubus 10cm" },
-                    { label: "Jaring Kubus 2D", query: "jaring-jaring kubus 2d" },
                     { label: "Piramida Limas 3D", query: "limas segi empat 3d" },
+                    { label: "Jaring Kubus 2D", query: "jaring-jaring kubus 2d" },
+                    { label: "Jaring Prisma 2D", query: "jaring-jaring prisma 2d" },
                     { label: "Jaring Limas 2D", query: "jaring limas 2d" },
-                    { label: "Lingkaran 2D", query: "lingkaran r=7cm" },
-                    { label: "Persegi Panjang", query: "persegi panjang 14x8" },
-                    { label: "Parabola y=x²-3", query: "y=x^2-3" },
+                    { label: "Lingkaran 2D (r=7)", query: "lingkaran r=7cm" },
+                    { label: "Persegi Panjang (14×8)", query: "persegi panjang 14x8" },
                     { label: "Tabung Silinder", query: "tabung r=7 t=12" },
+                    { label: "Parabola y = x² - 3", query: "y=x^2-3" },
                   ].map((chip) => (
                     <button
                       key={chip.label}
@@ -4629,9 +4634,10 @@ export default function InteractiveCanvas3D({
                         setAiWidgetInput(chip.query);
                         triggerAiSynthesize(chip.query);
                       }}
-                      className="px-2.5 py-1 rounded-xl text-[11px] liquid-glass-pill hover:bg-amber-500/15 hover:border-amber-400/40 text-slate-700 dark:text-zinc-200 border border-slate-200/80 dark:border-white/10 transition cursor-pointer backdrop-blur-md"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-50 hover:bg-amber-500/10 dark:bg-white/[0.04] dark:hover:bg-amber-400/10 border border-slate-200/80 hover:border-amber-400/40 dark:border-white/[0.08] dark:hover:border-amber-400/30 text-[11px] font-medium text-slate-700 hover:text-amber-700 dark:text-zinc-300 dark:hover:text-amber-300 transition-all duration-150 text-left truncate cursor-pointer shadow-2xs group"
                     >
-                      {chip.label}
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-zinc-600 group-hover:bg-amber-500 transition-colors shrink-0" />
+                      <span className="truncate">{chip.label}</span>
                     </button>
                   ))}
                 </div>
@@ -4650,14 +4656,14 @@ export default function InteractiveCanvas3D({
                     type="text"
                     value={aiWidgetInput}
                     onChange={(e) => setAiWidgetInput(e.target.value)}
-                    placeholder="Misal: buatkan prisma segitiga 3d 10cm..."
-                    className="w-full bg-white/60 dark:bg-black/30 backdrop-blur-md border border-slate-200/90 dark:border-white/15 rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 dark:focus:border-amber-400 transition shadow-inner"
+                    placeholder="Misal: prisma segitiga 10cm, kubus, tabung..."
+                    className="w-full bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 rounded-xl pl-3 pr-10 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 dark:focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 transition shadow-inner"
                     autoFocus
                   />
                   <button
                     type="submit"
                     disabled={!aiWidgetInput.trim()}
-                    className="absolute right-1.5 p-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 disabled:opacity-30 text-white transition cursor-pointer shadow-sm"
+                    className="absolute right-1.5 p-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 active:scale-95 disabled:opacity-30 disabled:pointer-events-none text-white transition cursor-pointer shadow-xs flex items-center justify-center"
                     title="Kirim dan buat di papan"
                   >
                     <Send className="w-3.5 h-3.5" />
