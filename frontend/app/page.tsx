@@ -840,7 +840,7 @@ export default function LandingPage() {
                               onClick={() => setMegaMenuOpen(false)}
                               className="group flex items-start gap-3.5 p-2.5 rounded-2xl hover:bg-[#faf9f6] dark:hover:bg-white/5 border border-transparent hover:border-zinc-200/70 dark:hover:border-white/10 transition-all"
                             >
-                              <div className="w-10 h-10 rounded-xl bg-[#faf9f6] dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 flex items-center justify-center shrink-0 text-[#09090b] group-hover:bg-[#09090b] group-hover:text-[#d4a574] group-hover:border-[#09090b] transition-colors shadow-sm">
+                              <div className="w-10 h-10 rounded-xl bg-[#faf9f6] dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 flex items-center justify-center shrink-0 text-[#09090b] dark:text-white group-hover:bg-[#09090b] group-hover:text-[#d4a574] group-hover:border-[#09090b] transition-colors shadow-sm">
                                 <Boxes className="w-5 h-5" />
                               </div>
                               <div className="flex-1 min-w-0">

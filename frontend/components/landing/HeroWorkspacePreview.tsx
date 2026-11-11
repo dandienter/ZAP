@@ -262,96 +262,83 @@ export default function HeroWorkspacePreview({
         <div className="w-[52px] hidden sm:block" />
       </div>
 
-      {/* MOBILE BODY */}
-      <div className="flex md:hidden flex-1 overflow-hidden select-none bg-white">
-        <div className="w-[122px] bg-[#faf9f6] border-r border-zinc-200/80 p-1.5 flex flex-col justify-between shrink-0 overflow-hidden">
-          <div className="space-y-1.5 overflow-hidden">
-            <div className="text-[9px] font-mono font-bold uppercase tracking-wider text-zinc-600 px-1">
-              AI &amp; CAS ENGINE
-            </div>
-            {modules.slice(0, 6).map((item) => {
-              const isSelected = item.id === activeId;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setActiveId(item.id)}
-                  className={`w-full flex items-center justify-between px-1.5 py-1 rounded-md text-left ${
-                    isSelected
-                      ? "bg-white border border-zinc-200/90 shadow-sm font-bold text-[#09090b]"
-                      : "text-zinc-600"
-                  }`}
-                >
-                  <span className="text-[9px] truncate">{item.name}</span>
-                  <span className="text-[9px] font-mono text-emerald-700 font-semibold shrink-0">
-                    {item.badge}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          <div className="p-1 rounded-lg bg-white border border-zinc-200/90 shadow-sm flex items-center gap-1.5">
-            <div className="w-4 h-4 rounded-full bg-[#09090b] text-white flex items-center justify-center p-0.5 shrink-0">
-              <ZapLogo className="w-2.5 h-2.5" />
-            </div>
-            <div className="overflow-hidden text-left leading-none">
-              <div className="text-[9px] font-bold text-[#09090b] truncate">
-                ChatZAP <span className="text-[#7d551f] font-normal">CAS</span>
-              </div>
-              <div className="text-[9px] text-zinc-600 font-mono truncate mt-0.5">
-                Zero-Answer Mode
-              </div>
-            </div>
-          </div>
+      {/* MOBILE BODY: satu panel penuh (rail chip modul + konten), tanpa sidebar sempit */}
+      <div className="flex md:hidden flex-col flex-1 overflow-hidden select-none bg-white">
+        {/* Rail chip pemilih modul */}
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar px-2.5 pt-2.5 pb-1 shrink-0">
+          {modules.slice(0, 6).map((item) => {
+            const isSelected = item.id === activeId;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveId(item.id)}
+                className={`shrink-0 flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-full border text-[9px] font-medium whitespace-nowrap transition-colors ${
+                  isSelected
+                    ? "bg-[#09090b] text-white border-[#09090b] font-bold"
+                    : "bg-white text-zinc-600 border-zinc-200"
+                }`}
+              >
+                <span>{item.name}</span>
+                <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-emerald-400" : "bg-emerald-500"}`} />
+              </button>
+            );
+          })}
         </div>
 
-        <div className="flex-1 p-2.5 bg-white flex flex-col justify-between overflow-hidden text-left">
-          <div className="flex items-center justify-between pb-1.5 border-b border-zinc-100">
-            <div>
-              <div className="flex items-center gap-1">
-                <h2 className="font-extrabold text-[10px] text-[#09090b] tracking-tight leading-none">
-                  {activeModule.title}
-                </h2>
-              </div>
-              <p className="text-[9px] text-zinc-600 font-mono mt-0.5 line-clamp-1">
+        <div className="flex-1 px-3 pb-3 pt-1.5 bg-white flex flex-col overflow-hidden text-left">
+          <div className="flex items-center justify-between gap-2 pb-2 border-b border-zinc-100">
+            <div className="min-w-0">
+              <h2 className="font-extrabold text-[13px] text-[#09090b] tracking-tight leading-tight truncate">
+                {activeModule.title}
+              </h2>
+              <p className="text-[9px] text-zinc-500 font-mono mt-0.5 truncate">
                 SymPy CAS • Zero-Answer Policy Enforced
               </p>
             </div>
-            <span className="px-1.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[9px] font-mono font-semibold shrink-0">
+            <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[9px] font-mono font-semibold shrink-0">
               Live
             </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-1 my-1.5">
-            <div className="p-1.5 rounded-md bg-[#faf9f6] border border-zinc-200/80">
-              <div className="text-[9px] font-mono font-bold uppercase text-zinc-600">PRE-PARSE</div>
-              <div className="text-[9px] font-bold text-[#09090b] font-mono mt-0.5">&lt; 1 ms</div>
-              <div className="text-[9px] text-emerald-700 font-medium">SymPy CAS</div>
+          <div className="grid grid-cols-3 gap-1.5 my-2">
+            <div className="p-2 rounded-lg bg-[#faf9f6] border border-zinc-200/80">
+              <div className="text-[8px] font-mono font-bold uppercase tracking-wider text-zinc-500">PRE-PARSE</div>
+              <div className="text-[11px] font-extrabold text-[#09090b] font-mono mt-0.5">&lt; 1 ms</div>
+              <div className="text-[9px] text-emerald-700 font-medium truncate">SymPy CAS</div>
             </div>
-            <div className="p-1.5 rounded-md bg-[#faf9f6] border border-zinc-200/80">
-              <div className="text-[9px] font-mono font-bold uppercase text-zinc-600">GUARDRAIL</div>
-              <div className="text-[9px] font-bold text-[#8f5e32] font-mono mt-0.5">70</div>
-              <div className="text-[9px] text-zinc-500 font-medium">Tests Passed</div>
+            <div className="p-2 rounded-lg bg-[#faf9f6] border border-zinc-200/80">
+              <div className="text-[8px] font-mono font-bold uppercase tracking-wider text-zinc-500">GUARDRAIL</div>
+              <div className="text-[11px] font-extrabold text-[#8f5e32] font-mono mt-0.5">70</div>
+              <div className="text-[9px] text-zinc-500 font-medium truncate">Tests Passed</div>
             </div>
-            <div className="p-1.5 rounded-md bg-[#faf9f6] border border-zinc-200/80">
-              <div className="text-[9px] font-mono font-bold uppercase text-zinc-600">KANVAS</div>
-              <div className="text-[9px] font-bold text-[#09090b] font-mono mt-0.5">2D &amp; 3D</div>
-              <div className="text-[9px] text-emerald-700 font-medium">Interactive</div>
+            <div className="p-2 rounded-lg bg-[#faf9f6] border border-zinc-200/80">
+              <div className="text-[8px] font-mono font-bold uppercase tracking-wider text-zinc-500">KANVAS</div>
+              <div className="text-[11px] font-extrabold text-[#09090b] font-mono mt-0.5">2D &amp; 3D</div>
+              <div className="text-[9px] text-emerald-700 font-medium truncate">Interactive</div>
             </div>
           </div>
 
-          <div className="flex-1 rounded-lg border border-zinc-200/90 p-2 bg-[#faf9f6]/80 font-mono text-[9px] space-y-1 flex flex-col justify-center">
-            <div className="flex items-center justify-between text-emerald-700 font-bold">
-              <span>#1 (x + 3)² - 4 = 0</span>
-              <span>✓ Basis Valid</span>
+          <div className="flex-1 rounded-lg border border-zinc-200/90 p-2.5 bg-[#faf9f6]/80 font-mono text-[10px] space-y-1.5 flex flex-col justify-center">
+            <div className="flex items-center justify-between gap-2 text-emerald-700 font-bold">
+              <span className="truncate">#1 (x + 3)² - 4 = 0</span>
+              <span className="shrink-0 whitespace-nowrap">✓ Basis Valid</span>
             </div>
-            <div className="flex items-center justify-between text-amber-700 font-bold">
-              <span>#2 x² + 9 - 4 = 0</span>
-              <span>⚠️ Galat Suku Silang</span>
+            <div className="flex items-center justify-between gap-2 text-amber-700 font-bold">
+              <span className="truncate">#2 x² + 9 - 4 = 0</span>
+              <span className="shrink-0 whitespace-nowrap">⚠️ Galat Suku Silang</span>
             </div>
-            <div className="text-zinc-700 font-sans pt-1 border-t border-zinc-200/80">
+            <div className="text-zinc-600 font-sans text-[10px] leading-snug pt-1.5 border-t border-zinc-200/80">
               💬 &quot;Apakah (a + b)² ekuivalen dengan a² + b²? Coba uji saat x = 1.&quot;
             </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 pt-2">
+            <div className="w-4 h-4 rounded-full bg-[#09090b] text-white flex items-center justify-center p-0.5 shrink-0">
+              <ZapLogo className="w-2.5 h-2.5" />
+            </div>
+            <span className="text-[9px] font-bold text-[#09090b]">ChatZAP <span className="text-[#7d551f] font-normal">CAS</span></span>
+            <span className="text-[9px] text-zinc-500 font-mono truncate">- Zero-Answer Mode</span>
           </div>
         </div>
       </div>
