@@ -934,7 +934,7 @@ function PromptActionBarLeft({
   workspaceMenuRef,
 }: PromptActionBarLeftProps) {
   return (
-    <div className="flex items-center gap-1.5 relative">
+    <div className="flex items-center gap-1 sm:gap-1.5 relative shrink-0">
       {/* Menu Popup Lampirkan Berkas (Liquid Glass Drop Blur) */}
       {showAttachMenu && (
         <div
@@ -1288,7 +1288,8 @@ function PromptActionBarLeft({
         ) : (
           <Eye className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
         )}
-        <span>{workspaceMode === "write" ? "Workspace Write" : "Workspace Read"}</span>
+        <span className="hidden min-[430px]:inline whitespace-nowrap">{workspaceMode === "write" ? "Workspace Write" : "Workspace Read"}</span>
+        <span className="min-[430px]:hidden whitespace-nowrap">{workspaceMode === "write" ? "Write" : "Read"}</span>
         <ChevronDown className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
       </button>
     </div>
@@ -3148,7 +3149,7 @@ export default function ZAPApp() {
       <div className="flex h-screen w-screen bg-[#faf9f6] dark:bg-[#090a0f] text-zinc-600 dark:text-zinc-400 items-center justify-center font-sans text-xs select-none">
         <div className="flex items-center gap-2.5">
           <ZapLogo className="w-[18px] h-[18px] text-[#09090b] dark:text-white animate-pulse" />
-          <span>Memuat ChatZAP Studio...</span>
+          <span>Memuat ChatZAP...</span>
         </div>
       </div>
     );
@@ -3200,7 +3201,7 @@ export default function ZAPApp() {
               <ZapLogo className="w-3.5 h-3.5" />
             </div>
             <span className="font-bold text-sm tracking-tight text-[#09090b] dark:text-white">
-              ChatZAP <span className="font-normal text-[#c4956a]">Studio</span>
+              ChatZAP
             </span>
           </Link>
           <button
@@ -3654,7 +3655,7 @@ export default function ZAPApp() {
                   <ChevronRight className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 group-hover:translate-x-0.5 transition-transform" />
                 </Link>
 
-                {/* 3. Appearance (Tema) — Sleek single-row with 3-icon pill switcher */}
+                {/* 3. Appearance (Tema) - Sleek single-row with 3-icon pill switcher */}
                 <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-slate-100/70 dark:hover:bg-white/[0.06] transition text-slate-700 dark:text-zinc-200">
                   <div className="flex items-center gap-2.5">
                     <Palette className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
@@ -3738,7 +3739,7 @@ export default function ZAPApp() {
           rightPaneFullscreen
             ? "hidden"
             : showRightPane
-            ? "w-full lg:w-1/2 flex-1 border-r border-zinc-200/80 dark:border-white/[0.06]"
+            ? "max-lg:hidden lg:w-1/2 flex-1 border-r border-zinc-200/80 dark:border-white/[0.06]"
             : "w-full"
         }`}
       >
@@ -3834,32 +3835,32 @@ export default function ZAPApp() {
           <div className="flex-1 overflow-y-auto px-4 flex flex-col justify-between">
             <div className="my-auto flex flex-col items-center justify-center text-center py-8">
               {/* Logo + Title: Into the Unknown + Preview */}
-              <div className="flex items-center gap-3 mb-5">
+              <div className="flex items-center justify-center gap-2 sm:gap-3 mb-5 px-1">
                 <ZapLogo className="w-[22px] h-[22px] text-[#09090b] dark:text-white" />
-                <h1 className="text-2xl font-bold tracking-tight text-[#09090b] dark:text-white">Into the Unknown</h1>
+                <h1 className="text-[21px] min-[380px]:text-2xl font-bold tracking-tight text-[#09090b] dark:text-white whitespace-nowrap">Into the Unknown</h1>
                 <span className="text-[11px] font-mono font-semibold px-2.5 py-0.5 rounded-full bg-[#faf4ed] text-[#8f5e32] border border-[#d4a574]/45 dark:bg-white/[0.08] dark:text-zinc-300 dark:border-white/[0.1]">
                   Preview
                 </span>
               </div>
 
               {/* Dropdown Pills above Composer (Interactive Workspace & Pedagogical Mode) */}
-              <div className="w-full max-w-3xl lg:max-w-4xl flex items-center gap-2 mb-2 px-1 text-xs text-slate-500 dark:text-zinc-400 justify-start relative">
+              <div className="w-full max-w-3xl lg:max-w-4xl flex items-center gap-2 mb-2 px-1 text-xs text-slate-500 dark:text-zinc-400 justify-start relative overflow-x-auto no-scrollbar">
                 {/* 1. Workspace Pill */}
-                <div className="relative" ref={pillWorkspaceRef}>
+                <div className="relative shrink-0" ref={pillWorkspaceRef}>
                   <button
                     type="button"
                     onClick={() => {
                       setShowPillWorkspaceMenu((prev) => !prev);
                       setShowPillModeMenu(false);
                     }}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer border ${
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer border whitespace-nowrap ${
                       showPillWorkspaceMenu
                         ? "bg-slate-200 dark:bg-white/[0.1] text-slate-900 dark:text-white border-slate-300 dark:border-white/[0.15]"
                         : "bg-slate-100/80 dark:bg-white/[0.04] text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/80 dark:hover:bg-white/[0.08] border-slate-200 dark:border-white/[0.06]"
                     }`}
                   >
                     <Folder className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
-                    <span>
+                    <span className="max-w-[132px] sm:max-w-none truncate whitespace-nowrap">
                       {workspaces.find((w) => w.id === activeWorkspaceId)?.name || (workspaces.length === 0 ? "Workspace (Opsional)" : "Pilih Workspace")}
                     </span>
                     <ChevronDown className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
@@ -3930,21 +3931,21 @@ export default function ZAPApp() {
                 </div>
 
                 {/* 2. Mode Pill */}
-                <div className="relative" ref={pillModeRef}>
+                <div className="relative shrink-0" ref={pillModeRef}>
                   <button
                     type="button"
                     onClick={() => {
                       setShowPillModeMenu((prev) => !prev);
                       setShowPillWorkspaceMenu(false);
                     }}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer border ${
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer border whitespace-nowrap ${
                       showPillModeMenu
                         ? "bg-slate-200 dark:bg-white/[0.1] text-slate-900 dark:text-white border-slate-300 dark:border-white/[0.15]"
                         : "bg-slate-100/80 dark:bg-white/[0.04] text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/80 dark:hover:bg-white/[0.08] border-slate-200 dark:border-white/[0.06]"
                     }`}
                   >
                     <Atom className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
-                    <span>
+                    <span className="whitespace-nowrap">
                       {interactionMode === "standard"
                         ? "Standard mode"
                         : interactionMode === "strict"
@@ -4106,7 +4107,7 @@ export default function ZAPApp() {
                   <div className="flex items-center justify-between px-3.5 py-2 mb-2.5 rounded-2xl bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/25 dark:border-amber-400/20 text-xs text-amber-700 dark:text-amber-300 animate-fade-in select-none">
                     <div className="flex items-center gap-2 font-medium">
                       <Pencil className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 animate-pulse" />
-                      <span>Mengedit pesan sebelumnya — Tekan Enter atau Kirim untuk memperbarui</span>
+                      <span>Mengedit pesan sebelumnya - Tekan Enter atau Kirim untuk memperbarui</span>
                     </div>
                     <button
                       type="button"
@@ -4192,7 +4193,7 @@ export default function ZAPApp() {
                   className="w-full bg-transparent text-[15px] sm:text-base text-slate-900 dark:text-zinc-100 placeholder-slate-500 dark:placeholder-zinc-400 focus:outline-none focus-visible:ring-0 resize-none font-sans leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed"
                 />
 
-                <div className="flex items-center justify-between pt-2">
+                <div className="flex items-center justify-between gap-2 pt-2 min-w-0">
                   {/* Left Controls with Flyout Menus */}
                   <PromptActionBarLeft
                     showAttachMenu={showAttachMenu}
@@ -4795,7 +4796,7 @@ export default function ZAPApp() {
                   <div className="flex items-center justify-between px-3.5 py-2 mb-2.5 rounded-2xl bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/25 dark:border-amber-400/20 text-xs text-amber-700 dark:text-amber-300 animate-fade-in select-none">
                     <div className="flex items-center gap-2 font-medium">
                       <Pencil className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 animate-pulse" />
-                      <span>Mengedit pesan sebelumnya — Tekan Enter atau Kirim untuk memperbarui</span>
+                      <span>Mengedit pesan sebelumnya - Tekan Enter atau Kirim untuk memperbarui</span>
                     </div>
                     <button
                       type="button"
@@ -4881,7 +4882,7 @@ export default function ZAPApp() {
                 className="w-full bg-transparent text-[15px] sm:text-base text-slate-900 dark:text-zinc-100 placeholder-slate-500 dark:placeholder-zinc-400 focus:outline-none focus-visible:ring-0 resize-none font-sans leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed"
               />
 
-              <div className="flex items-center justify-between pt-2">
+              <div className="flex items-center justify-between gap-2 pt-2 min-w-0">
                 <PromptActionBarLeft
                   showAttachMenu={showAttachMenu}
                   setShowAttachMenu={setShowAttachMenu}
@@ -4946,10 +4947,10 @@ export default function ZAPApp() {
       )}
     </main>
 
-      {/* 3. RIGHT COLUMN ("Start" Workspace / Tools Pane — Persis Screenshot 0 & 2) */}
+      {/* 3. RIGHT COLUMN ("Start" Workspace / Tools Pane - Persis Screenshot 0 & 2) */}
       {showRightPane && (
         <div
-          className={`h-full bg-[#f5f3ef]/70 dark:bg-[#111216] flex flex-col relative overflow-hidden transition-all duration-200 ${
+          className={`h-full bg-[#f5f3ef] dark:bg-[#111216] flex flex-col overflow-hidden transition-all duration-200 max-lg:fixed max-lg:inset-0 max-lg:z-40 lg:relative ${
             rightPaneFullscreen ? "w-full" : "w-full lg:w-1/2 flex-1"
           }`}
         >
@@ -5037,7 +5038,7 @@ export default function ZAPApp() {
                     onClick={() => setRightPaneTab("files")}
                     className="w-full text-left flex items-center justify-between p-3.5 rounded-xl bg-white dark:bg-[#1b1c21] hover:bg-slate-50 dark:hover:bg-[#21232a] border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] transition cursor-pointer group shadow-sm"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/[0.06] flex items-center justify-center text-slate-700 dark:text-zinc-300 flex-shrink-0">
                         <Folder className="w-4 h-4" />
                       </div>
@@ -5050,7 +5051,7 @@ export default function ZAPApp() {
                         </div>
                       </div>
                     </div>
-                    <span className="text-xs font-mono text-slate-600 dark:text-zinc-400 bg-slate-100 dark:bg-white/[0.04] px-2 py-0.5 rounded border border-slate-200 dark:border-white/[0.06]">
+                    <span className="hidden min-[430px]:inline-block shrink-0 whitespace-nowrap text-xs font-mono text-slate-600 dark:text-zinc-400 bg-slate-100 dark:bg-white/[0.04] px-2 py-0.5 rounded border border-slate-200 dark:border-white/[0.06]">
                       Ctrl + Alt + P
                     </span>
                   </button>
@@ -5075,7 +5076,7 @@ export default function ZAPApp() {
                         </div>
                       </div>
                     </div>
-                    <span className="text-xs font-mono text-slate-600 dark:text-zinc-400 bg-slate-100 dark:bg-white/[0.04] px-2 py-0.5 rounded border border-slate-200 dark:border-white/[0.06]">
+                    <span className="hidden min-[430px]:inline-block shrink-0 whitespace-nowrap text-xs font-mono text-slate-600 dark:text-zinc-400 bg-slate-100 dark:bg-white/[0.04] px-2 py-0.5 rounded border border-slate-200 dark:border-white/[0.06]">
                       Ctrl + `
                     </span>
                   </button>

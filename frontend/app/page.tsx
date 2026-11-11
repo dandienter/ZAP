@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useScroll, useSpring } from "framer-motion";
 import {
   ArrowRight,
   Boxes,
@@ -171,6 +171,10 @@ function FadeInOnScroll({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setVisible(true);
+      return;
+    }
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -189,7 +193,7 @@ function FadeInOnScroll({
       ref={ref}
       style={{ transitionDelay: `${delay}ms` }}
       className={`transition-all duration-700 ease-out ${
-        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+        visible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-8 scale-[0.985]"
       } ${className}`}
     >
       {children}
@@ -261,7 +265,7 @@ function PauseAnimationsOffscreen({
     const root = ref.current;
     if (!root) return;
     const rows = root.querySelectorAll<HTMLElement>(
-      ".animate-marquee, .animate-marquee-reverse"
+      ".animate-marquee, .animate-marquee-reverse, .marquee-track, .marquee-track-reverse"
     );
     if (rows.length === 0) return;
     let inView = true;
@@ -325,7 +329,7 @@ const CAROUSEL_PLANS: CarouselPlanCard[] = [
     id: "socratic-studio",
     category: "engine",
     badge: "CORE ENGINE",
-    name: "ZAP Socratic Studio",
+    name: "ChatZAP Socratic",
     descId: "Ruang kerja interaktif untuk latihan derivasi aljabar & bimbingan Sokrates",
     descEn: "Interactive workspace for algebraic derivation & Socratic guidance",
     metricMain: "< 1 ms",
@@ -348,8 +352,8 @@ const CAROUSEL_PLANS: CarouselPlanCard[] = [
       "Automatic Counter-Example on Invalid Steps",
       "70 Verified Backend & Parser Tests",
     ],
-    ctaTextId: "Buka Studio",
-    ctaTextEn: "Open Studio",
+    ctaTextId: "Buka ChatZAP",
+    ctaTextEn: "Open ChatZAP",
     ctaHref: "/chat",
     iconType: "cas",
   },
@@ -552,8 +556,8 @@ const FAQ_ITEMS = [
   {
     qId: "Apa bedanya ChatZAP dengan ChatGPT atau AI penjawab soal biasa?",
     qEn: "How is ChatZAP different from standard ChatGPT or homework-solver AIs?",
-    aId: "AI generatif biasa langsung memberikan jawaban akhir dan sering mengalami halusinasi perhitungan. ChatZAP memisahkan kebenaran matematika (diverifikasi secara deterministik oleh SymPy Computer Algebra System di backend) dari percakapan tutor. Selain itu, semua respons wajib melewati RobustZeroAnswerGuardrail sehingga jawaban akhir tidak pernah bocor—siswa dibimbing menemukan solusinya sendiri.",
-    aEn: "Standard generative AIs immediately hand over final answers and frequently hallucinate arithmetic. ChatZAP strictly separates mathematical truth (verified deterministically by the backend SymPy Computer Algebra System) from conversational tutoring. Every response passes through RobustZeroAnswerGuardrail so final solutions never leak—guiding students to discover the proof themselves.",
+    aId: "AI generatif biasa langsung memberikan jawaban akhir dan sering mengalami halusinasi perhitungan. ChatZAP memisahkan kebenaran matematika (diverifikasi secara deterministik oleh SymPy Computer Algebra System di backend) dari percakapan tutor. Selain itu, semua respons wajib melewati RobustZeroAnswerGuardrail sehingga jawaban akhir tidak pernah bocor - siswa dibimbing menemukan solusinya sendiri.",
+    aEn: "Standard generative AIs immediately hand over final answers and frequently hallucinate arithmetic. ChatZAP strictly separates mathematical truth (verified deterministically by the backend SymPy Computer Algebra System) from conversational tutoring. Every response passes through RobustZeroAnswerGuardrail so final solutions never leak - guiding students to discover the proof themselves.",
   },
   {
     qId: "Bagaimana cara kerja verifikasi simbolik CFL Engine & SymPy CAS?",
@@ -593,6 +597,8 @@ const FAQ_ITEMS = [
 export default function LandingPage() {
   const [lang, setLang] = useState<"id" | "en">("id");
   const [scrolled, setScrolled] = useState(false);
+  const { scrollYProgress } = useScroll();
+  const scrollProgressScaleX = useSpring(scrollYProgress, { stiffness: 120, damping: 26, mass: 0.4 });
   const [megaMenuOpen, setMegaMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -722,6 +728,11 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-[#faf9f6] dark:bg-[#0c0d10] text-[#09090b] dark:text-zinc-50 font-sans selection:bg-[#d4a574]/30 selection:text-black overflow-x-clip">
+      {/* Bilah progres gulir global */}
+      <motion.div
+        style={{ scaleX: scrollProgressScaleX }}
+        className="fixed top-0 left-0 right-0 h-[3px] origin-left bg-[#c4956a] z-[70] pointer-events-none"
+      />
       {/* ====================================================================
        * 1. FLOATING PILL SCROLL-MORPHING HEADER (ai.databyte.co.id style)
        * ==================================================================== */}
@@ -729,11 +740,11 @@ export default function LandingPage() {
         <div
           className={`mx-auto transition-all duration-500 ease-out ${
             scrolled
-              ? "max-w-5xl mt-3 px-4 py-2.5 bg-white/85 dark:bg-[#121317]/85 backdrop-blur-xl border border-zinc-200/80 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.06)] rounded-full"
+              ? "max-w-6xl mt-3 px-4 py-2.5 bg-white/85 dark:bg-[#121317]/85 backdrop-blur-xl border border-zinc-200/80 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.06)] rounded-full"
               : "max-w-6xl px-6 py-4 bg-[#faf9f6]/80 dark:bg-[#0c0d10]/80 backdrop-blur-md border-b border-black/5 dark:border-white/5"
           }`}
         >
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-3">
             {/* Brand Logo */}
             <Link prefetch={false}
               href="/"
@@ -742,13 +753,11 @@ export default function LandingPage() {
               <div className="w-7 h-7 rounded-lg bg-[#09090b] text-white flex items-center justify-center shadow-sm group-hover:bg-[#c4956a] transition-colors">
                 <ZapLogo className="w-4 h-4" />
               </div>
-              <span>
-                ChatZAP <span className="font-normal text-zinc-600 dark:text-zinc-400">Engine</span>
-              </span>
+              <span>ChatZAP</span>
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-1 text-sm text-zinc-600 dark:text-zinc-300">
+            <nav className="hidden lg:flex items-center gap-0.5 text-[13px] text-zinc-600 dark:text-zinc-300">
               {/* Mega Menu Trigger */}
               <div
                 className="relative"
@@ -761,13 +770,13 @@ export default function LandingPage() {
                   aria-expanded={megaMenuOpen}
                   aria-haspopup="true"
                   aria-controls="zap-mega-menu"
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full transition-all duration-200 font-medium ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 font-medium whitespace-nowrap shrink-0 ${
                     megaMenuOpen
                       ? "bg-zinc-900/5 dark:bg-white/10 text-black dark:text-white"
                       : "hover:text-black dark:hover:text-white hover:bg-zinc-900/[0.03] dark:hover:bg-white/[0.06]"
                   }`}
                 >
-                  <span>{lang === "id" ? "Layanan & Modul" : "Modules & Suite"}</span>
+                  <span className="whitespace-nowrap">{lang === "id" ? "Layanan & Modul" : "Modules & Suite"}</span>
                   <ChevronDown
                     className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-300 ${
                       megaMenuOpen ? "rotate-180 text-black" : ""
@@ -810,7 +819,7 @@ export default function LandingPage() {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-semibold text-[#09090b] dark:text-white">
-                                    ZAP Socratic Studio
+                                    ChatZAP Socratic
                                   </span>
                                   <ArrowRight className="w-3.5 h-3.5 text-zinc-300 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-[#09090b] transition-all" />
                                 </div>
@@ -962,7 +971,7 @@ export default function LandingPage() {
                               onClick={() => setMegaMenuOpen(false)}
                               className="inline-flex items-center gap-1 text-xs font-bold text-[#8f5e32] hover:text-[#09090b] transition-colors"
                             >
-                              <span>Studio</span>
+                              <span>ChatZAP</span>
                               <ArrowRight className="w-3.5 h-3.5" />
                             </Link>
                           </div>
@@ -976,34 +985,34 @@ export default function LandingPage() {
               <a
                 href="#explorer"
                 onClick={(e) => scrollToSection(e, "#explorer")}
-                className="px-3.5 py-1.5 rounded-full hover:text-black dark:hover:text-white hover:bg-zinc-900/[0.03] dark:hover:bg-white/[0.06] transition-colors"
+                className="px-3 py-1.5 rounded-full whitespace-nowrap shrink-0 hover:text-black dark:hover:text-white hover:bg-zinc-900/[0.03] dark:hover:bg-white/[0.06] transition-colors"
               >
                 {lang === "id" ? "Uji CAS" : "CAS Explorer"}
               </a>
               <a
                 href="#showcase"
                 onClick={(e) => scrollToSection(e, "#showcase")}
-                className="px-3.5 py-1.5 rounded-full hover:text-black dark:hover:text-white hover:bg-zinc-900/[0.03] dark:hover:bg-white/[0.06] transition-colors"
+                className="px-3 py-1.5 rounded-full whitespace-nowrap shrink-0 hover:text-black dark:hover:text-white hover:bg-zinc-900/[0.03] dark:hover:bg-white/[0.06] transition-colors"
               >
                 {lang === "id" ? "Simulasi" : "Simulation"}
               </a>
               <a
                 href="#jenjang"
                 onClick={(e) => scrollToSection(e, "#jenjang")}
-                className="px-3.5 py-1.5 rounded-full hover:text-black dark:hover:text-white hover:bg-zinc-900/[0.03] dark:hover:bg-white/[0.06] transition-colors"
+                className="px-3 py-1.5 rounded-full whitespace-nowrap shrink-0 hover:text-black dark:hover:text-white hover:bg-zinc-900/[0.03] dark:hover:bg-white/[0.06] transition-colors"
               >
                 {lang === "id" ? "Modul & Jenjang" : "Modules & Tiers"}
               </a>
               <Link prefetch={false}
                 href="/connector"
-                className="px-3.5 py-1.5 rounded-full hover:text-black dark:hover:text-white hover:bg-zinc-900/[0.03] dark:hover:bg-white/[0.06] transition-colors"
+                className="px-3 py-1.5 rounded-full whitespace-nowrap shrink-0 hover:text-black dark:hover:text-white hover:bg-zinc-900/[0.03] dark:hover:bg-white/[0.06] transition-colors"
               >
                 {lang === "id" ? "Konektor BYOK" : "BYOK Connector"}
               </Link>
               <a
                 href="#faq"
                 onClick={(e) => scrollToSection(e, "#faq")}
-                className="px-3.5 py-1.5 rounded-full hover:text-black dark:hover:text-white hover:bg-zinc-900/[0.03] dark:hover:bg-white/[0.06] transition-colors"
+                className="px-3 py-1.5 rounded-full whitespace-nowrap shrink-0 hover:text-black dark:hover:text-white hover:bg-zinc-900/[0.03] dark:hover:bg-white/[0.06] transition-colors"
               >
                 FAQ
               </a>
@@ -1045,7 +1054,7 @@ export default function LandingPage() {
                   size="sm"
                   icon={<Zap className="w-3.5 h-3.5 text-[#d4a574] fill-[#d4a574]" />}
                 >
-                  {lang === "id" ? "Buka Studio" : "Open Studio"}
+                  {lang === "id" ? "Buka ChatZAP" : "Open ChatZAP"}
                 </ActionButton>
               </div>
 
@@ -1056,7 +1065,7 @@ export default function LandingPage() {
                 aria-label="Toggle Menu"
                 aria-expanded={mobileMenuOpen}
                 aria-controls="zap-mobile-menu"
-                className="md:hidden w-9 h-9 rounded-full bg-zinc-900/5 dark:bg-white/10 hover:bg-zinc-900/10 dark:hover:bg-white/15 flex items-center justify-center text-zinc-800 dark:text-zinc-100 transition-colors"
+                className="lg:hidden w-9 h-9 rounded-full bg-zinc-900/5 dark:bg-white/10 hover:bg-zinc-900/10 dark:hover:bg-white/15 flex items-center justify-center text-zinc-800 dark:text-zinc-100 transition-colors"
               >
                 {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
               </button>
@@ -1081,7 +1090,7 @@ export default function LandingPage() {
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-[#faf4ed] dark:bg-white/5 border border-[#d4a574]/35 text-[#09090b] dark:text-white font-semibold"
                 >
-                  <span>ZAP Socratic Studio</span>
+                  <span>ChatZAP Socratic</span>
                   <ArrowRight className="w-4 h-4 text-[#8f5e32]" />
                 </Link>
                 <Link prefetch={false}
@@ -1104,7 +1113,7 @@ export default function LandingPage() {
                   onClick={(e) => scrollToSection(e, "#showcase")}
                   className="px-3.5 py-2.5 rounded-xl hover:bg-[#faf9f6] dark:hover:bg-white/5"
                 >
-                  {lang === "id" ? "Simulasi Terminal & Studio" : "Terminal & Studio Simulation"}
+                  {lang === "id" ? "Simulasi Terminal & Playground" : "Terminal & Playground Simulation"}
                 </a>
                 <a
                   href="#jenjang"
@@ -1130,7 +1139,7 @@ export default function LandingPage() {
               </div>
               <div className="pt-2 border-t border-zinc-100 flex justify-center">
                 <ActionButton href="/chat" variant="black" size="md" className="w-full justify-between">
-                  {lang === "id" ? "Buka ZAP Studio Sekarang" : "Open ZAP Studio Now"}
+                  {lang === "id" ? "Buka ChatZAP Sekarang" : "Open ChatZAP Now"}
                 </ActionButton>
               </div>
             </motion.div>
@@ -1149,13 +1158,27 @@ export default function LandingPage() {
           <ContainerScroll
             titleComponent={
               <div className="max-w-4xl mx-auto text-center">
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 text-xs font-mono font-semibold text-[#8f5e32] dark:text-[#d4a574] mb-5 shadow-sm">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span>
-                    {lang === "id"
-                      ? "SymPy CAS Kernel · Zero-Answer Guardrail · 2D & 3D Smartboard"
-                      : "SymPy CAS Kernel · Zero-Answer Guardrail · 2D & 3D Smartboard"}
-                  </span>
+                <div className="hidden sm:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 text-xs font-mono font-semibold text-[#8f5e32] dark:text-[#d4a574] mb-5 shadow-sm whitespace-nowrap">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                  <span>SymPy CAS Kernel · Zero-Answer Guardrail · 2D &amp; 3D Smartboard</span>
+                </div>
+                <div
+                  className="sm:hidden relative mx-auto mb-5 w-[calc(100vw-3rem)] max-w-[340px] overflow-hidden rounded-full bg-white dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 py-1.5 shadow-sm text-xs font-mono font-semibold text-[#8f5e32] dark:text-[#d4a574]"
+                  role="marquee"
+                  aria-label="SymPy CAS Kernel, Zero-Answer Guardrail, 2D dan 3D Smartboard"
+                  style={{
+                    maskImage: "linear-gradient(to right, transparent, black 10%, black 90%, transparent)",
+                    WebkitMaskImage: "linear-gradient(to right, transparent, black 10%, black 90%, transparent)",
+                  }}
+                >
+                  <div className="marquee-track" style={{ animationDuration: "26s" }}>
+                    {[0, 1].map((copy) => (
+                      <span key={copy} aria-hidden={copy === 1 || undefined} className="flex items-center gap-2 whitespace-nowrap pr-10">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                        <span>SymPy CAS Kernel · Zero-Answer Guardrail · 2D &amp; 3D Smartboard</span>
+                      </span>
+                    ))}
+                  </div>
                 </div>
                 <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-[#09090b] dark:text-white mb-6 leading-[1.12]">
                   {lang === "id" ? (
@@ -1181,7 +1204,7 @@ export default function LandingPage() {
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-4 mb-2">
                   <ActionButton href="/chat" variant="black" size="lg">
-                    {lang === "id" ? "Buka ZAP Studio" : "Open ZAP Studio"}
+                    {lang === "id" ? "Buka ChatZAP" : "Open ChatZAP"}
                   </ActionButton>
                   <ActionButton
                     href="#jenjang"
@@ -1564,7 +1587,7 @@ export default function LandingPage() {
               }}
             >
               {/* Row 1: Left-scrolling Marquee */}
-              <div className="flex w-max animate-marquee gap-3">
+              <div className="marquee-track gap-3 pr-3">
                 {[...MARQUEE_ROW_1, ...MARQUEE_ROW_1].map((item, idx) => (
                   <div
                     key={`r1-${idx}`}
@@ -1587,7 +1610,7 @@ export default function LandingPage() {
               </div>
 
               {/* Row 2: Right-scrolling Reverse Marquee */}
-              <div className="flex w-max animate-marquee-reverse gap-3">
+              <div className="marquee-track-reverse gap-3 pr-3">
                 {[...MARQUEE_ROW_2, ...MARQUEE_ROW_2].map((item, idx) => (
                   <div
                     key={`r2-${idx}`}
@@ -1719,7 +1742,7 @@ export default function LandingPage() {
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-3">
                   <ActionButton href="/chat" variant="gold" size="md">
-                    {lang === "id" ? "Buka ZAP Studio" : "Open ZAP Studio"}
+                    {lang === "id" ? "Buka ChatZAP" : "Open ChatZAP"}
                   </ActionButton>
                   <ActionButton
                     href="/connector"
@@ -1745,77 +1768,77 @@ export default function LandingPage() {
        * 9. EDITORIAL FOOTER (Matching ai.databyte.co.id)
        * ==================================================================== */}
       <footer className="py-12 px-6 border-t border-zinc-200/60 text-xs text-zinc-600 dark:text-zinc-400 max-w-6xl mx-auto">
-        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pb-8 mb-8 border-b border-zinc-200/50 text-zinc-500">
-          <Link prefetch={false} href="/chat" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
-            ZAP Socratic Studio
+        <div className="grid grid-cols-2 gap-x-3 gap-y-3 text-[11px] sm:text-xs sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-6 sm:gap-y-2 pb-8 mb-8 border-b border-zinc-200/50 text-zinc-500">
+          <Link prefetch={false} href="/chat" className="hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap">
+            ChatZAP Socratic
           </Link>
           <Link prefetch={false}
             href="/chat?mode=smartboard"
-            className="hover:text-zinc-900 dark:hover:text-white transition-colors"
+            className="hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap"
           >
             Smartboard Geometri 3D
           </Link>
           <a
             href="#explorer"
             onClick={(e) => scrollToSection(e, "#explorer")}
-            className="hover:text-zinc-900 dark:hover:text-white transition-colors"
+            className="hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap"
           >
             SymPy CAS Sandbox
           </a>
           <a
             href="#showcase"
             onClick={(e) => scrollToSection(e, "#showcase")}
-            className="hover:text-zinc-900 dark:hover:text-white transition-colors"
+            className="hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap"
           >
             CFL Terminal Demo
           </a>
           <a
             href="#jenjang"
             onClick={(e) => scrollToSection(e, "#jenjang")}
-            className="hover:text-zinc-900 dark:hover:text-white transition-colors"
+            className="hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap"
           >
             Kurikulum TK–S3
           </a>
-          <Link prefetch={false} href="/connector" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
+          <Link prefetch={false} href="/connector" className="hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap">
             BYOK Multi-LLM Connector
           </Link>
           <a
             href="#faq"
             onClick={(e) => scrollToSection(e, "#faq")}
-            className="hover:text-zinc-900 dark:hover:text-white transition-colors"
+            className="hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap"
           >
             FAQ &amp; Privasi UU PDP
           </a>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-5 h-5 rounded-md bg-zinc-900 text-white flex items-center justify-center">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-5 sm:gap-4 text-center sm:text-left">
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-2.5">
+            <div className="w-5 h-5 rounded-md bg-zinc-900 text-white flex items-center justify-center shrink-0">
               <ZapLogo className="w-3 h-3" />
             </div>
-            <span className="text-zinc-500">
+            <span className="text-zinc-500 leading-relaxed">
               © 2026 ChatZAP · Zero-Answer Policy Symbolic Reasoning Platform. All rights reserved.
             </span>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-5 text-zinc-500">
-            <Link prefetch={false} href="/chat" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
-              Studio
+          <div className="grid grid-cols-2 gap-x-8 gap-y-2.5 justify-items-center sm:flex sm:flex-wrap sm:justify-center sm:gap-5 text-zinc-500">
+            <Link prefetch={false} href="/chat" className="hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap">
+              Chat
             </Link>
-            <Link prefetch={false} href="/connector" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
+            <Link prefetch={false} href="/connector" className="hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap">
               Connector
             </Link>
             <a
               href="#explorer"
               onClick={(e) => scrollToSection(e, "#explorer")}
-              className="hover:text-zinc-900 dark:hover:text-white transition-colors"
+              className="hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap"
             >
               CAS Verifier
             </a>
             <a
               href="#faq"
               onClick={(e) => scrollToSection(e, "#faq")}
-              className="hover:text-zinc-900 dark:hover:text-white transition-colors"
+              className="hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap"
             >
               Zero-Answer Contract
             </a>
@@ -1886,8 +1909,8 @@ export default function LandingPage() {
                       onClick={() => setWaitlistProduct(null)}
                     >
                       {lang === "id"
-                        ? "Buka ZAP Studio Sekarang"
-                        : "Open ZAP Studio In The Meantime"}
+                        ? "Buka ChatZAP Sekarang"
+                        : "Open ChatZAP In The Meantime"}
                     </ActionButton>
                   </div>
                 </div>

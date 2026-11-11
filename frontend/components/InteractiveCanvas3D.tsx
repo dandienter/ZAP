@@ -49,7 +49,7 @@ export type MathModelType =
   | "solids"
   | "surface";
 
-export type SolidKind = "kubus" | "balok" | "bola" | "kerucut" | "prisma" | "limas";
+export type SolidKind = "kubus" | "balok" | "bola" | "kerucut" | "prisma" | "prisma_segilima" | "prisma_segienam" | "limas";
 
 export type PlaneShapeKind =
   | "jajar_genjang"
@@ -64,7 +64,9 @@ export type PlaneShapeKind =
   | "jaring_kubus"
   | "jaring_limas"
   | "jaring_balok"
-  | "jaring_tabung";
+  | "jaring_tabung"
+  | "segilima"
+  | "segienam";
 
 export interface BoardFormulaItem {
   id: string;
@@ -319,6 +321,8 @@ const SOLID_LABELS: Record<SolidKind, string> = {
   bola: "Bola 3D",
   kerucut: "Kerucut 3D",
   prisma: "Prisma Segitiga 3D",
+  prisma_segilima: "Prisma Segilima 3D",
+  prisma_segienam: "Prisma Segienam 3D",
   limas: "Limas Segi Empat 3D (Piramida)",
 };
 
@@ -341,6 +345,10 @@ const SMART_PRESETS = [
   { label: "Kubus + Irisan", model: "solids" as MathModelType, solid: "kubus" as SolidKind, paramA: 10, unit: "cm", hasSlice: true, desc: "Kubus sisi 10 cm dengan bidang irisan" },
   { label: "Balok 10×6×4", model: "solids" as MathModelType, solid: "balok" as SolidKind, paramA: 10, paramB: 6, paramC: 4, unit: "cm", desc: "Balok ruang p×l×t" },
   { label: "Prisma Segitiga", model: "solids" as MathModelType, solid: "prisma" as SolidKind, paramA: 8, paramB: 10, unit: "cm", desc: "Prisma segitiga geometri ruang" },
+  { label: "Prisma Segilima", model: "solids" as MathModelType, solid: "prisma_segilima" as SolidKind, paramA: 8, paramB: 10, unit: "cm", desc: "Prisma segilima geometri ruang" },
+  { label: "Prisma Segienam", model: "solids" as MathModelType, solid: "prisma_segienam" as SolidKind, paramA: 8, paramB: 10, unit: "cm", desc: "Prisma segienam geometri ruang" },
+  { label: "Segilima 2D", model: "2d_shape" as MathModelType, planeShape: "segilima" as PlaneShapeKind, paramA: 10, unit: "cm", desc: "Segilima beraturan (pentagon) sisi s=10" },
+  { label: "Segienam 2D", model: "2d_shape" as MathModelType, planeShape: "segienam" as PlaneShapeKind, paramA: 10, unit: "cm", desc: "Segienam beraturan (heksagon) sisi s=10" },
   { label: "Piramida / Limas", model: "solids" as MathModelType, solid: "limas" as SolidKind, paramA: 8, paramB: 10, unit: "cm", desc: "Limas tegak segi empat (piramida) p×l×t" },
   { label: "Bola r=7", model: "solids" as MathModelType, solid: "bola" as SolidKind, paramA: 7, unit: "cm", desc: "Bola 3D jari-jari 7 cm" },
   { label: "Tabung r=7", model: "cylinder" as MathModelType, paramA: 7, paramB: 12, unit: "cm", desc: "Silinder ruang radius & tinggi" },
@@ -827,6 +835,28 @@ export default function InteractiveCanvas3D({
       return;
     }
 
+    if (/(segienam|segi enam|segi-6|hexagon|heksagon)/i.test(raw) && is2DRequested) {
+      const s = parsedA || 10;
+      setParamA(s);
+      setUnit(parsedUnit);
+      setPlaneShapeKind("segienam");
+      selectModel("2d_shape");
+      onPlaneShapeChange?.("segienam");
+      onParamsChange?.(s, paramB, paramC, parsedUnit);
+      return;
+    }
+
+    if (/(segilima|segi lima|segi-5|pentagon)/i.test(raw) && is2DRequested) {
+      const s = parsedA || 10;
+      setParamA(s);
+      setUnit(parsedUnit);
+      setPlaneShapeKind("segilima");
+      selectModel("2d_shape");
+      onPlaneShapeChange?.("segilima");
+      onParamsChange?.(s, paramB, paramC, parsedUnit);
+      return;
+    }
+
     if (raw.includes("persegi panjang") || raw.includes("persegipanjang") || raw.includes("rectangle")) {
       const numbers = (raw.match(/\d+(?:[.,]\d+)?/g) || []).map((m) => parseFloat(m.replace(",", ".")));
       const p = numbers[0] || 14;
@@ -929,6 +959,32 @@ export default function InteractiveCanvas3D({
     if (raw.includes("kerucut") || raw.includes("cone") || raw.includes("irisan kerucut")) {
       selectModel("conic_slicer");
       setShowSlicePlane(true);
+      return;
+    }
+
+    if (/(segienam|segi enam|segi-6|hexagon|heksagon)/i.test(raw)) {
+      const p = parsedA || 8;
+      const t = 10;
+      setParamA(p);
+      setParamB(t);
+      setUnit(parsedUnit);
+      setSolidKind("prisma_segienam");
+      setShowSlicePlane(wantsSlice);
+      selectModel("solids");
+      onParamsChange?.(p, t, paramC, parsedUnit);
+      return;
+    }
+
+    if (/(segilima|segi lima|segi-5|pentagon)/i.test(raw)) {
+      const p = parsedA || 8;
+      const t = 10;
+      setParamA(p);
+      setParamB(t);
+      setUnit(parsedUnit);
+      setSolidKind("prisma_segilima");
+      setShowSlicePlane(wantsSlice);
+      selectModel("solids");
+      onParamsChange?.(p, t, paramC, parsedUnit);
       return;
     }
 
@@ -1643,6 +1699,44 @@ export default function InteractiveCanvas3D({
           ctx.arc(vx, vy, 2, 0, Math.PI * 2);
           ctx.fill();
         });
+      } else if (planeShapeKind === "segilima" || planeShapeKind === "segienam") {
+        const s = paramA || 10;
+        const n = planeShapeKind === "segilima" ? 5 : 6;
+        const R = s / (2 * Math.sin(Math.PI / n));
+        const sc = Math.min((width * 0.62) / (2 * R), (height * 0.58) / (2 * R));
+        const Rpx = R * sc;
+        const verts: Array<[number, number]> = [];
+        for (let i = 0; i < n; i++) {
+          const ang = -Math.PI / 2 + (i * 2 * Math.PI) / n;
+          verts.push([originX + Rpx * Math.cos(ang), originY + Rpx * Math.sin(ang)]);
+        }
+        ctx.fillStyle = isDark ? "rgba(16, 185, 129, 0.14)" : "rgba(16, 185, 129, 0.16)";
+        ctx.beginPath();
+        verts.forEach(([vx, vy], i) => (i === 0 ? ctx.moveTo(vx, vy) : ctx.lineTo(vx, vy)));
+        ctx.closePath();
+        ctx.fill();
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = isDark ? "#34d399" : "#059669";
+        ctx.stroke();
+
+        ctx.font = "bold 12px sans-serif";
+        ctx.fillStyle = isDark ? "#34d399" : "#047857";
+        ctx.textAlign = "center";
+        const [mx, my] = [(verts[0][0] + verts[1][0]) / 2, (verts[0][1] + verts[1][1]) / 2];
+        ctx.fillText(`sisi (s) = ${s} ${u}`, mx, my - 10);
+        ctx.textAlign = "left";
+
+        verts.forEach(([vx, vy]) => {
+          ctx.fillStyle = isDark ? "#34d399" : "#059669";
+          ctx.beginPath();
+          ctx.arc(vx, vy, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(vx, vy, 2, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
       } else if (planeShapeKind === "lingkaran") {
         const r = paramA || 7;
         const sc = Math.min((width * 0.65) / (2 * r), (height * 0.6) / (2 * r));
@@ -2231,6 +2325,23 @@ export default function InteractiveCanvas3D({
             { label: "Panjang Diagonal", formula: "d = s√2", value: `${fmt(Number(diagonal.toFixed(2)))} ${u}` },
           ],
         };
+      } else if (planeShapeKind === "segilima" || planeShapeKind === "segienam") {
+        const s = paramA !== undefined ? paramA : 10;
+        const n = planeShapeKind === "segilima" ? 5 : 6;
+        const luas = (n * s * s) / (4 * Math.tan(Math.PI / n));
+        const keliling = n * s;
+        const apotema = s / (2 * Math.tan(Math.PI / n));
+        return {
+          volume: 0,
+          surface: luas,
+          rows: [
+            { label: "Panjang Sisi (s)", formula: "s", value: `${fmt(s)} ${u}` },
+            { label: `Luas ${n === 5 ? "Segilima" : "Segienam"}`, formula: "L = n·s²/(4·tan(π/n))", value: `${fmt(luas)} ${u}²` },
+            { label: "Keliling", formula: `K = ${n}s`, value: `${fmt(keliling)} ${u}` },
+            { label: "Apotema", formula: "a = s/(2·tan(π/n))", value: `${fmt(apotema)} ${u}` },
+          ],
+        };
+
       } else if (planeShapeKind === "lingkaran") {
         const r = paramA !== undefined ? paramA : 7;
         const luas = Math.PI * r * r;
@@ -2412,6 +2523,30 @@ export default function InteractiveCanvas3D({
           ],
         };
       }
+      case "prisma_segilima":
+      case "prisma_segienam": {
+        const s = A;
+        const h = B || Math.round(A * 1.25);
+        const n = solidKind === "prisma_segilima" ? 5 : 6;
+        const luasAlas = (n * s * s) / (4 * Math.tan(Math.PI / n));
+        const kelilingAlas = n * s;
+        const luasSelimut = kelilingAlas * h;
+        const lp = 2 * luasAlas + luasSelimut;
+        const v = luasAlas * h;
+        const namaAlas = n === 5 ? "Segilima" : "Segienam";
+        return {
+          volume: v,
+          surface: lp,
+          rows: [
+            { label: `Sisi Alas ${namaAlas}`, formula: "s", value: `${fmt(s)} ${u}` },
+            { label: "Tinggi Prisma", formula: "t", value: `${fmt(h)} ${u}` },
+            { label: "Luas Alas", formula: "n·s²/(4·tan(π/n))", value: `${fmt(luasAlas)} ${u}²` },
+            { label: "Luas Permukaan", formula: `2·La + ${n}st`, value: `${fmt(lp)} ${u}²` },
+            { label: "Volume", formula: "La × t", value: `${fmt(v)} ${u}³` },
+          ],
+        };
+      }
+
       case "limas": {
         const s = A;
         const h = B || Math.round(A * 1.25);
@@ -2812,10 +2947,11 @@ export default function InteractiveCanvas3D({
         const dimT = createDimensionSprite(`t = ${tVal} ${u}`, isDark);
         dimT.position.set(0.38, coneH / 2 + GRID_Y, 0);
         group.add(dimT);
-      } else if (solidKind === "prisma") {
+      } else if (solidKind === "prisma" || solidKind === "prisma_segilima" || solidKind === "prisma_segienam") {
+        const prismSides = solidKind === "prisma" ? 3 : solidKind === "prisma_segilima" ? 5 : 6;
         const prismR = Math.max(1.2, Math.min(3.5, (paramA / 8) * 1.8));
         const prismH = Math.max(1.8, Math.min(5.0, ((paramB || 10) / 10) * 3.0));
-        geo = new THREE.CylinderGeometry(prismR, prismR, prismH, 3);
+        geo = new THREE.CylinderGeometry(prismR, prismR, prismH, prismSides);
         const mat = new THREE.MeshStandardMaterial({
           color: 0x0284c7,
           transparent: true,
@@ -2826,14 +2962,14 @@ export default function InteractiveCanvas3D({
         });
         const mesh = new THREE.Mesh(geo, mat);
         mesh.position.set(0, prismH / 2 + GRID_Y, 0);
-        mesh.rotation.y = Math.PI / 6;
+        mesh.rotation.y = prismSides === 3 ? Math.PI / 6 : Math.PI / prismSides;
         addEdges(mesh, geo, 0x38bdf8);
         group.add(mesh);
 
-        // 6 Corner handles with 3-Axis Angle Brackets (Sudut Siku)
+        // Corner handles with 3-Axis Angle Brackets (Sudut Siku) di tiap sudut alas/tutup
         cornerHandlesRef.current = [];
-        for (let i = 0; i < 3; i++) {
-          const angle = (i * 2 * Math.PI) / 3 + Math.PI / 6;
+        for (let i = 0; i < prismSides; i++) {
+          const angle = (i * 2 * Math.PI) / prismSides + (prismSides === 3 ? Math.PI / 6 : Math.PI / prismSides);
           const vx = prismR * Math.sin(angle);
           const vz = prismR * Math.cos(angle);
           const dx = -Math.sign(vx) || 1;
@@ -2851,7 +2987,7 @@ export default function InteractiveCanvas3D({
           const tGeo = createCornerBracketGeometry(dx, -1, dz, 0.22, 0.035);
           const tMesh = new THREE.Mesh(tGeo, bMat);
           tMesh.position.set(vx, prismH + GRID_Y, vz);
-          tMesh.userData = { isCornerHandle: true, index: i + 3 };
+          tMesh.userData = { isCornerHandle: true, index: i + prismSides };
           group.add(tMesh);
           cornerHandlesRef.current.push(tMesh);
         }
@@ -2861,11 +2997,15 @@ export default function InteractiveCanvas3D({
         const sVal = paramA || 8;
         const tVal = paramB || 10;
         const dimBase = createDimensionSprite(`s = ${sVal} ${u}`, isDark);
-        dimBase.position.set(0, GRID_Y + 0.14, prismR * 0.866 + 0.10);
+        dimBase.position.set(0, GRID_Y + 0.14, (prismSides === 3 ? prismR * 0.866 : prismR * Math.cos(Math.PI / prismSides)) + 0.10);
         group.add(dimBase);
 
         const dimHeight = createDimensionSprite(`t = ${tVal} ${u}`, isDark);
-        dimHeight.position.set(-prismR * 0.5 - 0.16, prismH / 2 + GRID_Y, prismR * 0.866);
+        if (prismSides === 3) {
+          dimHeight.position.set(-prismR * 0.5 - 0.16, prismH / 2 + GRID_Y, prismR * 0.866);
+        } else {
+          dimHeight.position.set(-prismR - 0.30, prismH / 2 + GRID_Y, 0);
+        }
         group.add(dimHeight);
 
         if (showSlicePlane) {
@@ -3790,6 +3930,8 @@ export default function InteractiveCanvas3D({
                 { id: "kubus", label: "Kubus" },
                 { id: "balok", label: "Balok" },
                 { id: "prisma", label: "Prisma" },
+                { id: "prisma_segilima", label: "Prisma Segilima" },
+                { id: "prisma_segienam", label: "Prisma Segienam" },
                 { id: "limas", label: "Limas" },
                 { id: "tabung", label: "Tabung" },
                 { id: "bola", label: "Bola" },

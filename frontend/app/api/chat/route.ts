@@ -62,12 +62,12 @@ interface HarnessContextResult {
   corpusReferences: CorpusReference[];
 }
 
-async function fetchHarnessMemoryContext(query: string): Promise<HarnessContextResult> {
+async function fetchHarnessMemoryContext(query: string, userId?: string): Promise<HarnessContextResult> {
   try {
     const res = await fetch(`${API_BASE}/api/v1/harness/context`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: query.slice(0, 300), limit: 3 }),
+      body: JSON.stringify({ query: query.slice(0, 300), limit: 3, user_id: userId || undefined }),
       signal: AbortSignal.timeout(1200),
     });
     if (res.ok) {
@@ -143,16 +143,22 @@ function validateCustomBaseUrl(raw: string): { ok: true; url: string } | { ok: f
 function recordTurnToAgentHarness(
   userMessage: string,
   assistantReply: string,
-  activeProblem?: ActiveProblemContext | null
+  activeProblem?: ActiveProblemContext | null,
+  userId?: string
 ): void {
+  const harnessSecret = process.env.ZAP_HARNESS_SECRET || "";
   void fetch(`${API_BASE}/api/v1/harness/learn`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(harnessSecret ? { "X-Harness-Secret": harnessSecret } : {}),
+    },
     body: JSON.stringify({
       user_message: userMessage.slice(0, 500),
       assistant_reply: assistantReply.slice(0, 600),
       explicit_steps: activeProblem?.steps || undefined,
       target_variable: activeProblem?.counterExample?.test_variable || "x",
+      user_id: userId || undefined,
     }),
     signal: AbortSignal.timeout(1500),
   }).catch(() => {
@@ -695,7 +701,7 @@ async function handleChatPost(req: Request) {
     }
 
     // 0c. ZAP MODEL AGENT HARNESS: Ambil Memori Episodik & Rekam Pembelajaran Kontinu dari Percakapan
-    const harnessResult = await fetchHarnessMemoryContext(rawMessage);
+    const harnessResult = await fetchHarnessMemoryContext(rawMessage, identityKey || undefined);
     const harnessMemoryContext = harnessResult.promptInjection;
     if (harnessResult.corpusReferences.length > 0) {
       corpusRefsByRequest.set(req, harnessResult.corpusReferences);
@@ -707,7 +713,7 @@ async function handleChatPost(req: Request) {
       : rawActiveProblem;
     const previousAssistantTurn =
       conversationHistory?.slice().reverse().find((t) => t.role === "assistant")?.content || "";
-    recordTurnToAgentHarness(rawMessage, previousAssistantTurn, rawActiveProblem);
+    recordTurnToAgentHarness(rawMessage, previousAssistantTurn, rawActiveProblem, identityKey || undefined);
 
     let message = rawMessage;
     const textAttachments: Array<{ name: string; content: string }> = [];

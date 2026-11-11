@@ -157,6 +157,20 @@ class ZAPAgentHarness:
             cur.execute("CREATE INDEX IF NOT EXISTS idx_mem_topic ON agent_episodic_memory(topic)")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_mem_tier ON agent_episodic_memory(tier)")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_mem_misconception ON agent_episodic_memory(misconception_type)")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS learner_profiles (
+                    profile_key TEXT PRIMARY KEY,
+                    turns INTEGER DEFAULT 0,
+                    valid_turns INTEGER DEFAULT 0,
+                    fault_turns INTEGER DEFAULT 0,
+                    topics_json TEXT DEFAULT '{}',
+                    strong_topics_json TEXT DEFAULT '{}',
+                    misconceptions_json TEXT DEFAULT '{}',
+                    recent_topics_json TEXT DEFAULT '[]',
+                    first_seen TEXT,
+                    updated_at TEXT
+                )
+            """)
             conn.commit()
 
     @staticmethod
@@ -172,6 +186,7 @@ class ZAPAgentHarness:
         explicit_steps: Optional[List[str]] = None,
         target_var: str = "x",
         tier_hint: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Distill a single user-assistant conversation turn into ZAP's episodic memory
@@ -338,9 +353,19 @@ class ZAPAgentHarness:
             self.corpus_store.insert_batch([corpus_item])
             promoted_to_corpus = True
 
+        learner_profile = None
+        if user_id:
+            learner_profile = self._update_learner_profile(
+                user_id=user_id,
+                topic=topic,
+                cfl_status=cfl_status,
+                misconception_type=misconception_type,
+            )
+
         return {
             "status": "learned",
             "learned": True,
+            "learner_profile": learner_profile,
             "memory_id": memory_id,
             "tier": tier,
             "topic": topic,
@@ -374,6 +399,128 @@ class ZAPAgentHarness:
         with open(self.memory_jsonl_path, "w", encoding="utf-8") as f:
             for item in records.values():
                 f.write(json.dumps(item, ensure_ascii=False) + "\n")
+
+
+    # ------------------------------------------------------ Learner Profile
+    @staticmethod
+    def _profile_key(user_id: str) -> str:
+        """Kunci profil anonim: hash SHA-256 dari identitas pengguna.
+
+        Identitas mentah (email/IP) TIDAK pernah disimpan; hanya hash
+        terpotong yang menjadi kunci baris profil belajar.
+        """
+        digest = hashlib.sha256(user_id.strip().lower().encode("utf-8")).hexdigest()[:16]
+        return f"u_{digest}"
+
+    def _update_learner_profile(
+        self,
+        user_id: str,
+        topic: str,
+        cfl_status: str,
+        misconception_type: Optional[str],
+    ) -> Dict[str, Any]:
+        """Perbarui agregat profil belajar satu pengguna dari satu giliran chat."""
+        key = self._profile_key(user_id)
+        now_iso = datetime.now(timezone.utc).isoformat()
+        is_valid = cfl_status in ("ALL_STEPS_VALID", "SINGLE_EXPRESSION_VALID")
+        is_fault = cfl_status == "FAULT_DETECTED"
+        with sqlite3.connect(self.db_path) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM learner_profiles WHERE profile_key = ?", (key,))
+            row = cur.fetchone()
+            if row:
+                cols = [d[0] for d in cur.description]
+                data = dict(zip(cols, row))
+                topics = json.loads(data.get("topics_json") or "{}")
+                strong = json.loads(data.get("strong_topics_json") or "{}")
+                misc = json.loads(data.get("misconceptions_json") or "{}")
+                recent = json.loads(data.get("recent_topics_json") or "[]")
+                turns = int(data.get("turns") or 0) + 1
+                valid_turns = int(data.get("valid_turns") or 0) + (1 if is_valid else 0)
+                fault_turns = int(data.get("fault_turns") or 0) + (1 if is_fault else 0)
+                first_seen = data.get("first_seen") or now_iso
+            else:
+                topics, strong, misc, recent = {}, {}, {}, []
+                turns, valid_turns, fault_turns = 1, (1 if is_valid else 0), (1 if is_fault else 0)
+                first_seen = now_iso
+            topics[topic] = topics.get(topic, 0) + 1
+            if is_valid:
+                strong[topic] = strong.get(topic, 0) + 1
+            if is_fault and misconception_type:
+                misc[misconception_type] = misc.get(misconception_type, 0) + 1
+            recent = ([topic] + [t for t in recent if t != topic])[:5]
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO learner_profiles (
+                    profile_key, turns, valid_turns, fault_turns, topics_json,
+                    strong_topics_json, misconceptions_json, recent_topics_json,
+                    first_seen, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    key, turns, valid_turns, fault_turns,
+                    json.dumps(topics, ensure_ascii=False),
+                    json.dumps(strong, ensure_ascii=False),
+                    json.dumps(misc, ensure_ascii=False),
+                    json.dumps(recent, ensure_ascii=False),
+                    first_seen, now_iso,
+                ),
+            )
+            conn.commit()
+        return self.get_learner_profile(user_id) or {}
+
+    def get_learner_profile(self, user_id: Optional[str]) -> Optional[Dict[str, Any]]:
+        """Ambil ringkasan profil belajar (agregat saja, tanpa data mentah)."""
+        if not user_id:
+            return None
+        key = self._profile_key(user_id)
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM learner_profiles WHERE profile_key = ?", (key,))
+            row = cur.fetchone()
+        if not row:
+            return {"profile_key": key, "turns": 0, "valid_turns": 0, "fault_turns": 0,
+                    "topics": {}, "strong_topics": {}, "misconceptions": {}, "recent_topics": []}
+        data = dict(row)
+        return {
+            "profile_key": key,
+            "turns": data.get("turns") or 0,
+            "valid_turns": data.get("valid_turns") or 0,
+            "fault_turns": data.get("fault_turns") or 0,
+            "topics": json.loads(data.get("topics_json") or "{}"),
+            "strong_topics": json.loads(data.get("strong_topics_json") or "{}"),
+            "misconceptions": json.loads(data.get("misconceptions_json") or "{}"),
+            "recent_topics": json.loads(data.get("recent_topics_json") or "[]"),
+            "first_seen": data.get("first_seen"),
+            "updated_at": data.get("updated_at"),
+        }
+
+    @staticmethod
+    def _profile_context_lines(profile: Dict[str, Any]) -> List[str]:
+        """Susun blok profil belajar untuk disuntikkan ke prompt tutor."""
+        if not profile or not profile.get("turns"):
+            return []
+        strong = sorted((profile.get("strong_topics") or {}).items(), key=lambda kv: -kv[1])[:3]
+        misc = sorted((profile.get("misconceptions") or {}).items(), key=lambda kv: -kv[1])[:3]
+        lines = [
+            f"  [LEARNER_PROFILE] Pengguna ini sudah berlatih {profile['turns']} giliran terdiagnosis "
+            f"({profile.get('valid_turns', 0)} langkah valid, {profile.get('fault_turns', 0)} ada kesalahan terdeteksi)."
+        ]
+        if strong:
+            lines.append(
+                "    Topik yang pernah dikuasai (langkah terverifikasi valid): "
+                + ", ".join(f"{t} ({n}x)" for t, n in strong)
+                + ". Beri tantangan sedikit lebih tinggi pada topik ini."
+            )
+        if misc:
+            lines.append(
+                "    Pola miskonsepsi yang pernah muncul: "
+                + ", ".join(f"{t} ({n}x)" for t, n in misc)
+                + ". Beri scaffolding ekstra dan contoh penyeimbang bila pola ini muncul lagi."
+            )
+        lines.append("    (Profil ini konteks internal tutor; jangan menyebutkannya secara eksplisit ke pengguna.)")
+        return lines
 
     def retrieve_relevant_memories(self, query: str, limit: int = 3) -> List[Dict[str, Any]]:
         """Retrieve relevant episodic memories ordered by keyword/topic match and hit_count."""
@@ -419,7 +566,7 @@ class ZAPAgentHarness:
 
         return rows
 
-    def build_harness_context(self, query: str, limit: int = 3) -> Dict[str, Any]:
+    def build_harness_context(self, query: str, limit: int = 3, user_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Construct the complete ZAP Agent Harness context for a user query:
         combines Episodic Memory, Verified Math Corpus, and 2D/3D Geometry formulas.
@@ -432,7 +579,11 @@ class ZAPAgentHarness:
 
         geo_match = self.geo_db.resolve_intent(query)
 
+        learner_profile = self.get_learner_profile(user_id) if user_id else None
+
         lines = ["<ZAP_AGENT_HARNESS_CONTEXT>"]
+        if learner_profile:
+            lines.extend(self._profile_context_lines(learner_profile))
         if geo_match:
             lines.append(
                 f"  [GEOMETRY_INTENT] ID={geo_match['id']} ({geo_match['name_id']}, Dimensi={geo_match['dimension']})"
@@ -467,6 +618,7 @@ class ZAPAgentHarness:
             "status": "success",
             "prompt_injection": joined_ctx,
             "harness_context": joined_ctx,
+            "learner_profile": learner_profile,
             "geometry_intent": geo_match,
             "episodic_memories": memories,
             "corpus_references": corpus_matches[:limit],

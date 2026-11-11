@@ -396,7 +396,7 @@ def diagnose_student_scratchpad(request: DiagnoseRequest):
 
 
 # ==========================================
-# ZAP Agent Harness — Continuous Memory & RAG Endpoints
+# ZAP Agent Harness - Continuous Memory & RAG Endpoints
 # ==========================================
 
 class HarnessLearnRequest(BaseModel):
@@ -405,12 +405,14 @@ class HarnessLearnRequest(BaseModel):
     explicit_steps: list[str] | None = Field(default=None, description="Langkah aljabar eksplisit jika ada")
     target_variable: str = Field(default="x", max_length=5, description="Variabel target")
     tier_hint: str | None = Field(default=None, description="Jenjang pendidikan opsional (TK s/d S3)")
+    user_id: str | None = Field(default=None, max_length=320, description="Identitas pengguna (dihash di server menjadi kunci profil anonim)")
 
 
 class HarnessContextRequest(BaseModel):
     query: str = Field(..., description="Kueri atau pesan pengguna yang akan diperkaya dengan memori")
     limit: int | None = Field(default=None, ge=1, le=10, description="Jumlah memori relevan maksimum")
     top_k: int | None = Field(default=None, ge=1, le=10, description="Alias untuk limit")
+    user_id: str | None = Field(default=None, max_length=320, description="Identitas pengguna untuk profil belajar (dihash di server)")
 
 
 @app.post("/api/v1/harness/learn", status_code=status.HTTP_200_OK, tags=["Agent Harness"])
@@ -441,6 +443,7 @@ def harness_learn_from_conversation(req: HarnessLearnRequest, http_request: Requ
         )
 
     result = agent_harness.learn_from_conversation(
+        user_id=req.user_id,
         user_message=req.user_message,
         assistant_reply=req.assistant_reply,
         explicit_steps=req.explicit_steps,
@@ -457,7 +460,14 @@ def harness_retrieve_context(req: HarnessContextRequest):
     MathCorpusStore, dan 2D/3D Geometry Database untuk disuntikkan ke prompt agen.
     """
     effective_limit = req.limit or req.top_k or 3
-    return agent_harness.build_harness_context(query=req.query, limit=effective_limit)
+    return agent_harness.build_harness_context(query=req.query, limit=effective_limit, user_id=req.user_id)
+
+
+@app.get("/api/v1/harness/profile", status_code=status.HTTP_200_OK, tags=["Agent Harness"])
+def harness_learner_profile(user_id: str):
+    """Ringkasan profil belajar per pengguna (agregat topik, langkah valid, dan miskonsepsi)."""
+    profile = agent_harness.get_learner_profile(user_id)
+    return {"status": "success", "learner_profile": profile}
 
 
 @app.get("/api/v1/harness/stats", status_code=status.HTTP_200_OK, tags=["Agent Harness"])

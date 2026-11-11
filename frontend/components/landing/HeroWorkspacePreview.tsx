@@ -97,12 +97,12 @@ export default function HeroWorkspacePreview({
     {
       id: "socratic-studio",
       category: "ai",
-      name: isId ? "ZAP Socratic Studio" : "ZAP Socratic Studio",
+      name: isId ? "ChatZAP Socratic" : "ChatZAP Socratic",
       icon: <SocraticDialogueEmblem className="w-4 h-4" />,
       status: "live" as const,
       badge: "Live",
       route: "/chat",
-      title: isId ? "ZAP Socratic Studio Workspace" : "ZAP Socratic Studio Workspace",
+      title: isId ? "ChatZAP Socratic Workspace" : "ChatZAP Socratic Workspace",
       desc: isId
         ? "Playground interaktif dengan papan tulis matematika, diagnostik aljabar SymPy CAS real-time, dan dialog Sokrates bebas bocoran kunci."
         : "Interactive math workspace with live SymPy CAS algebraic diagnostics, 2D/3D canvas, and Zero-Answer Socratic guidance.",
@@ -230,8 +230,8 @@ export default function HeroWorkspacePreview({
             <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
-          <span className="text-[#09090b] font-semibold">chatzap.ai</span>
-          <span className="text-zinc-600">/studio</span>
+          <span className="text-[#09090b] font-semibold">chatzap.web.id</span>
+          <span className="text-zinc-600">/chat</span>
         </div>
         <div className="w-4" />
       </div>
@@ -256,8 +256,8 @@ export default function HeroWorkspacePreview({
             <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
-          <span className="text-[#09090b] font-medium">chatzap.ai</span>
-          <span className="text-zinc-600">/studio/{activeId}</span>
+          <span className="text-[#09090b] font-medium">chatzap.web.id</span>
+          <span className="text-zinc-600">/chat/{activeId}</span>
         </div>
         <div className="w-[52px] hidden sm:block" />
       </div>
@@ -418,7 +418,7 @@ export default function HeroWorkspacePreview({
             </div>
             <div className="overflow-hidden text-left">
               <div className="text-xs font-bold text-[#09090b] tracking-tight truncate flex items-center gap-1">
-                ChatZAP <span className="text-[#7d551f] font-normal">Studio</span>
+                ChatZAP
               </div>
               <div className="text-[10px] text-zinc-600 font-mono truncate">
                 Deterministic CAS Mode
@@ -451,7 +451,7 @@ export default function HeroWorkspacePreview({
                 size="sm"
                 className="shrink-0"
               >
-                {isId ? "Buka Studio" : "Open Studio"}
+                {isId ? "Buka ChatZAP" : "Open ChatZAP"}
               </ActionButton>
             ) : (
               <ActionButton

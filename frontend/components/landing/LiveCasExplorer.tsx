@@ -125,8 +125,8 @@ export default function LiveCasExplorer({ lang = "id" }: { lang?: "id" | "en" })
         left: pair.left,
         right: pair.right,
         message: isId
-          ? "Server verifikasi tidak terjangkau, sehingga langkah ini belum terverifikasi. Coba lagi nanti atau uji langsung di Studio."
-          : "The verification server is unreachable, so these steps are not yet verified. Try again later or test them in the Studio.",
+          ? "Server verifikasi tidak terjangkau, sehingga langkah ini belum terverifikasi. Coba lagi nanti atau uji langsung di ChatZAP."
+          : "The verification server is unreachable, so these steps are not yet verified. Try again later or test them in ChatZAP.",
       });
     } finally {
       setLoading(false);
@@ -251,8 +251,8 @@ export default function LiveCasExplorer({ lang = "id" }: { lang?: "id" | "en" })
           {mode === "geometry" && (
             <p className="mt-3 text-xs text-zinc-500 leading-relaxed">
               {isId
-                ? "Mode Geometri hanya menampilkan contoh statis. Verifikasi ekuivalensi langkah tersedia di mode Uji Langkah CAS, dan visualisasi 3D interaktif tersedia di Studio."
-                : "Geometry mode only shows a static example. Step equivalence verification is available in Verify CAS Step mode, and interactive 3D visualization is available in the Studio."}
+                ? "Mode Geometri hanya menampilkan contoh statis. Verifikasi ekuivalensi langkah tersedia di mode Uji Langkah CAS, dan visualisasi 3D interaktif tersedia di ChatZAP."
+                : "Geometry mode only shows a static example. Step equivalence verification is available in Verify CAS Step mode, and interactive 3D visualization is available in ChatZAP."}
             </p>
           )}
 
@@ -285,7 +285,7 @@ export default function LiveCasExplorer({ lang = "id" }: { lang?: "id" | "en" })
 
                 <div className="w-full sm:w-auto shrink-0 self-stretch sm:self-center flex items-center">
                   <ActionButton href="/chat" variant="black" size="sm">
-                    {isId ? "Buka di Studio" : "Open in Studio"}
+                    {isId ? "Buka di ChatZAP" : "Open in ChatZAP"}
                   </ActionButton>
                 </div>
               </div>
@@ -344,7 +344,7 @@ export default function LiveCasExplorer({ lang = "id" }: { lang?: "id" | "en" })
 
                 <div className="w-full sm:w-auto shrink-0 self-stretch sm:self-center flex items-center">
                   <ActionButton href="/chat" variant="black" size="sm">
-                    {isId ? "Buka di Studio" : "Open in Studio"}
+                    {isId ? "Buka di ChatZAP" : "Open in ChatZAP"}
                   </ActionButton>
                 </div>
               </div>
