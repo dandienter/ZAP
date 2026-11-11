@@ -4,7 +4,7 @@ ZAP Model Agent Harness & Continuous Conversation Memory Engine
 Provides Claude-style agentic harness capabilities for ZAP:
   1. Continuous Learning from User Conversations (Episodic & Semantic Memory)
   2. Automatic Algebraic Step Extraction & Deterministic SymPy CFL Verification
-  3. Zero-Answer Guardrail Sanitization & PII Redaction (Email, Phone, NIK)
+  3. Zero-Answer Guardrail Sanitization & PII Redaction (Email, Phone, NIK, API Keys)
   4. Automatic Promotion of Verified User Derivations into MathCorpusStore
   5. Dynamic Few-Shot Memory & Knowledge Retrieval (<ZAP_AGENT_HARNESS_CONTEXT>)
 """
@@ -37,6 +37,12 @@ DEFAULT_MEMORY_JSONL_PATH = os.path.join(
 _EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
 _PHONE_RE = re.compile(r"(?:\+62|0)8\d{7,11}")
 _NIK_RE = re.compile(r"\b\d{16}\b")
+_API_KEY_RES = [
+    re.compile(r"sk-[A-Za-z0-9_\-]{10,}"),       # OpenAI-style secret keys
+    re.compile(r"nvapi-[A-Za-z0-9_\-]{10,}"),    # NVIDIA NIM API keys
+    re.compile(r"AIza[A-Za-z0-9_\-]{10,}"),      # Google / Gemini API keys
+    re.compile(r"ghp_[A-Za-z0-9]{10,}"),         # GitHub personal access tokens
+]
 
 # Candidate mathematical line pattern inside natural language messages
 _MATH_LINE_CANDIDATE_RE = re.compile(
@@ -45,10 +51,13 @@ _MATH_LINE_CANDIDATE_RE = re.compile(
 
 
 def redact_pii(text: str) -> str:
-    """Strip emails, phone numbers, and 16-digit NIK identifiers from user text."""
+    """Strip emails, phone numbers, 16-digit NIK identifiers, and API keys from user text."""
     if not text:
         return ""
-    cleaned = _EMAIL_RE.sub("[EMAIL_TERSEMBUNYI]", text)
+    cleaned = text
+    for key_re in _API_KEY_RES:
+        cleaned = key_re.sub("[API_KEY_TERSEMBUNYI]", cleaned)
+    cleaned = _EMAIL_RE.sub("[EMAIL_TERSEMBUNYI]", cleaned)
     cleaned = _PHONE_RE.sub("[TELEPON_TERSEMBUNYI]", cleaned)
     cleaned = _NIK_RE.sub("[NIK_TERSEMBUNYI]", cleaned)
     return cleaned.strip()
@@ -195,7 +204,10 @@ class ZAPAgentHarness:
             if cfl_status == "FAULT_DETECTED":
                 misconception_type = diag.get("misconception_type")
                 counter_example = diag.get("counter_example")
-                sympy_verified = True
+                # A detected fault is a diagnosis, NOT a verification: the
+                # student's derivation is wrong, so it must never be flagged
+                # sympy_verified nor promoted into the corpus.
+                sympy_verified = False
             elif cfl_status == "ALL_STEPS_VALID":
                 sympy_verified = True
         elif len(steps) == 1:
@@ -300,9 +312,10 @@ class ZAPAgentHarness:
 
         self._sync_memory_jsonl(memory_record)
 
-        # 6. Promote to permanent MathCorpusStore if it has SymPy-verified steps
+        # 6. Promote to permanent MathCorpusStore ONLY when the CFL verdict is
+        # ALL_STEPS_VALID and the derivation is genuinely valid (is_valid True).
         promoted_to_corpus = False
-        if sympy_verified and len(steps) >= 2:
+        if cfl_status == "ALL_STEPS_VALID" and sympy_verified and len(steps) >= 2:
             corpus_item = {
                 "id": f"conv_{memory_id}",
                 "tier": tier,

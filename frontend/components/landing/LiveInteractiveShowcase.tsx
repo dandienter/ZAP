@@ -93,6 +93,52 @@ const TERMINAL_SCRIPTS = {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * Mengamati apakah elemen sedang terlihat di viewport.
+ * Loop animasi demo hanya berjalan saat komponen terlihat dan tab aktif,
+ * agar tidak membakar CPU di luar layar.
+ */
+function useInView<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const inViewRef = useRef(true);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        inViewRef.current = entries[0]?.isIntersecting ?? true;
+      },
+      { threshold: 0.1 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return { ref, inViewRef };
+}
+
+/**
+ * sleep() yang berhenti menghitung selama komponen keluar viewport
+ * atau tab browser disembunyikan (document.hidden).
+ */
+function makeGatedSleep(
+  isCancelled: () => boolean,
+  inViewRef: React.MutableRefObject<boolean>
+) {
+  return async (ms: number) => {
+    let remaining = ms;
+    while (remaining > 0) {
+      if (isCancelled()) return;
+      if (!inViewRef.current || document.hidden) {
+        await sleep(200);
+        continue;
+      }
+      const step = Math.min(remaining, 40);
+      await sleep(step);
+      remaining -= step;
+    }
+  };
+}
+
 function TerminalCasDemo({ lang }: { lang: "id" | "en" }) {
   const [typedPrompt, setTypedPrompt] = useState("");
   const [promptFinished, setPromptFinished] = useState(false);
@@ -101,12 +147,14 @@ function TerminalCasDemo({ lang }: { lang: "id" | "en" }) {
   const [activeStreamIndex, setActiveStreamIndex] = useState(-1);
 
   const data = TERMINAL_SCRIPTS[lang] || TERMINAL_SCRIPTS.id;
+  const { ref: rootRef, inViewRef } = useInView<HTMLDivElement>();
 
   useEffect(() => {
     const reducedMotion =
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     let cancelled = false;
+    const gsleep = makeGatedSleep(() => cancelled, inViewRef);
 
     const reset = () => {
       setTypedPrompt("");
@@ -119,7 +167,7 @@ function TerminalCasDemo({ lang }: { lang: "id" | "en" }) {
     (async () => {
       while (!cancelled) {
         reset();
-        await sleep(700);
+        await gsleep(700);
         if (cancelled) return;
 
         if (reducedMotion) {
@@ -128,14 +176,14 @@ function TerminalCasDemo({ lang }: { lang: "id" | "en" }) {
           for (let i = 1; i <= data.prompt.length; i++) {
             if (cancelled) return;
             setTypedPrompt(data.prompt.slice(0, i));
-            await sleep(22);
+            await gsleep(22);
           }
         }
-        await sleep(420);
+        await gsleep(420);
         if (cancelled) return;
 
         setPromptFinished(true);
-        await sleep(450);
+        await gsleep(450);
 
         for (let idx = 0; idx < data.script.length; idx++) {
           if (cancelled) return;
@@ -143,7 +191,7 @@ function TerminalCasDemo({ lang }: { lang: "id" | "en" }) {
           setVisibleSteps(idx + 1);
 
           if (step.kind === "thinking") {
-            await sleep(reducedMotion ? 300 : 1050);
+            await gsleep(reducedMotion ? 300 : 1050);
           } else if (step.kind === "text" || step.kind === "done") {
             setActiveStreamIndex(idx);
             setStreamingText("");
@@ -153,16 +201,16 @@ function TerminalCasDemo({ lang }: { lang: "id" | "en" }) {
               for (let c = 1; c <= step.text.length; c++) {
                 if (cancelled) return;
                 setStreamingText(step.text.slice(0, c));
-                await sleep(13);
+                await gsleep(13);
               }
             }
             setActiveStreamIndex(-1);
-            await sleep(480);
+            await gsleep(480);
           } else {
-            await sleep(reducedMotion ? 200 : 620);
+            await gsleep(reducedMotion ? 200 : 620);
           }
         }
-        await sleep(reducedMotion ? 2000 : 3500);
+        await gsleep(reducedMotion ? 2000 : 3500);
       }
     })();
 
@@ -172,7 +220,7 @@ function TerminalCasDemo({ lang }: { lang: "id" | "en" }) {
   }, [lang, data]);
 
   return (
-    <div className="relative w-full max-w-[760px] mx-auto text-left rounded-2xl border border-zinc-800 bg-[#1a1b1e] shadow-2xl overflow-hidden">
+    <div ref={rootRef} className="relative w-full max-w-[760px] mx-auto text-left rounded-2xl border border-zinc-800 bg-[#1a1b1e] shadow-2xl overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-[#26282c]">
         <div className="flex gap-1.5">
           <span className="w-3 h-3 rounded-full bg-[#ff5f56]" />
@@ -274,7 +322,7 @@ const STUDIO_SCENARIOS = {
         { site: "canvas.3d", title: "Plot Parabola & Titik Puncak" },
       ],
       answer:
-        "Tepat sekali! Sekarang kedua barismu sudah 100% ekuivalen di SymPy CAS. Perhatikan grafik fungsi dan distribusi nilai y di bawah ini—di titik x berapa puncak lengkungan parabola tersebut berbalik arah?",
+        "Tepat sekali! Sekarang kedua barismu sudah ekuivalen di SymPy CAS. Perhatikan grafik fungsi dan distribusi nilai y di bawah ini—di titik x berapa puncak lengkungan parabola tersebut berbalik arah?",
       chart: true,
     },
   ],
@@ -324,6 +372,7 @@ function StudioBrowserDemo({ lang }: { lang: "id" | "en" }) {
   const [attachedFile, setAttachedFile] = useState<string | null>(null);
   const [zoneState, setZoneState] = useState<"none" | "input" | "chat">("none");
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const { ref: rootRef, inViewRef } = useInView<HTMLDivElement>();
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -337,6 +386,7 @@ function StudioBrowserDemo({ lang }: { lang: "id" | "en" }) {
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     const scenarios = STUDIO_SCENARIOS[lang] || STUDIO_SCENARIOS.id;
     let cancelled = false;
+    const gsleep = makeGatedSleep(() => cancelled, inViewRef);
 
     const updateLastAssistant = (patch: Partial<ChatMsg>) => {
       setMessages((prev) => {
@@ -357,7 +407,7 @@ function StudioBrowserDemo({ lang }: { lang: "id" | "en" }) {
         setComposerText("");
         setAttachedFile(null);
         setZoneState("none");
-        await sleep(500);
+        await gsleep(500);
 
         for (const turn of scenarios) {
           if (cancelled) return;
@@ -369,15 +419,15 @@ function StudioBrowserDemo({ lang }: { lang: "id" | "en" }) {
             for (let i = 1; i <= turn.user.length; i++) {
               if (cancelled) return;
               setComposerText(turn.user.slice(0, i));
-              await sleep(20);
+              await gsleep(20);
             }
           }
-          await sleep(300);
+          await gsleep(300);
 
           if (turn.attachment) {
             if (cancelled) return;
             setAttachedFile(turn.attachment);
-            await sleep(850);
+            await gsleep(850);
           }
           if (cancelled) return;
 
@@ -387,7 +437,7 @@ function StudioBrowserDemo({ lang }: { lang: "id" | "en" }) {
           ]);
           setComposerText("");
           setAttachedFile(null);
-          await sleep(450);
+          await gsleep(450);
           if (cancelled) return;
 
           setZoneState("chat");
@@ -406,14 +456,14 @@ function StudioBrowserDemo({ lang }: { lang: "id" | "en" }) {
           ]);
 
           if (checks.length > 0) {
-            await sleep(750);
+            await gsleep(750);
             for (let c = 1; c <= checks.length; c++) {
               if (cancelled) return;
               updateLastAssistant({ searchShown: c });
-              await sleep(reducedMotion ? 120 : 520);
+              await gsleep(reducedMotion ? 120 : 520);
             }
             updateLastAssistant({ searching: false });
-            await sleep(520);
+            await gsleep(520);
           }
           if (cancelled) return;
 
@@ -424,15 +474,15 @@ function StudioBrowserDemo({ lang }: { lang: "id" | "en" }) {
             for (let c = 1; c <= turn.answer.length; c++) {
               if (cancelled) return;
               updateLastAssistant({ answer: turn.answer.slice(0, c) });
-              await sleep(12);
+              await gsleep(12);
             }
           }
           updateLastAssistant({ answering: false });
-          await sleep(reducedMotion ? 1000 : 1800);
+          await gsleep(reducedMotion ? 1000 : 1800);
         }
 
         setZoneState("none");
-        await sleep(reducedMotion ? 3000 : 8000);
+        await gsleep(reducedMotion ? 3000 : 8000);
       }
     })();
 
@@ -478,7 +528,7 @@ function StudioBrowserDemo({ lang }: { lang: "id" | "en" }) {
   };
 
   return (
-    <div className="relative w-full max-w-[760px] mx-auto text-left rounded-2xl border border-zinc-200/80 bg-white shadow-2xl overflow-hidden">
+    <div ref={rootRef} className="relative w-full max-w-[760px] mx-auto text-left rounded-2xl border border-zinc-200/80 bg-white shadow-2xl overflow-hidden">
       {/* Window Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-100 bg-[#faf9f6]">
         <div className="flex gap-1.5">
@@ -559,7 +609,7 @@ function StudioBrowserDemo({ lang }: { lang: "id" | "en" }) {
                                 {r.site[0].toUpperCase()}
                               </span>
                               <span className="font-mono font-medium text-[#09090b]">{r.site}</span>
-                              <span className="hidden sm:inline text-zinc-400 truncate max-w-[160px]">
+                              <span className="hidden sm:inline text-zinc-600 truncate max-w-[160px]">
                                 {r.title}
                               </span>
                             </span>
@@ -627,7 +677,7 @@ function StudioBrowserDemo({ lang }: { lang: "id" | "en" }) {
                               <span>Roots Hidden</span>
                             </div>
                           </div>
-                          <div className="text-[10px] text-zinc-400">
+                          <div className="text-[10px] text-zinc-600">
                             {isId
                               ? "Siswa menemukan titik puncak mandiri"
                               : "Student discovers vertex independently"}
@@ -643,7 +693,7 @@ function StudioBrowserDemo({ lang }: { lang: "id" | "en" }) {
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center text-zinc-300 select-none">
             <ZapLogo className="w-8 h-8 text-zinc-300" />
-            <p className="text-sm mt-3 text-zinc-400">
+            <p className="text-sm mt-3 text-zinc-600">
               {isId
                 ? "Tuliskan langkah aljabar atau pertanyaan ke ChatZAP…"
                 : "Write an algebraic step or ask ChatZAP…"}
@@ -677,7 +727,7 @@ function StudioBrowserDemo({ lang }: { lang: "id" | "en" }) {
                   {zoneState === "input" && <span className="demo-caret" />}
                 </span>
               ) : (
-                <span className="text-zinc-400">
+                <span className="text-zinc-600">
                   {isId
                     ? "Tulis langkah aljabar atau lampirkan soal…"
                     : "Type your derivation step or attach a math problem…"}
@@ -735,35 +785,35 @@ export default function LiveInteractiveShowcase({
   return (
     <section
       id="showcase"
-      className="pt-16 pb-12 sm:pt-24 sm:pb-14 px-4 sm:px-6 bg-[#faf9f6] border-t border-zinc-200/60 scroll-mt-16"
+      className="pt-16 pb-12 sm:pt-24 sm:pb-14 px-4 sm:px-6 bg-[#faf9f6] dark:bg-[#0c0d10] border-t border-zinc-200/60 dark:border-white/10 scroll-mt-16"
     >
       <div className="max-w-5xl mx-auto">
         <div className="text-center max-w-2xl mx-auto mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-zinc-200/80 text-[11px] font-mono font-semibold uppercase tracking-wider text-[#8f5e32] mb-3 shadow-sm">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 text-[11px] font-mono font-semibold uppercase tracking-wider text-[#8f5e32] dark:text-[#d4a574] mb-3 shadow-sm">
             <span className="w-1.5 h-1.5 rounded-full bg-[#c4956a]" />
-            {isId ? "SIMULASI LANGSUNG" : "LIVE SIMULATION"}
+            {isId ? "SIMULASI" : "SIMULATION"}
           </div>
-          <h2 className="font-sans text-2xl sm:text-3xl md:text-4xl font-bold text-[#09090b] mb-3 tracking-tight">
+          <h2 className="font-sans text-2xl sm:text-3xl md:text-4xl font-bold text-[#09090b] dark:text-white mb-3 tracking-tight">
             {isId ? (
               <>
                 Lihat ChatZAP Beraksi{" "}
-                <span className="font-serif font-normal text-[#c4956a]">Secara Langsung</span>
+                <span className="font-serif font-normal text-[#7d551f] dark:text-[#c4956a]">dalam Simulasi</span>
               </>
             ) : (
               <>
                 See ChatZAP in Action{" "}
-                <span className="font-serif font-normal text-[#c4956a]">in Real-Time</span>
+                <span className="font-serif font-normal text-[#7d551f] dark:text-[#c4956a]">in Simulation</span>
               </>
             )}
           </h2>
-          <p className="text-zinc-500 text-sm sm:text-base leading-relaxed">
+          <p className="text-zinc-500 dark:text-zinc-400 text-sm sm:text-base leading-relaxed">
             {isId
               ? "Uji kemampuan verifikasi aljabar SymPy CAS, sensor Zero-Answer Guardrail, dan bimbingan Sokrates interaktif tanpa instalasi rumit."
-              : "Experience deterministic SymPy CAS verification, Zero-Answer Guardrail sanitization, and Socratic scaffolding in real time."}
+              : "Experience deterministic SymPy CAS verification, Zero-Answer Guardrail sanitization, and Socratic scaffolding in this simulation."}
           </p>
 
           <div className="flex items-center justify-center gap-2 mt-6">
-            <div className="inline-flex bg-white p-1.5 rounded-2xl border border-zinc-200/90 shadow-sm flex-wrap justify-center">
+            <div className="inline-flex bg-white dark:bg-white/5 p-1.5 rounded-2xl border border-zinc-200/90 dark:border-white/10 shadow-sm flex-wrap justify-center">
               <button
                 type="button"
                 onClick={() => setActiveTab("terminal")}

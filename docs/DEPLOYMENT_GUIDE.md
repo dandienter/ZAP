@@ -1,12 +1,14 @@
 # Panduan Deployment & Konfigurasi Domain chatzap.web.id
 
-Dokumen ini menjelaskan tata cara deployment ZAP (Zero Answer Policy) ke domain **`chatzap.web.id`** yang telah aktif di DataByte Cloud, arsitektur database (PostgreSQL vs SQLite), serta petunjuk langkah-demi-langkah.
+Dokumen ini menjelaskan tata cara deployment ZAP (Zero Answer Policy) ke domain **`chatzap.web.id`** yang telah aktif di DataByte Cloud, arsitektur database (SQLite), serta petunjuk langkah-demi-langkah.
 
 ---
 
 ## 1. Arsitektur Deployment & Alokasi Database
 
-### A. Apakah Pakai PostgreSQL Saja? Bagaimana Pembagiannya?
+### A. Database yang Dipakai Kode Saat Ini: SQLite
+
+Sesuai kode yang berjalan hari ini, **seluruh data ZAP disimpan di SQLite**. Tidak ada kode backend yang membaca `DATABASE_URL` atau terhubung ke PostgreSQL.
 
 Di aplikasi ZAP, terdapat **2 jenis data** dengan karakteristik yang berbeda:
 
@@ -17,9 +19,9 @@ Di aplikasi ZAP, terdapat **2 jenis data** dengan karakteristik yang berbeda:
 │ 1. Math Corpus & Knowledge Base        │ 2. User Accounts, Chats & Sync          │
 │    (Soal Kurikulum, Teorema, Geometri) │    (Akun Google, Riwayat Sesi, BYOK)    │
 ├────────────────────────────────────────┼─────────────────────────────────────────┤
-│ • Disimpan di: SQLite (data/*.db)      │ • Disimpan di: PostgreSQL               │
-│ • Sifat: Read-Heavy, Embedded di CAS   │ • Sifat: Relasional, Multi-user, ACID   │
-│ • Latensi: < 1 ms (tanpa round-trip)   │ • Enkripsi: AES-256-GCM (UU PDP)        │
+│ • Disimpan di: SQLite (data/*.db)      │ • Disimpan di: SQLite (zapcore Store)   │
+│ • Sifat: Read-Heavy, Embedded di CAS   │ • Sifat: Berkas lokal per deployment    │
+│ • Latensi: < 1 ms (tanpa round-trip)   │ • Enkripsi kunci: AES-256-GCM (vault)   │
 └────────────────────────────────────────┴─────────────────────────────────────────┘
 ```
 
@@ -28,24 +30,23 @@ Di aplikasi ZAP, terdapat **2 jenis data** dengan karakteristik yang berbeda:
    - **Alasannya:** Mesin deterministik SymPy membaca ratusan baris aljabar per detik. Dengan SQLite lokal di container backend, pembacaan data terjadi instan (**< 1 milidetik**) tanpa latency jaringan keluar server.
 
 2. **User Data, Sesi Percakapan & Kredensial Terenkripsi (`zapcore`):**
-   - Menggunakan **PostgreSQL**.
-   - Menangani tabel `users`, `sessions`, `connectors` (kunci API AI terenkripsi), dan `conversations`.
+   - Menggunakan **SQLite** lewat `zapcore/store.py` (lokasi dari `ZAP_DB_PATH`, bawaan `zap_platform.db`).
+   - Menangani tabel `users`, `sessions`, `connectors` (kunci API AI terenkripsi AES-256-GCM oleh vault), dan `conversations`.
 
-### B. Di Mana Database PostgreSQL Ditaruh?
+### B. Bagaimana dengan PostgreSQL di docker-compose.yml?
 
-Anda memiliki 2 opsi terbaik:
+Service `postgres` di `docker-compose.yml` **bersifat opsional dan saat ini tidak dipakai oleh kode mana pun**. Service itu disiapkan untuk kebutuhan masa depan dan **tidak menerbitkan port ke host** (hanya dapat dijangkau dari jaringan internal compose). Bila Anda mengaktifkannya, `POSTGRES_PASSWORD` wajib diisi lewat `.env` (compose akan menolak berjalan bila kosong). Migrasi data pengguna ke PostgreSQL memerlukan perubahan kode di `zapcore/store.py` terlebih dahulu; jangan mengandalkan `DATABASE_URL` karena variabel itu tidak dibaca kode saat ini.
 
-* **Opsi 1 — Managed Cloud Postgres (Paling Praktis, Tanpa Beban VPS):**
-  - Gunakan layanan gratis seperti **Neon.tech** (Serverless Postgres) atau **Supabase**.
-  - **Kelebihan:** Auto-backup, high availability, ada dashboard GUI web, dan tidak memakan RAM/CPU VPS Anda.
-  - Cukup pasang connection string di file `.env`:
-    ```env
-    DATABASE_URL=postgresql://user:password@ep-cool-sample.ap-southeast-1.aws.neon.tech/zap_production?sslmode=require
-    ```
+### C. Layanan Platform (`platform_main.py`) Tidak Dijalankan Compose Secara Bawaan
 
-* **Opsi 2 — Self-Hosted di VPS DataByte (Hemat, 100% di Server Sendiri):**
-  - Sudah disediakan di [`docker-compose.yml`](file:///C:/Users/wakhidpangestu/orca/projects/logicodix/docker-compose.yml) proyek ini.
-  - Begitu Anda menjalankan `docker compose up -d`, service `postgres:16-alpine` otomatis berjalan di port 5432 dengan data tersimpan aman di volume Docker `postgres_data`.
+`docker-compose.yml` menjalankan layanan diagnostik CFL (`backend/main.py`, `main:app`, port 8000). API platform zapcore di `backend/platform_main.py` (autentikasi, gateway, privasi, self-learning) **tidak dijalankan oleh compose secara bawaan**. Untuk memakainya, jalankan sebagai proses terpisah, misalnya:
+
+```bash
+cd backend
+ZAP_ENV=production uvicorn platform_main:app --port 8001
+```
+
+Catatan: dengan `ZAP_ENV=production`, startup platform akan **gagal** bila `ZAP_JWT_SECRET`, kunci master vault, atau `ZAP_GOOGLE_CLIENT_ID` belum diganti dari nilai bawaan pengembangan. Ini disengaja (fail-fast).
 
 ---
 
@@ -97,12 +98,22 @@ cd ZAP
 cp .env.example .env
 nano .env
 ```
-Isi konfigurasi produksi:
+Isi konfigurasi produksi. **Variabel wajib** (compose menolak berjalan dan/atau startup platform gagal bila kosong atau masih bawaan):
+
+- `ADMIN_SECRET` — secret untuk route admin frontend (`/api/admin/security`) dan penanda tangan token pemulihan. Tanpa ini, operasi admin ditolak (fail-closed).
+- `ZAP_JWT_SECRET` — rahasia penanda tangan sesi JWT platform. Harus string acak panjang, bukan nilai bawaan.
+- `ZAP_GOOGLE_CLIENT_ID` — client ID OAuth Google untuk verifikasi ID token (dipakai backend platform dan route `/api/user/sync` di frontend).
+
 ```env
 NEXT_PUBLIC_BACKEND_URL=https://api.chatzap.web.id
+ZAP_ENV=production
+ADMIN_SECRET=buat_secret_admin_acak_panjang_disini
 ZAP_JWT_SECRET=buat_kunci_rahasia_acak_panjang_disini
 ZAP_MASTER_SECRET=buat_passphrase_enkripsi_vault_disini
-DATABASE_URL=postgresql://zap_user:zap_secure_pass@postgres:5432/zap_production
+ZAP_GOOGLE_CLIENT_ID=client_id_oauth_google_anda
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=client_id_oauth_google_anda
+# Hanya bila service postgres opsional diaktifkan:
+POSTGRES_PASSWORD=buat_password_postgres_acak_disini
 ```
 
 ### Langkah 3: Build & Jalankan Container
@@ -156,4 +167,4 @@ Aktifkan SSL gratis dengan Certbot:
 ```bash
 sudo certbot --nginx -d chatzap.web.id -d www.chatzap.web.id -d api.chatzap.web.id
 ```
-*(Catatan: Karena DataByte Anycast DNS menggunakan infrastruktur Cloudflare, SSL fleksibel/full juga otomatis aktif jika proxy diaktifkan).*
+*(Catatan: Bila domain diproksi Cloudflare, atur mode SSL/TLS di dashboard Cloudflare ke **Full (Strict)**, BUKAN Flexible. Mode Flexible membuat koneksi Cloudflare ke origin berjalan tanpa enkripsi dan sertifikat origin tidak diverifikasi, sehingga trafik dapat disadap/diubah di jalur tersebut. Pastikan sertifikat origin (Let's Encrypt via Certbot di atas) terpasang dan valid agar mode Full (Strict) lolos.)*

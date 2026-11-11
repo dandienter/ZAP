@@ -8,7 +8,7 @@
 
 1. **Separation of Concerns (Deterministic CAS vs. Generative LLM):**
    * **Mathematical Truth Tier (Backend):** SymPy Computer Algebra System (`cfl/`) is the sole arbiter of algebraic correctness, equivalence, root conservation, and counter-example generation. No generative LLM may ever decide whether a student's derivation step is mathematically valid.
-   * **Conversational Tier (Frontend / API):** LLM (Gemini 1.5 Flash / Local Socratic Engine) only translates deterministic diagnostic findings into empathetic, Socratic questions.
+   * **Conversational Tier (Frontend / API):** LLM (Gemini 2.0 Flash / Local Socratic Engine) only translates deterministic diagnostic findings into empathetic, Socratic questions.
 2. **Zero-Answer Policy (Immutable):**
    * Under no circumstances may any component output the final numerical/algebraic solution to student scratchpad exercises.
    * All prompts and explanations must pass through `RobustZeroAnswerGuardrail.sanitize(..., final_solution=...)`.

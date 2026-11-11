@@ -980,10 +980,10 @@ export default function ConnectorPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1 leading-relaxed">
             <div className="p-3.5 rounded-2xl bg-[#faf9f6] dark:bg-white/[0.03] border border-zinc-200/70 dark:border-white/[0.06]">
               <div className="font-bold text-[#09090b] dark:text-white mb-1">
-                1. Penyimpanan Enklave Lokal
+                1. Penyimpanan Lokal &amp; Cadangan Akun
               </div>
               <p>
-                Semua kunci API BYOK disimpan langsung di peramban komputer Anda. Server publik tidak pernah mencatat master key Anda.
+                Semua kunci API BYOK disimpan di peramban komputer Anda (localStorage). Jika Anda masuk dengan akun, salinan cadangan konfigurasi Anda, termasuk kunci API, disinkronkan ke vault akun di server agar dapat dipulihkan saat berganti perangkat.
               </p>
             </div>
             <div className="p-3.5 rounded-2xl bg-[#faf9f6] dark:bg-white/[0.03] border border-zinc-200/70 dark:border-white/[0.06]">

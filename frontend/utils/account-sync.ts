@@ -34,12 +34,46 @@ const STORAGE_KEY_PRIMARY = "zap_conversations";
 const STORAGE_KEY_LEGACY = "zap_conversations_v1";
 
 /**
+ * Kunci localStorage untuk Google ID token (JWT kredensial GSI).
+ * Token ini WAJIB disimpan saat login oleh komponen autentikasi:
+ *   saveGoogleIdToken(response.credential)
+ * Endpoint /api/user/sync menolak semua permintaan tanpa token ini,
+ * jadi syncAccountBackup/restoreAccountData bersifat fail-closed:
+ * tanpa token, panggilan ke server TIDAK dilakukan sama sekali.
+ */
+export const GOOGLE_ID_TOKEN_STORAGE_KEY = "zap_google_id_token";
+
+export function saveGoogleIdToken(idToken: string): void {
+  if (typeof window === "undefined" || !idToken) return;
+  try {
+    localStorage.setItem(GOOGLE_ID_TOKEN_STORAGE_KEY, idToken);
+  } catch {}
+}
+
+export function getGoogleIdToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(GOOGLE_ID_TOKEN_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function clearGoogleIdToken(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(GOOGLE_ID_TOKEN_STORAGE_KEY);
+  } catch {}
+}
+
+/**
  * Membersihkan working state sesi lokal saat pengguna keluar atau berganti akun
  */
 export function clearLocalWorkingSession(): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.removeItem("zap_authenticated_user");
+    localStorage.removeItem(GOOGLE_ID_TOKEN_STORAGE_KEY);
     localStorage.removeItem(STORAGE_KEY_PRIMARY);
     localStorage.removeItem(STORAGE_KEY_LEGACY);
     localStorage.removeItem("zap_active_conversation_id");
@@ -217,10 +251,23 @@ export async function syncAccountBackup(
   }
 
   // 2. Kirim pencadangan otomatis ke server (Cloud Auto-Backup)
+  // Fail-closed: tanpa Google ID token, panggilan sync TIDAK dilakukan.
+  const idToken = getGoogleIdToken();
+  if (!idToken) {
+    console.warn(
+      "Sinkronisasi cloud dilewati: Google ID token tidak ditemukan di penyimpanan lokal. " +
+        "Pastikan komponen login menyimpan kredensial via saveGoogleIdToken(response.credential) saat pengguna masuk."
+    );
+    return false;
+  }
+
   try {
     const res = await fetch("/api/user/sync", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${idToken}`,
+      },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(6000),
     });
@@ -247,18 +294,28 @@ export async function restoreAccountData<M = unknown, C = unknown, W = unknown, 
   const userEmail = (user.email || user.id || "").toLowerCase().trim();
   let serverBackup: UserAccountBackupPayload | null = null;
 
-  // 1. Coba ambil dari cloud endpoint
-  try {
-    const url = `/api/user/sync?email=${encodeURIComponent(user.email || "")}&userId=${encodeURIComponent(user.id || "")}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
-    if (res.ok) {
-      const json = await res.json();
-      if (json.exists && json.data) {
-        serverBackup = json.data;
+  // 1. Coba ambil dari cloud endpoint (wajib Google ID token; fail-closed)
+  const idToken = getGoogleIdToken();
+  if (!idToken) {
+    console.warn(
+      "Pemulihan dari cloud dilewati: Google ID token tidak ditemukan di penyimpanan lokal. Beralih ke cache lokal."
+    );
+  } else {
+    try {
+      const url = `/api/user/sync?email=${encodeURIComponent(user.email || "")}&userId=${encodeURIComponent(user.id || "")}`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${idToken}` },
+        signal: AbortSignal.timeout(6000),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.exists && json.data) {
+          serverBackup = json.data;
+        }
       }
+    } catch (netErr) {
+      console.warn("Tidak dapat menghubungi endpoint backup server, beralih ke cache lokal:", netErr);
     }
-  } catch (netErr) {
-    console.warn("Tidak dapat menghubungi endpoint backup server, beralih ke cache lokal:", netErr);
   }
 
   // 2. Jika server belum ada data atau offline, ambil HANYA dari cache akun ini

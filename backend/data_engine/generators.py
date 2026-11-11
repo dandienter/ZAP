@@ -10,12 +10,24 @@ import sympy as sp
 
 from .taxonomy import MATH_TAXONOMY
 
+# Fixed default seed: every generator draws from random.Random(DEFAULT_SEED + idx),
+# so the same idx always yields the same sample (the "deterministic" claim is literal).
+DEFAULT_SEED = 2026
+
+def _fmt_exact(value: float) -> str:
+    """Format an exact area value without truncating a trailing .5."""
+    if float(value) == int(value):
+        return str(int(value))
+    return str(value)
+
+
 def generate_tk_sample(idx: int) -> Dict[str, Any]:
+    rng = random.Random(DEFAULT_SEED + idx)
     types = ["counting", "shape_circle", "shape_triangle", "shape_square"]
     t = types[idx % len(types)]
     
     if t == "counting":
-        count = random.randint(3, 10)
+        count = rng.randint(3, 10)
         return {
             "id": f"zap_tk_count_{idx}",
             "tier": "TK",
@@ -29,7 +41,7 @@ def generate_tk_sample(idx: int) -> Dict[str, Any]:
             "socratic_prompt": f"Coba hitung perlahan-lahan dari 1, 2, 3... sampai apel terakhir."
         }
     elif t == "shape_circle":
-        r = random.randint(3, 8)
+        r = rng.randint(3, 8)
         return {
             "id": f"zap_tk_circle_{idx}",
             "tier": "TK",
@@ -56,7 +68,7 @@ def generate_tk_sample(idx: int) -> Dict[str, Any]:
             "socratic_prompt": "Coba tunjuk dan hitung tiap garis tepi pada segitiga."
         }
     else:
-        s = random.randint(4, 10)
+        s = rng.randint(4, 10)
         return {
             "id": f"zap_tk_square_{idx}",
             "tier": "TK",
@@ -71,13 +83,14 @@ def generate_tk_sample(idx: int) -> Dict[str, Any]:
         }
 
 def generate_sd_sample(idx: int) -> Dict[str, Any]:
+    rng = random.Random(DEFAULT_SEED + idx)
     subtopics = ["jajar_genjang", "trapesium", "segitiga", "lingkaran", "kubus", "balok", "pecahan"]
     sub = subtopics[idx % len(subtopics)]
 
     if sub == "jajar_genjang":
-        alas = random.randint(8, 20)
-        tinggi = random.randint(4, 15)
-        sisi_miring = tinggi + random.randint(2, 6)
+        alas = rng.randint(8, 20)
+        tinggi = rng.randint(4, 15)
+        sisi_miring = tinggi + rng.randint(2, 6)
         luas = alas * tinggi
         keliling = 2 * (alas + sisi_miring)
         return {
@@ -114,10 +127,10 @@ def generate_sd_sample(idx: int) -> Dict[str, Any]:
             "socratic_prompt": f"Ingat: untuk mencari luas jajar genjang, kalikan alas ({alas} cm) dengan tinggi tegak lurus ({tinggi} cm), bukan dengan sisi miring ({sisi_miring} cm)."
         }
     elif sub == "trapesium":
-        a = random.randint(6, 12)
-        b = a + random.randint(4, 8)
-        t = random.randint(4, 10)
-        luas = int(((a + b) * t) / 2)
+        a = rng.randint(6, 12)
+        b = a + rng.randint(4, 8)
+        t = rng.randint(4, 10)
+        luas = ((a + b) * t) / 2  # exact value; a trailing .5 is correct, never truncate
         return {
             "id": f"zap_sd_trapesium_{idx}",
             "tier": "SD",
@@ -130,7 +143,7 @@ def generate_sd_sample(idx: int) -> Dict[str, Any]:
             "formulas": {"luas": "L = ((a + b) * t) / 2"},
             "steps": [
                 f"Jumlah sisi sejajar = {a} + {b} = {a + b}",
-                f"L = (({a + b}) * {t}) / 2 = {luas}"
+                f"L = (({a + b}) * {t}) / 2 = {_fmt_exact(luas)}"
             ],
             "target_variable": "L",
             "canvas_target": {
@@ -141,13 +154,13 @@ def generate_sd_sample(idx: int) -> Dict[str, Any]:
                 "paramC": t,
                 "unit": "cm"
             },
-            "sympy_verification": {"luas_eval": str(luas), "is_valid": True},
+            "sympy_verification": {"luas_eval": _fmt_exact(luas), "is_valid": True},
             "socratic_prompt": "Jumlahkan terlebih dahulu kedua sisi sejajarnya, lalu kalikan dengan tinggi dan bagi dua."
         }
     elif sub == "segitiga":
-        a = random.randint(6, 16)
-        t = random.randint(4, 12)
-        luas = int((a * t) / 2)
+        a = rng.randint(6, 16)
+        t = rng.randint(4, 12)
+        luas = (a * t) / 2  # exact value; a trailing .5 is correct, never truncate
         return {
             "id": f"zap_sd_segitiga_{idx}",
             "tier": "SD",
@@ -158,14 +171,14 @@ def generate_sd_sample(idx: int) -> Dict[str, Any]:
             "question": f"Tentukan luas segitiga yang memiliki alas a = {a} cm dan tinggi t = {t} cm!",
             "parameters": {"alas": a, "tinggi": t, "unit": "cm"},
             "formulas": {"luas": "L = (a * t) / 2"},
-            "steps": [f"L = ({a} * {t}) / 2 = {luas}"],
+            "steps": [f"L = ({a} * {t}) / 2 = {_fmt_exact(luas)}"],
             "target_variable": "L",
             "canvas_target": {"view": "2d_shape", "model": "triangle", "paramA": a, "paramB": t, "unit": "cm"},
-            "sympy_verification": {"luas_eval": str(luas), "is_valid": True},
+            "sympy_verification": {"luas_eval": _fmt_exact(luas), "is_valid": True},
             "socratic_prompt": "Bagaimana hubungan luas segitiga dengan luas persegi panjang yang memiliki alas dan tinggi yang sama?"
         }
     elif sub == "lingkaran":
-        r = random.choice([7, 14, 21, 10])
+        r = rng.choice([7, 14, 21, 10])
         luas = round(math.pi * r * r, 2)
         keliling = round(2 * math.pi * r, 2)
         return {
@@ -185,7 +198,7 @@ def generate_sd_sample(idx: int) -> Dict[str, Any]:
             "socratic_prompt": "Gunakan pi = 22/7 jika r merupakan kelipatan 7 untuk mempermudah perhitungan."
         }
     elif sub == "kubus":
-        s = random.randint(4, 15)
+        s = rng.randint(4, 15)
         vol = s ** 3
         lp = 6 * s * s
         return {
@@ -206,8 +219,8 @@ def generate_sd_sample(idx: int) -> Dict[str, Any]:
         }
     else:
         # Pecahan
-        a, b = random.randint(1, 4), random.randint(2, 5)
-        c, d = random.randint(1, 3), random.randint(2, 4)
+        a, b = rng.randint(1, 4), rng.randint(2, 5)
+        c, d = rng.randint(1, 3), rng.randint(2, 4)
         x = sp.Rational(a, b) + sp.Rational(c, d)
         return {
             "id": f"zap_sd_frac_{idx}",
@@ -223,13 +236,14 @@ def generate_sd_sample(idx: int) -> Dict[str, Any]:
         }
 
 def generate_smp_sample(idx: int) -> Dict[str, Any]:
+    rng = random.Random(DEFAULT_SEED + idx)
     subtopics = ["plsv", "spldv", "pythagoras", "barisan"]
     sub = subtopics[idx % len(subtopics)]
 
     if sub == "plsv":
-        a = random.choice([2, 3, 4, 5])
-        b = random.randint(1, 15)
-        c = random.randint(20, 50)
+        a = rng.choice([2, 3, 4, 5])
+        b = rng.randint(1, 15)
+        c = rng.randint(20, 50)
         sol = sp.Rational(c - b, a)
         return {
             "id": f"zap_smp_plsv_{idx}",
@@ -245,7 +259,7 @@ def generate_smp_sample(idx: int) -> Dict[str, Any]:
         }
     elif sub == "pythagoras":
         triples = [(3, 4, 5), (5, 12, 13), (6, 8, 10), (8, 15, 17), (7, 24, 25)]
-        a, b, c = random.choice(triples)
+        a, b, c = rng.choice(triples)
         return {
             "id": f"zap_smp_pyth_{idx}",
             "tier": "SMP",
@@ -260,10 +274,33 @@ def generate_smp_sample(idx: int) -> Dict[str, Any]:
             "sympy_verification": {"c_eval": str(c), "is_valid": True},
             "socratic_prompt": "Gunakan Teorema Pythagoras: kuadrat sisi miring sama dengan jumlah kuadrat sisi tegak lainnya."
         }
+    elif sub == "barisan":
+        # Barisan Aritmetika: U_n = a + (n - 1) * b
+        a1 = rng.randint(2, 9)
+        beda = rng.randint(2, 6)
+        n = rng.choice([8, 10, 12])
+        un = a1 + (n - 1) * beda
+        return {
+            "id": f"zap_smp_barisan_{idx}",
+            "tier": "SMP",
+            "topic": "Aljabar & Pola Bilangan",
+            "subtopic": "Barisan & Deret Aritmetika",
+            "dimension": "1D",
+            "question": f"Suatu barisan aritmetika memiliki suku pertama a = {a1} dan beda b = {beda}. Tentukan suku ke-{n} (U{n}) dari barisan tersebut!",
+            "parameters": {"a": a1, "beda": beda, "n": n, "un": un},
+            "steps": [
+                "Rumus suku ke-n barisan aritmetika: U_n = a + (n - 1) * b",
+                f"U{n} = {a1} + ({n} - 1) * {beda} = {a1} + {(n - 1) * beda}",
+                f"U{n} = {un}"
+            ],
+            "target_variable": "U_n",
+            "sympy_verification": {"un_eval": str(un), "is_valid": True},
+            "socratic_prompt": f"Perhatikan bahwa setiap suku bertambah tetap sebesar beda b = {beda}. Kenaikan apa yang terjadi dari suku pertama sampai suku ke-{n}?"
+        }
     else:
         # SPLDV
-        x_val = random.randint(1, 5)
-        y_val = random.randint(1, 5)
+        x_val = rng.randint(1, 5)
+        y_val = rng.randint(1, 5)
         c1 = 2 * x_val + 3 * y_val
         c2 = x_val - y_val
         return {
@@ -286,13 +323,14 @@ def generate_smp_sample(idx: int) -> Dict[str, Any]:
         }
 
 def generate_sma_sample(idx: int) -> Dict[str, Any]:
+    rng = random.Random(DEFAULT_SEED + idx)
     subtopics = ["turunan", "integral", "trigonometri", "matriks"]
     sub = subtopics[idx % len(subtopics)]
 
     x = sp.Symbol('x')
     if sub == "turunan":
-        n = random.randint(2, 4)
-        c = random.randint(1, 6)
+        n = rng.randint(2, 4)
+        c = rng.randint(1, 6)
         poly = c * x**n + 3 * x**2 - 5 * x + 7
         deriv = sp.diff(poly, x)
         return {
@@ -348,7 +386,7 @@ def generate_sma_sample(idx: int) -> Dict[str, Any]:
         }
     else:
         # Matriks 2x2
-        a, b, c, d = random.randint(1, 5), random.randint(1, 5), random.randint(1, 5), random.randint(1, 5)
+        a, b, c, d = rng.randint(1, 5), rng.randint(1, 5), rng.randint(1, 5), rng.randint(1, 5)
         det = a * d - b * c
         return {
             "id": f"zap_sma_matrix_{idx}",
@@ -561,4 +599,8 @@ def generate_tier_corpus(tier: str, count: int = 50) -> List[Dict[str, Any]]:
     gen = GENERATORS_BY_TIER.get(tier.upper())
     if not gen:
         raise ValueError(f"Unknown tier '{tier}'. Available: {list(GENERATORS_BY_TIER.keys())}")
-    return [gen(i) for i in range(count)]
+    items = [gen(i) for i in range(count)]
+    for item in items:
+        # Locally generated items carry their real provenance.
+        item.setdefault("source", "generated_local")
+    return items

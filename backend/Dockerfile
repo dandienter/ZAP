@@ -27,6 +27,12 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY backend/ ./backend/
 COPY data/ ./data/
 
+# Jalankan sebagai user non-root
+RUN groupadd --system zapgroup && \
+    useradd --system --gid zapgroup --home-dir /app zapuser && \
+    chown -R zapuser:zapgroup /app
+USER zapuser
+
 WORKDIR /app/backend
 
 # Expose FastAPI port

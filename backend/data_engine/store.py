@@ -77,10 +77,32 @@ class MathCorpusStore:
                 ))
             conn.commit()
 
-        # Update JSONL
-        with open(self.jsonl_path, "a", encoding="utf-8") as f:
-            for it in items:
-                f.write(json.dumps(it, ensure_ascii=False) + "\n")
+        # Update JSONL tanpa duplikasi: muat ID yang sudah ada, lewati item
+        # yang ID-nya sudah tercatat, lalu tulis ulang secara atomik
+        # (file sementara + rename) hanya bila ada item baru.
+        existing_items: List[Dict[str, Any]] = []
+        existing_ids = set()
+        if os.path.exists(self.jsonl_path):
+            with open(self.jsonl_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        obj = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    existing_items.append(obj)
+                    if obj.get("id"):
+                        existing_ids.add(obj["id"])
+
+        new_items = [it for it in items if it.get("id") not in existing_ids]
+        if new_items:
+            tmp_path = f"{self.jsonl_path}.tmp"
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                for obj in existing_items + new_items:
+                    f.write(json.dumps(obj, ensure_ascii=False) + "\n")
+            os.replace(tmp_path, self.jsonl_path)
 
     def query_by_tier(self, tier: str, limit: int = 50) -> List[Dict[str, Any]]:
         with self._get_connection() as conn:

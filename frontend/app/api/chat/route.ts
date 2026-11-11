@@ -20,7 +20,49 @@ interface ActiveProblemContext {
 
 const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
 
-async function fetchHarnessMemoryContext(query: string): Promise<string> {
+interface CorpusReference {
+  id?: string;
+  title?: string;
+  snippet?: string;
+  question?: string;
+  socratic_prompt?: string;
+  tier?: string;
+  subtopic?: string;
+  source?: string;
+}
+
+function normalizeCorpusReferences(raw: unknown): CorpusReference[] {
+  if (!Array.isArray(raw)) return [];
+  const refs: CorpusReference[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const c = item as Record<string, unknown>;
+    const question = typeof c.question === "string" ? c.question : undefined;
+    const socratic = typeof c.socratic_prompt === "string" ? c.socratic_prompt : undefined;
+    const tier = typeof c.tier === "string" ? c.tier : undefined;
+    const subtopic = typeof c.subtopic === "string" ? c.subtopic : undefined;
+    refs.push({
+      id: c.id != null ? String(c.id) : undefined,
+      title:
+        (typeof c.title === "string" && c.title) ||
+        (tier || subtopic ? [tier, subtopic].filter(Boolean).join(" / ") : undefined),
+      snippet: (question || socratic || "").slice(0, 180) || undefined,
+      question,
+      socratic_prompt: socratic,
+      tier,
+      subtopic,
+      source: typeof c.source === "string" ? c.source : undefined,
+    });
+  }
+  return refs.slice(0, 5);
+}
+
+interface HarnessContextResult {
+  promptInjection: string;
+  corpusReferences: CorpusReference[];
+}
+
+async function fetchHarnessMemoryContext(query: string): Promise<HarnessContextResult> {
   try {
     const res = await fetch(`${API_BASE}/api/v1/harness/context`, {
       method: "POST",
@@ -30,14 +72,72 @@ async function fetchHarnessMemoryContext(query: string): Promise<string> {
     });
     if (res.ok) {
       const data = await res.json();
-      if (typeof data?.prompt_injection === "string") {
-        return data.prompt_injection;
-      }
+      return {
+        promptInjection: typeof data?.prompt_injection === "string" ? data.prompt_injection : "",
+        corpusReferences: normalizeCorpusReferences(data?.corpus_references),
+      };
     }
   } catch {
     // Non-blocking fallback when local Python backend is offline
   }
-  return "";
+  return { promptInjection: "", corpusReferences: [] };
+}
+
+// Referensi korpus per-request, disisipkan ke respons JSON oleh wrapper POST
+const corpusRefsByRequest = new WeakMap<Request, CorpusReference[]>();
+
+/**
+ * Validasi SSRF untuk customBaseUrl (endpoint kustom pengguna).
+ * Aturan: hanya HTTPS untuk host publik; HTTP hanya untuk localhost/127.0.0.1/::1
+ * (Ollama lokal). IP privat, link-local (termasuk metadata cloud 169.254.x),
+ * loopback non-localhost-name, dan host internal ditolak.
+ */
+function validateCustomBaseUrl(raw: string): { ok: true; url: string } | { ok: false } {
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return { ok: false };
+  }
+  const host = parsed.hostname.toLowerCase();
+  const isLocalhost = host === "localhost" || host === "127.0.0.1" || host === "::1";
+  if (isLocalhost) {
+    return parsed.protocol === "http:" || parsed.protocol === "https:"
+      ? { ok: true, url: raw }
+      : { ok: false };
+  }
+  if (parsed.protocol !== "https:") {
+    return { ok: false };
+  }
+  if (
+    host === "metadata.google.internal" ||
+    host === "metadata" ||
+    host.endsWith(".internal") ||
+    host.endsWith(".local")
+  ) {
+    return { ok: false };
+  }
+  const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4) {
+    const a = parseInt(ipv4[1], 10);
+    const b = parseInt(ipv4[2], 10);
+    if (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 169 && b === 254) ||
+      a >= 224
+    ) {
+      return { ok: false };
+    }
+  }
+  if (host.startsWith("[") || /^[0-9a-f]*:[0-9a-f:]*$/i.test(host)) {
+    // Literal IPv6 selain ::1 tidak diizinkan (hindari loopback/link-local IPv6)
+    return { ok: false };
+  }
+  return { ok: true, url: raw };
 }
 
 function recordTurnToAgentHarness(
@@ -77,6 +177,8 @@ interface ChatRequestBody {
   customModelName?: string;
   customApiKey?: string;
   userName?: string;
+  // jailbreakStrikes & isSuspended dari klien DIABAIKAN: status keamanan
+  // selalu ditentukan dari registry server (utils/security-vault).
   jailbreakStrikes?: number;
   isSuspended?: boolean;
   userEmail?: string;
@@ -173,6 +275,44 @@ const ZERO_ANSWER_PATTERNS = [
   {
     regex: /\b(\d+\s*[-+*/−]\s*\d+\s*)=\s*[-+−]?\s*\d+(?:[.,]\d+)?\b/gi,
     replacement: "$1 = [Berapakah hasil hitunganmu?]",
+  },
+
+  // 5. Hasil geometri jadi: variabel = angka + satuan luas/volume
+  // (Contoh: "V = 1000 cm³", "L = 600 cm²", "V = 1000 \text{ cm }^3")
+  {
+    regex: /\b[a-zA-Z](?:_\{?[a-zA-Z]+\}?)?\s*(?:=|\\approx|≈)\s*[-+−]?\s*\d+(?:[.,]\d+)?\s*(?:\\text\{\s*(?:cm|m|mm|km|dm)\s*\^\s*[23]\s*\}|(?:cm|m|mm|km|dm)(?:\^?\s*[23]|²|³))/gi,
+    replacement: "[Berapakah nilai yang kamu peroleh dari perhitunganmu?]",
+  },
+
+  // 6. Variabel hasil geometri (V / L) = angka polos atau angka + satuan panjang
+  // (Contoh: "V = 1000", "L = 600 cm")
+  {
+    regex: /\b(?:V|L)\s*(?:=|\\approx|≈)\s*[-+−]?\s*\d+(?:[.,]\d+)?\s*(?:\\text\{\s*(?:cm|m|mm|km|dm|satuan)\s*\}|cm|m|mm|km|dm|satuan)?\b(?!\s*[a-zA-Z(])/gi,
+    replacement: "[Berapakah nilai yang kamu peroleh dari perhitunganmu?]",
+  },
+
+  // 7. Deklarasi verbal: "hasilnya 80.089" / "hasilnya adalah 12"
+  {
+    regex: /(?:hasil(?:nya)?|jawabannya)\s*(?:adalah|:|sama dengan)?\s*[-+−]?\s*\d+(?:[.,]\d+)?(?:\s*(?:cm|m|mm|km|dm|satuan)(?:\^?\s*[23]|²|³)?)?/gi,
+    replacement: "hasilnya [Berapakah hasil perhitunganmu?]",
+  },
+
+  // 8. Deklarasi verbal variabel: "x sama dengan 2"
+  {
+    regex: /\b[a-zA-Z]\s+sama\s+dengan\s*[-+−]?\s*(?:\d+(?:[.,]\d+)?|√\d+)/gi,
+    replacement: "[variabel tersebut sama dengan berapa menurut hitunganmu?]",
+  },
+
+  // 9. Jawaban jadi tebal berdiri sendiri: "**x = 4**"
+  {
+    regex: /\*\*\s*[a-zA-Z]\s*=\s*[-+−]?\s*(?:\d+(?:[.,]\d+)?|√\d+)\s*\*\*/gi,
+    replacement: "**[Berapakah nilainya menurut penalaranmu?]**",
+  },
+
+  // 10. Panah implikasi menuju jawaban jadi: "$\implies x = 3$", "→ x = 3"
+  {
+    regex: /\$?\s*(?:\\implies|\\Rightarrow|\\rightarrow|→|⇒)\s*[a-zA-Z]\s*=\s*[-+−]?\s*(?:\d+(?:[.,]\d+)?|√\d+)\s*\$?/gi,
+    replacement: " [maka berapakah nilainya menurut hitunganmu?]",
   },
 ];
 
@@ -458,7 +598,7 @@ Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentan
   return prompt;
 }
 
-export async function POST(req: Request) {
+async function handleChatPost(req: Request) {
   try {
     let body: ChatRequestBody;
     try {
@@ -493,24 +633,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Pesan tidak boleh kosong" }, { status: 400 });
     }
 
-    // 0. VERIFIKASI KEAMANAN: Cek Status Penangguhan Akun & Sinkronisasi Server
+    // 0. VERIFIKASI KEAMANAN: Status penangguhan & strike SELALU dari registry server.
+    // Nilai isSuspended/jailbreakStrikes dari body klien diabaikan sepenuhnya.
     const userEmail = (body.userEmail || "").trim().toLowerCase();
-    if (userEmail) {
-      const serverSec = getUserSecurityStatus(userEmail);
-      if (serverSec.unbannedAt && (!serverSec.isSuspended || serverSec.unbannedAt > (serverSec.suspendedAt || 0))) {
-        // Akun telah dipulihkan secara resmi oleh Admin Wakhid di server
-        body.isSuspended = false;
-        body.jailbreakStrikes = 0;
-      } else if (serverSec.isSuspended) {
-        body.isSuspended = true;
-      }
-    }
+    const clientIp =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("x-real-ip")?.trim() ||
+      "";
+    const identityKey =
+      userEmail && userEmail !== "anonymous" ? userEmail : clientIp ? `anon:${clientIp}` : "";
+    const serverSec = identityKey ? getUserSecurityStatus(identityKey) : null;
+    const serverSuspended = Boolean(
+      serverSec?.isSuspended &&
+        !(serverSec.unbannedAt && serverSec.unbannedAt > (serverSec.suspendedAt || 0))
+    );
 
-    if (body.isSuspended) {
+    if (serverSuspended) {
       return NextResponse.json(
         {
           isJailbreak: true,
-          strikeCount: 2,
+          strikeCount: serverSec?.strikes ?? 2,
           isSuspended: true,
           reply: `⛔ **AKUN ANDA SEDANG DALAM STATUS DITANGGUHKAN.**\n\nSeluruh hak akses percakapan ke ChatZAP telah dibekukan secara permanen akibat pelanggaran berulang terhadap kebijakan keamanan (percobaan jailbreak/prompt injection).\n\nUntuk pengajuan banding atau permohonan pemulihan akun, silakan hubungi tim administrator melalui email resmi:\n✉️ **wakhidpangestu1@gmail.com**`,
           model: "ChatZAP Security Sentinel (Akun Ditangguhkan)",
@@ -523,29 +665,27 @@ export async function POST(req: Request) {
     // 0b. VERIFIKASI KEAMANAN: Deteksi Percobaan Jailbreak & Prompt Injection
     const jailbreakCheck = detectJailbreakAttempt(rawMessage);
     if (jailbreakCheck.isJailbreak) {
-      const currentStrikes = typeof body.jailbreakStrikes === "number" ? body.jailbreakStrikes : 0;
+      const newStrikes = (serverSec?.strikes || 0) + 1;
+      const nowSuspended = newStrikes >= 2;
+      if (identityKey) {
+        recordUserSecurityViolation(identityKey, newStrikes, nowSuspended, jailbreakCheck.reason);
+      }
 
-      if (currentStrikes === 0) {
-        // STRIKE 1: Peringatan Keras Resmi (Pelanggaran 1/2)
-        if (userEmail) {
-          recordUserSecurityViolation(userEmail, 1, false, jailbreakCheck.reason);
-        }
+      if (!nowSuspended) {
+        // STRIKE 1: Peringatan Keras Resmi (Pelanggaran 1/2) - sudah dicatat di server di atas
         return NextResponse.json({
           isJailbreak: true,
-          strikeCount: 1,
+          strikeCount: newStrikes,
           isSuspended: false,
           reply: `⚠️ **PERINGATAN KEAMANAN CHATZAP (Pelanggaran 1/2):**\n\nSistem kami mendeteksi adanya upaya **manipulasi instruksi / prompt injection (jailbreak)** pada pesan yang Anda kirimkan (*${jailbreakCheck.reason}*).\n\n**Ketentuan Layanan ChatZAP:**\n- ChatZAP beroperasi di bawah prinsip integritas edukasi dan **Zero-Answer Policy (ZAP)**.\n- Segala bentuk usaha override sistem, manipulasi peran, atau penyelundupan payload biner/art dilarang keras.\n\n🛑 **PERINGATAN KRITIS:** Akun Anda **TIDAK AKAN DAPAT DIAKSES LAGI (DITANGGUHKAN / SUSPENDED SECARA PERMANEN)** jika terdeteksi melakukan percobaan jailbreak **1 KALI LAGI**!\n\nSilakan gunakan ChatZAP sesuai etika pembelajaran matematika dan konsultasi konsep secara sehat.`,
           model: "ChatZAP Security Sentinel (Peringatan 1/2)",
           source: "jailbreak-warning",
         });
       } else {
-        // STRIKE 2: Akun Ditangguhkan Permanen (Pelanggaran 2/2)
-        if (userEmail) {
-          recordUserSecurityViolation(userEmail, 2, true, jailbreakCheck.reason);
-        }
+        // STRIKE 2: Akun Ditangguhkan Permanen (Pelanggaran 2/2) - sudah dicatat di server di atas
         return NextResponse.json({
           isJailbreak: true,
-          strikeCount: 2,
+          strikeCount: newStrikes,
           isSuspended: true,
           reply: `⛔ **AKSES AKUN DITANGGUHKAN PERMANEN (ACCOUNT SUSPENDED)**\n\nAkun Anda telah dinonaktifkan dan seluruh hak akses percakapan ke ChatZAP telah **DIBEKUKAN** karena terdeteksi melakukan pelanggaran keamanan berulang (jailbreak/prompt injection).\n\n- **Status Akun:** Ditangguhkan (Suspended)\n- **Pelanggaran:** Percobaan manipulasi sistem / jailbreak untuk kedua kalinya (*${jailbreakCheck.reason}*).\n- **Dampak:** Kolom obrolan ChatZAP telah dikunci dan dinonaktifkan.\n\n**Prosedur Laporan & Pemulihan Akun:**\nJika Anda meyakini ini adalah sebuah kekeliruan atau ingin mengajukan permohonan pemulihan akun, silakan hubungi administrator resmi kami melalui email:\n✉️ **wakhidpangestu1@gmail.com**\n*(Sertakan Nama Lengkap, Alamat Email terdaftar, dan penjelasan permohonan banding).*`,
           model: "ChatZAP Security Sentinel (Akun Ditangguhkan)",
@@ -555,7 +695,11 @@ export async function POST(req: Request) {
     }
 
     // 0c. ZAP MODEL AGENT HARNESS: Ambil Memori Episodik & Rekam Pembelajaran Kontinu dari Percakapan
-    const harnessMemoryContext = await fetchHarnessMemoryContext(rawMessage);
+    const harnessResult = await fetchHarnessMemoryContext(rawMessage);
+    const harnessMemoryContext = harnessResult.promptInjection;
+    if (harnessResult.corpusReferences.length > 0) {
+      corpusRefsByRequest.set(req, harnessResult.corpusReferences);
+    }
     const activeProblem: ActiveProblemContext | null | undefined = rawActiveProblem
       ? { ...rawActiveProblem, harnessMemoryContext: harnessMemoryContext || undefined }
       : harnessMemoryContext
@@ -715,7 +859,13 @@ export async function POST(req: Request) {
       modelId === "gpt-oss-20b" ||
       modelId === "gemma-4-31b-it"
     ) {
-      const systemNvidiaKey = process.env.NVIDIA_API_KEY?.trim() || "";
+      // Kunci sistem NVIDIA: NVIDIA_API_KEY, atau kunci platform LLM bila
+      // platform memang diarahkan ke NVIDIA NIM (satu akun, satu kunci).
+      const systemNvidiaKey =
+        process.env.NVIDIA_API_KEY?.trim() ||
+        ((process.env.ZAP_PLATFORM_LLM_BASE_URL || "").includes("integrate.api.nvidia.com")
+          ? process.env.ZAP_PLATFORM_LLM_API_KEY?.trim() || ""
+          : "");
       const targetBase = "https://integrate.api.nvidia.com/v1";
       let targetModel = "nvidia/nemotron-3.5-bolt-e4b";
       let targetFriendlyName = "Auto-Agent (Nemotron-3.5 Bolt Tutor)";
@@ -863,6 +1013,15 @@ export async function POST(req: Request) {
     // 1. Panggil Custom Model API (Ollama / vLLM / LMStudio / Proxy)
     if (modelId === "custom-api") {
       const targetBase = customBaseUrl?.trim() || "http://localhost:11434/v1";
+      const urlCheck = validateCustomBaseUrl(targetBase);
+      if (!urlCheck.ok) {
+        const socraticFallback = generateSocraticFallbackResponse(message, activeProblem);
+        return NextResponse.json({
+          reply: `⚠️ **URL Custom Model Ditolak:** alamat tujuan harus berupa HTTPS publik, atau localhost untuk Ollama lokal. Alamat IP privat, link-local, dan metadata cloud tidak diizinkan.\n\n*Sementara ini asisten lokal ZAP menjawab pertanyaanmu:*\n\n---\n\n${socraticFallback}`,
+          model: "Local Socratic (Custom API Warning)",
+          source: "fallback-with-warning",
+        });
+      }
       const targetModel = customModelName?.trim() || "llama3.3";
       try {
         const customRes = await callCustomOpenAIAPI(
@@ -887,7 +1046,7 @@ export async function POST(req: Request) {
         if (customRes.error) {
           const socraticFallback = generateSocraticFallbackResponse(message, activeProblem);
           return NextResponse.json({
-            reply: `⚠️ **Gagal terhubung ke Custom Model (${targetBase}):**\n${customRes.error}\n\n*Sementara ini asisten lokal ZAP menjawab pertanyaanmu:*\n\n---\n\n${socraticFallback}`,
+            reply: `⚠️ **Gagal terhubung ke Custom Model:**\n${customRes.error}\n\n*Sementara ini asisten lokal ZAP menjawab pertanyaanmu:*\n\n---\n\n${socraticFallback}`,
             model: "Local Socratic (Custom API Warning)",
             source: "fallback-with-warning",
           });
@@ -1234,6 +1393,36 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Wrapper POST publik: menjalankan handler chat, lalu menyisipkan
+ * corpus_references (referensi korpus dari agent harness) ke respons JSON
+ * yang memuat balasan, agar UI dapat menampilkan sitasi "Sumber & acuan".
+ */
+export async function POST(req: Request) {
+  const res = await handleChatPost(req);
+  const refs = corpusRefsByRequest.get(req);
+  if (!refs || refs.length === 0) return res;
+  try {
+    const data = await res.clone().json();
+    if (
+      data &&
+      typeof data === "object" &&
+      typeof (data as { reply?: unknown }).reply === "string" &&
+      !("corpus_references" in data)
+    ) {
+      const headers = new Headers(res.headers);
+      headers.delete("content-length");
+      return NextResponse.json(
+        { ...(data as Record<string, unknown>), corpus_references: refs },
+        { status: res.status, headers }
+      );
+    }
+  } catch {
+    // Respons non-JSON: teruskan apa adanya
+  }
+  return res;
 }
 
 // Cache nama model resmi yang terbukti sukses dan aktif di akun API Key ini
@@ -1938,9 +2127,18 @@ async function callCustomOpenAIAPI(
 
 /**
  * Built-in Socratic Cognitive Agent
- * Memberikan respons cerdas dan kontekstual secara lokal tanpa dependensi eksternal
+ * Memberikan respons cerdas dan kontekstual secara lokal tanpa dependensi eksternal.
+ * Semua keluaran WAJIB melewati sanitizeZeroAnswer (Zero-Answer Policy) di
+ * wrapper generateSocraticFallbackResponse, termasuk jalur fallback lokal.
  */
 function generateSocraticFallbackResponse(
+  message: string,
+  activeProblem?: ActiveProblemContext | null
+): string {
+  return sanitizeZeroAnswer(buildSocraticFallbackResponse(message, activeProblem));
+}
+
+function buildSocraticFallbackResponse(
   message: string,
   activeProblem?: ActiveProblemContext | null
 ): string {
@@ -2015,7 +2213,7 @@ Silakan berinteraksi dengan kanvas 3D di samping atau ketik *"buatkan 3d cube"* 
     return `**Aljabar** adalah cabang matematika yang menggunakan simbol atau huruf (seperti $x$, $y$, $a$, $b$) untuk mewakili angka atau kuantitas yang belum diketahui (*variabel*).
 
 **Mengapa Aljabar Sangat Penting?**
-1. **Menemukan Nilai yang Belum Diketahui:** Aljabar membantu kita menyelesaikan teka-teki kuantitatif secara sistematis, misalnya: $2x + 4 = 10 \\implies x = 3$.
+1. **Menemukan Nilai yang Belum Diketahui:** Aljabar membantu kita menyelesaikan teka-teki kuantitatif secara sistematis, misalnya teka-teki $2x + 4 = 10$: nilai $x$ kamu temukan sendiri dengan memindahkan ruas secara seimbang.
 2. **Merumuskan Pola & Hukum Umum:** Alih-alih menghitung satu per satu, kita bisa merumuskan hubungan umum seperti ekspansi kuadrat $(a + b)^2 = a^2 + 2ab + b^2$.
 3. **Fondasi Sains & Teknologi:** Dunia kecerdasan buatan, pemrograman, grafika komputer, hingga rumus fisika modern semuanya dirancang menggunakan bahasa aljabar.
 
@@ -2072,7 +2270,7 @@ Ada dua suku tengah $3x + 3x = 6x$. Suku $6x$ inilah yang hilang di baris ke-2!`
     }
 
     if (activeProblem?.misconceptionType === "ROOT_LOSS") {
-      return `Kesalahan terjadi saat menarik akar kuadrat pada kedua ruas. Ingat bahwa persamaan kuadrat seperti $x^2 = 4$ memiliki **dua** kemungkinan nilai akar, yaitu $x = 2$ dan $x = -2$ (karena $(-2)^2$ juga sama dengan 4). Jika kamu hanya mengambil nilai positif, kamu kehilangan separuh dari himpunan penyelesaiannya!`;
+      return `Kesalahan terjadi saat menarik akar kuadrat pada kedua ruas. Ingat bahwa persamaan kuadrat umumnya memiliki **dua** kemungkinan akar yang berlawanan tanda, karena bilangan negatif yang dikuadratkan juga menghasilkan nilai positif yang sama. Jika kamu hanya mengambil akar positif, kamu kehilangan separuh dari himpunan penyelesaiannya! Coba periksa: bilangan apa saja yang kuadratnya sama dengan ruas kanan persamaanmu?`;
     }
 
     if (activeProblem?.explanation) {
@@ -2098,17 +2296,18 @@ Coba telaah kembali aturan operasi yang menghubungkan baris tersebut dengan bari
     lower.includes("(x+3)^2");
 
   if (isAskingBinomial) {
-    return `Suku $2ab$ (atau $6x$ pada kasus $(x+3)^2$) muncul karena sifat distributif perkalian aljabar:
-$$ (a + b)^2 = (a + b)(a + b) = a^2 + ab + ba + b^2 = a^2 + 2ab + b^2 $$
+    return `Suku $2ab$ (atau $6x$ pada kasus $(x+3)^2$) muncul karena sifat distributif perkalian aljabar. Mulailah dari bentuk perkaliannya:
+$$ (a + b)^2 = (a + b)(a + b) $$
+Kalikan suku-demi-suku, lalu gabungkan suku-suku sejenisnya. Suku silang yang muncul dua kali itulah asal-usul $2ab$.
 
 **Secara Visual (Model Luas Geometri):**
 Bayangkan sebuah persegi dengan panjang sisi $(x + 3)$.
 Luas total persegi tersebut tersusun dari 4 bidang:
-1. Satu bidang persegi berukuran $x \\times x = x^2$
-2. Dua bidang persegi panjang berukuran $x \\times 3 = 3x$ (total $6x$)
-3. Satu bidang persegi kecil berukuran $3 \\times 3 = 9$
+1. Satu bidang persegi berukuran $x \\times x$
+2. Dua bidang persegi panjang berukuran $x \\times 3$
+3. Satu bidang persegi kecil berukuran $3 \\times 3$
 
-Total luas adalah $x^2 + 6x + 9$. Tanpa suku $6x$, luasnya tidak akan pernah lengkap!`;
+Coba tuliskan luas masing-masing bidang lalu jumlahkan keempatnya. Bentuk lengkap apa yang kamu peroleh? Tanpa suku tengahnya, luas itu tidak akan pernah lengkap!`;
   }
 
   // 5. PERTANYAAN TENTANG CARA MENYELESAIKAN / PETUNJUK ("Gimana caranya?", "Bantu benerin")
@@ -2149,11 +2348,11 @@ Coba tuliskan perbaikan baris berikutnya di kolom chat dan kirimkan, aku akan la
     return `Pengujian dengan angka nyata (seperti $x = 2$) adalah cara paling mudah untuk membuktikan apakah dua rumus matematika benar-benar ekuivalen:
 
 Jika dua rumus memang sama identik, maka saat dimasukkan angka berapa pun, hasilnya HARUS selalu sama.
-Ketika $x = 2$ dimasukkan:
-- Rumus awal: $(2 + 3)^2 - 4 = 5^2 - 4 = 25 - 4 = 21$.
-- Rumus tanpa suku tengah ($x^2 + 5$): $2^2 + 5 = 4 + 5 = 9$.
+Coba masukkan $x = 2$ ke kedua rumus:
+- Hitung nilai rumus awal: $(2 + 3)^2 - 4$.
+- Hitung nilai rumus tanpa suku tengah: $2^2 + 5$.
 
-Karena $21 \\neq 9$, ini membuktikan secara mutlak bahwa langkah penurunan tersebut tidak ekuivalen!`;
+Bandingkan kedua hasil hitunganmu. Jika nilainya berbeda, itu membuktikan secara mutlak bahwa langkah penurunan tersebut tidak ekuivalen! Berapakah selisih yang kamu temukan?`;
   }
 
   // 7. PERTANYAAN UMUM TENTANG ZAP ATAU CARA PAKAI

@@ -47,12 +47,111 @@ import {
   ZeroAnswerEmblem,
 } from "@/components/PlatformIcons";
 
+import dynamic from "next/dynamic";
 import ActionButton from "@/components/landing/ActionButton";
 import HeroWorkspacePreview, {
   ContainerScroll,
 } from "@/components/landing/HeroWorkspacePreview";
-import LiveCasExplorer from "@/components/landing/LiveCasExplorer";
-import LiveInteractiveShowcase from "@/components/landing/LiveInteractiveShowcase";
+
+// Below-the-fold sections are code-split into separate chunks so the initial
+// landing JS stays small. Placeholders reserve equivalent space (no CLS).
+function ExplorerPlaceholder() {
+  return (
+    <div
+      aria-hidden="true"
+      className="w-full bg-gradient-to-r from-[#ba8852] via-[#c4956a] to-[#d4a574] py-12 sm:py-16 px-4 sm:px-6 lg:px-8"
+    >
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-white/60 min-h-[400px] sm:min-h-[430px]" />
+        <div className="min-h-[38px] mt-5" />
+      </div>
+    </div>
+  );
+}
+function ShowcasePlaceholder() {
+  return (
+    <div
+      aria-hidden="true"
+      className="pt-16 pb-12 sm:pt-24 sm:pb-14 px-4 sm:px-6 bg-[#faf9f6] dark:bg-[#0c0d10] border-t border-zinc-200/60 dark:border-white/10"
+    >
+      <div className="max-w-5xl mx-auto min-h-[620px] sm:min-h-[680px]" />
+    </div>
+  );
+}
+const LiveCasExplorer = dynamic(() => import("@/components/landing/LiveCasExplorer"), {
+  loading: ExplorerPlaceholder,
+});
+const LiveInteractiveShowcase = dynamic(
+  () => import("@/components/landing/LiveInteractiveShowcase"),
+  {
+    loading: ShowcasePlaceholder,
+  }
+);
+
+// Gerbang viewport: komponen berat di bawah lipatan baru dimuat + dihidrasi
+// saat halaman selesai dimuat DAN pengguna menggulir mendekatinya. Prasyarat
+// "selesai dimuat + idle" menjaga cat pertama dan thread utama tetap bersih
+// selama jendela muat awal; pengguna nyata mencapainya dalam hitungan detik.
+function ViewportGate({
+  children,
+  fallback,
+  rootMargin = "0px",
+}: {
+  children: React.ReactNode;
+  fallback: React.ReactNode;
+  rootMargin?: string;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [pageReady, setPageReady] = useState(false);
+  useEffect(() => {
+    let idleId: number | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const markReady = () => {
+      if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+        idleId = window.requestIdleCallback(() => setPageReady(true), { timeout: 2500 });
+      } else {
+        timeoutId = setTimeout(() => setPageReady(true), 1200);
+      }
+    };
+    if (typeof document !== "undefined" && document.readyState === "complete") {
+      markReady();
+    } else if (typeof window !== "undefined") {
+      window.addEventListener("load", markReady, { once: true });
+      timeoutId = setTimeout(() => setPageReady(true), 4000);
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("load", markReady);
+        if (idleId !== undefined && "cancelIdleCallback" in window) {
+          window.cancelIdleCallback(idleId);
+        }
+      }
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, []);
+  useEffect(() => {
+    if (open || !pageReady) return;
+    const el = ref.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setOpen(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setOpen(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [open, pageReady, rootMargin]);
+  return <div ref={ref}>{open ? children : fallback}</div>;
+}
 
 /* ============================================================================
  * SCROLL REVEAL WRAPPER (Matching ai.databyte.co.id IntersectionObserver Fade)
@@ -144,6 +243,58 @@ function SpotlightCard({
 }
 
 /* ============================================================================
+ * PAUSE CSS ANIMATIONS OFFSCREEN (marquee rows stop burning CPU/GPU when
+ * the section is outside the viewport or the tab is hidden)
+ * ========================================================================== */
+function PauseAnimationsOffscreen({
+  children,
+  className = "",
+  style,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const root = ref.current;
+    if (!root) return;
+    const rows = root.querySelectorAll<HTMLElement>(
+      ".animate-marquee, .animate-marquee-reverse"
+    );
+    if (rows.length === 0) return;
+    let inView = true;
+    const apply = () => {
+      const state = inView && !document.hidden ? "running" : "paused";
+      rows.forEach((row) => {
+        row.style.animationPlayState = state;
+      });
+    };
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        inView = entry.isIntersecting;
+        apply();
+      },
+      { threshold: 0 }
+    );
+    observer.observe(root);
+    document.addEventListener("visibilitychange", apply);
+    apply();
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", apply);
+    };
+  }, []);
+
+  return (
+    <div ref={ref} className={className} style={style}>
+      {children}
+    </div>
+  );
+}
+
+/* ============================================================================
  * DATA: MEGA MENU, CAROUSEL CARDS, MARQUEE ECOSYSTEM, & FAQ
  * ========================================================================== */
 interface CarouselPlanCard {
@@ -189,13 +340,13 @@ const CAROUSEL_PLANS: CarouselPlanCard[] = [
       "Scratchpad Derivasi Multi-Baris Interaktif",
       "Deteksi Akar Hilang & Ekivalensi Aljabar",
       "Counter-Example Otomatis Saat Langkah Keliru",
-      "22 / 22 Uji Keamanan Parser Terverifikasi",
+      "70 Tes Backend & Parser Terverifikasi",
     ],
     featuresEn: [
       "Interactive Multi-Line Derivation Scratchpad",
       "Lost-Root & Algebraic Equivalence Detection",
       "Automatic Counter-Example on Invalid Steps",
-      "22 / 22 Verified Parser Security Tests",
+      "70 Verified Backend & Parser Tests",
     ],
     ctaTextId: "Buka Studio",
     ctaTextEn: "Open Studio",
@@ -211,9 +362,9 @@ const CAROUSEL_PLANS: CarouselPlanCard[] = [
     name: "CFL Engine + Guardrail",
     descId: "Kombinasi verifikasi simbolik deterministik & filter anti-bocoran jawaban akhir",
     descEn: "Deterministic symbolic verification paired with final-answer sanitization",
-    metricMain: "64 Test",
-    metricUnitId: "/ suite lulus",
-    metricUnitEn: "/ suites passed",
+    metricMain: "70 Tes",
+    metricUnitId: "/ semua lulus",
+    metricUnitEn: "/ all passing",
     quotaRows: [
       { labelId: "Sanitasi Jawaban:", labelEn: "Answer Sanitizer:", value: "Regex + Token Guard" },
       { labelId: "Payload Berbahaya:", labelEn: "Malicious Payloads:", value: "5 ditolak < 1 ms" },
@@ -223,13 +374,13 @@ const CAROUSEL_PLANS: CarouselPlanCard[] = [
       "RobustZeroAnswerGuardrail.sanitize() Aktif",
       "Tidak Pernah Membocorkan Kunci Jawaban Akhir",
       "Dukungan Gemini, Claude, OpenAI, & DeepSeek",
-      "Penyimpanan API Key Enklave Lokal Browser",
+      "Kunci API Lokal + Cadangan Vault Akun",
     ],
     featuresEn: [
       "RobustZeroAnswerGuardrail.sanitize() Active",
       "Never Leaks Final Exercise Solutions",
       "Supports Gemini, Claude, OpenAI, & DeepSeek",
-      "Browser Local Enclave API Key Storage",
+      "Local API Key Storage + Account Vault Backup",
     ],
     ctaTextId: "Coba Sekarang",
     ctaTextEn: "Try Now",
@@ -245,7 +396,7 @@ const CAROUSEL_PLANS: CarouselPlanCard[] = [
     name: "Smartboard Geometri 3D",
     descId: "Kanvas geometri interaktif untuk bangun ruang, jaring-jaring, & kalkulus vektor",
     descEn: "Interactive geometry canvas for 3D solids, nets, & vector calculus",
-    metricMain: "60 FPS",
+    metricMain: "Real-Time",
     metricUnitId: "/ kanvas WebGL",
     metricUnitEn: "/ WebGL canvas",
     quotaRows: [
@@ -348,21 +499,23 @@ const CAROUSEL_PLANS: CarouselPlanCard[] = [
     metricMain: "Rp 0",
     metricUnitId: "/ platform fee",
     metricUnitEn: "/ platform fee",
-    metricSub: "100% Client-Side Key Vault",
+    metricSub: "Local Keys + Account Vault Backup",
     quotaRows: [
       { labelId: "Cloud Providers:", labelEn: "Cloud Providers:", value: "Gemini, OpenAI, Claude" },
       { labelId: "Open Weights:", labelEn: "Open Weights:", value: "DeepSeek, Mistral, NVIDIA" },
       { labelId: "Eksekusi Offline:", labelEn: "Offline Execution:", value: "Ollama 127.0.0.1:11434" },
     ],
     featuresId: [
-      "API Key Tersimpan di localStorage Browser Anda",
-      "Kepatuhan Penuh Privasi Data (UU PDP No. 27/2022)",
+      "API Key Tersimpan Lokal di Browser (localStorage)",
+      "Cadangan Vault Akun bagi Pengguna yang Masuk",
+      "Dirancang Selaras Prinsip UU PDP No. 27/2022",
       "Fallback Socratic Lokal Otomatis Tanpa Internet",
       "Pengaturan Model 1-Klik di Halaman Konektor",
     ],
     featuresEn: [
-      "API Keys Stored Strictly in Browser localStorage",
-      "Aligned with Indonesian Data Privacy (UU PDP)",
+      "API Keys Stored Locally in Your Browser (localStorage)",
+      "Account Vault Backup for Signed-In Users",
+      "Designed Around Indonesian Data Privacy Principles (UU PDP)",
       "Automatic Offline Local Socratic Fallback",
       "1-Click Model Setup in Connector Hub",
     ],
@@ -375,7 +528,7 @@ const CAROUSEL_PLANS: CarouselPlanCard[] = [
 
 const MARQUEE_ROW_1 = [
   { name: "SymPy CAS", sub: "Symbolic Kernel", icon: <SymPyLogo className="w-5 h-5 text-[#3B5526]" /> },
-  { name: "Google Gemini", sub: "Gemini 2.5 Flash", icon: <GeminiLogo className="w-5 h-5" /> },
+  { name: "Google Gemini", sub: "Gemini 2.0 Flash", icon: <GeminiLogo className="w-5 h-5" /> },
   { name: "Claude", sub: "Anthropic Sonnet", icon: <ClaudeLogo className="w-5 h-5 text-[#D97757]" /> },
   { name: "OpenAI", sub: "GPT-4o & o3-mini", icon: <OpenAILogo className="w-5 h-5 text-zinc-900" /> },
   { name: "DeepSeek", sub: "R1 & V3 Reasoning", icon: <DeepSeekLogo className="w-5 h-5 text-blue-600" /> },
@@ -391,7 +544,7 @@ const MARQUEE_ROW_2 = [
   { name: "Scratchpad CAS", sub: "Step-by-Step Audit", icon: <ScratchpadPenEmblem className="w-5 h-5 text-[#8f5e32]" /> },
   { name: "Socratic Engine", sub: "Guided Discovery", icon: <SocraticDialogueEmblem className="w-5 h-5 text-[#09090b]" /> },
   { name: "Local Enclave", sub: "BYOK Vault", icon: <LocalEnclaveEmblem className="w-5 h-5 text-[#8f5e32]" /> },
-  { name: "UU PDP Ready", sub: "Zero Server Key Log", icon: <SovereignAuditEmblem className="w-5 h-5 text-emerald-700" /> },
+  { name: "UU PDP Ready", sub: "Local Keys + Vault Backup", icon: <SovereignAuditEmblem className="w-5 h-5 text-emerald-700" /> },
   { name: "LaTeX Whitelist", sub: "Anti-RCE & Anti-DoS", icon: <Code2 className="w-5 h-5 text-[#09090b]" /> },
 ];
 
@@ -417,8 +570,8 @@ const FAQ_ITEMS = [
   {
     qId: "Apakah API Key saya aman dan sesuai dengan privasi data?",
     qEn: "Are my API keys secure and privacy-compliant?",
-    aId: "Ya. Kunci API BYOK disimpan di penyimpanan lokal browser Anda (localStorage enclave) dan tidak pernah disimpan permanen di database server publik. Pendekatan zero-persistence ini dirancang selaras dengan prinsip pelindungan data pribadi (UU PDP No. 27 Tahun 2022).",
-    aEn: "Yes. Your BYOK API keys reside in your browser's local storage enclave and are never persisted in a public server database. This zero-persistence architecture aligns with Indonesian Personal Data Protection principles (UU PDP No. 27/2022).",
+    aId: "Kunci API BYOK tersimpan di penyimpanan lokal browser Anda (localStorage). Jika Anda masuk dengan akun, salinan cadangan konfigurasi Anda, termasuk kunci API, disinkronkan ke vault akun di server agar dapat dipulihkan saat Anda berganti perangkat. Anda dapat menghapus kunci kapan saja dari halaman Konektor. Pengelolaan data ini dirancang selaras dengan prinsip pelindungan data pribadi (UU PDP No. 27 Tahun 2022).",
+    aEn: "Your BYOK API keys are stored in your browser's local storage. If you sign in with an account, a backup copy of your configuration, including API keys, is synced to your account vault on the server so it can be restored when you switch devices. You can delete your keys at any time from the Connector page. This data handling is designed around Indonesian Personal Data Protection principles (UU PDP No. 27/2022).",
   },
   {
     qId: "Jenjang pendidikan apa saja yang didukung oleh ChatZAP?",
@@ -456,6 +609,8 @@ export default function LandingPage() {
   const [waitlistName, setWaitlistName] = useState("");
   const [waitlistEmail, setWaitlistEmail] = useState("");
   const [waitlistSubmitted, setWaitlistSubmitted] = useState(false);
+  const [waitlistSubmitting, setWaitlistSubmitting] = useState(false);
+  const [waitlistError, setWaitlistError] = useState<string | null>(null);
 
   // Restore saved language preference
   useEffect(() => {
@@ -497,7 +652,7 @@ export default function LandingPage() {
   const scrollCarousel = (dir: "left" | "right") => {
     if (!carouselRef.current) return;
     carouselRef.current.scrollBy({
-      left: dir === "left" ? -380 : 380,
+      left: dir === "left" ? -369 : 369,
       behavior: "smooth",
     });
   };
@@ -505,7 +660,7 @@ export default function LandingPage() {
   const handleCarouselScroll = () => {
     if (!carouselRef.current) return;
     const { scrollLeft } = carouselRef.current;
-    const idx = Math.round(scrollLeft / 364);
+    const idx = Math.round(scrollLeft / 369);
     setActiveSlideIndex(Math.min(Math.max(idx, 0), filteredPlans.length - 1));
   };
 
@@ -527,18 +682,46 @@ export default function LandingPage() {
   const openWaitlist = (productName: string) => {
     setWaitlistProduct(productName);
     setWaitlistSubmitted(false);
+    setWaitlistError(null);
     setMegaMenuOpen(false);
     setMobileMenuOpen(false);
   };
 
-  const handleWaitlistSubmit = (e: React.FormEvent) => {
+  const handleWaitlistSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!waitlistEmail.trim()) return;
-    setWaitlistSubmitted(true);
+    if (!waitlistName.trim() || !waitlistEmail.trim() || waitlistSubmitting) return;
+    setWaitlistSubmitting(true);
+    setWaitlistError(null);
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: waitlistName.trim(),
+          email: waitlistEmail.trim(),
+          product: waitlistProduct || undefined,
+        }),
+      });
+      const data = (await res.json().catch(() => null)) as
+        | { ok?: boolean; error?: string }
+        | null;
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || "submit-failed");
+      }
+      setWaitlistSubmitted(true);
+    } catch {
+      setWaitlistError(
+        lang === "id"
+          ? "Pendaftaran gagal terkirim. Periksa koneksi Anda, lalu coba lagi."
+          : "Your registration could not be sent. Check your connection and try again."
+      );
+    } finally {
+      setWaitlistSubmitting(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#faf9f6] text-[#09090b] font-sans selection:bg-[#d4a574]/30 selection:text-black overflow-x-clip">
+    <div className="min-h-screen bg-[#faf9f6] dark:bg-[#0c0d10] text-[#09090b] dark:text-zinc-50 font-sans selection:bg-[#d4a574]/30 selection:text-black overflow-x-clip">
       {/* ====================================================================
        * 1. FLOATING PILL SCROLL-MORPHING HEADER (ai.databyte.co.id style)
        * ==================================================================== */}
@@ -546,13 +729,13 @@ export default function LandingPage() {
         <div
           className={`mx-auto transition-all duration-500 ease-out ${
             scrolled
-              ? "max-w-5xl mt-3 px-4 py-2.5 bg-white/85 backdrop-blur-xl border border-zinc-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.06)] rounded-full"
-              : "max-w-6xl px-6 py-4 bg-[#faf9f6]/80 backdrop-blur-md border-b border-black/5"
+              ? "max-w-5xl mt-3 px-4 py-2.5 bg-white/85 dark:bg-[#121317]/85 backdrop-blur-xl border border-zinc-200/80 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.06)] rounded-full"
+              : "max-w-6xl px-6 py-4 bg-[#faf9f6]/80 dark:bg-[#0c0d10]/80 backdrop-blur-md border-b border-black/5 dark:border-white/5"
           }`}
         >
           <div className="flex items-center justify-between gap-4">
             {/* Brand Logo */}
-            <Link
+            <Link prefetch={false}
               href="/"
               className="flex items-center gap-2.5 font-semibold text-base tracking-tight shrink-0 pl-1 group"
             >
@@ -560,12 +743,12 @@ export default function LandingPage() {
                 <ZapLogo className="w-4 h-4" />
               </div>
               <span>
-                ChatZAP <span className="font-normal text-zinc-400">Engine</span>
+                ChatZAP <span className="font-normal text-zinc-600 dark:text-zinc-400">Engine</span>
               </span>
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-1 text-sm text-zinc-600">
+            <nav className="hidden md:flex items-center gap-1 text-sm text-zinc-600 dark:text-zinc-300">
               {/* Mega Menu Trigger */}
               <div
                 className="relative"
@@ -575,10 +758,13 @@ export default function LandingPage() {
                 <button
                   type="button"
                   onClick={() => setMegaMenuOpen((prev) => !prev)}
+                  aria-expanded={megaMenuOpen}
+                  aria-haspopup="true"
+                  aria-controls="zap-mega-menu"
                   className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full transition-all duration-200 font-medium ${
                     megaMenuOpen
-                      ? "bg-zinc-900/5 text-black"
-                      : "hover:text-black hover:bg-zinc-900/[0.03]"
+                      ? "bg-zinc-900/5 dark:bg-white/10 text-black dark:text-white"
+                      : "hover:text-black dark:hover:text-white hover:bg-zinc-900/[0.03] dark:hover:bg-white/[0.06]"
                   }`}
                 >
                   <span>{lang === "id" ? "Layanan & Modul" : "Modules & Suite"}</span>
@@ -593,17 +779,18 @@ export default function LandingPage() {
                 <AnimatePresence>
                   {megaMenuOpen && (
                     <motion.div
+                      id="zap-mega-menu"
                       initial={{ opacity: 0, y: 8, scale: 0.98 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 6, scale: 0.98 }}
                       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
                       className="absolute left-1/2 -translate-x-1/2 top-full pt-3 w-[660px] z-50"
                     >
-                      <div className="bg-white/95 backdrop-blur-2xl rounded-3xl border border-zinc-200/90 shadow-[0_24px_60px_-15px_rgba(9,9,11,0.12)] p-5 grid grid-cols-12 gap-5">
+                      <div className="bg-white/95 dark:bg-[#121317]/95 backdrop-blur-2xl rounded-3xl border border-zinc-200/90 dark:border-white/10 shadow-[0_24px_60px_-15px_rgba(9,9,11,0.12)] p-5 grid grid-cols-12 gap-5">
                         {/* Left Column: Live Modules */}
                         <div className="col-span-7 space-y-3">
                           <div className="flex items-center justify-between px-2">
-                            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400">
+                            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-600 dark:text-zinc-400">
                               {lang === "id" ? "Ruang Kerja & Mesin CAS" : "Workspace & CAS Engine"}
                             </span>
                             <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/70">
@@ -612,22 +799,22 @@ export default function LandingPage() {
                           </div>
 
                           <div className="space-y-1">
-                            <Link
+                            <Link prefetch={false}
                               href="/chat"
                               onClick={() => setMegaMenuOpen(false)}
-                              className="group flex items-start gap-3.5 p-2.5 rounded-2xl hover:bg-[#faf9f6] border border-transparent hover:border-zinc-200/70 transition-all"
+                              className="group flex items-start gap-3.5 p-2.5 rounded-2xl hover:bg-[#faf9f6] dark:hover:bg-white/5 border border-transparent hover:border-zinc-200/70 dark:hover:border-white/10 transition-all"
                             >
-                              <div className="w-10 h-10 rounded-xl bg-[#faf9f6] border border-zinc-200/80 flex items-center justify-center shrink-0 text-[#8f5e32] group-hover:bg-[#09090b] group-hover:text-[#d4a574] group-hover:border-[#09090b] transition-colors shadow-sm">
+                              <div className="w-10 h-10 rounded-xl bg-[#faf9f6] dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 flex items-center justify-center shrink-0 text-[#8f5e32] group-hover:bg-[#09090b] group-hover:text-[#d4a574] group-hover:border-[#09090b] transition-colors shadow-sm">
                                 <Sparkles className="w-5 h-5" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-sm font-semibold text-[#09090b]">
+                                  <span className="text-sm font-semibold text-[#09090b] dark:text-white">
                                     ZAP Socratic Studio
                                   </span>
                                   <ArrowRight className="w-3.5 h-3.5 text-zinc-300 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-[#09090b] transition-all" />
                                 </div>
-                                <p className="text-xs text-zinc-500 leading-relaxed line-clamp-1">
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed line-clamp-1">
                                   {lang === "id"
                                     ? "Scratchpad derivasi aljabar & dialog Sokrates tanpa bocoran jawaban"
                                     : "Algebraic derivation scratchpad & zero-spoiler Socratic dialogue"}
@@ -635,22 +822,22 @@ export default function LandingPage() {
                               </div>
                             </Link>
 
-                            <Link
+                            <Link prefetch={false}
                               href="/chat?mode=smartboard"
                               onClick={() => setMegaMenuOpen(false)}
-                              className="group flex items-start gap-3.5 p-2.5 rounded-2xl hover:bg-[#faf9f6] border border-transparent hover:border-zinc-200/70 transition-all"
+                              className="group flex items-start gap-3.5 p-2.5 rounded-2xl hover:bg-[#faf9f6] dark:hover:bg-white/5 border border-transparent hover:border-zinc-200/70 dark:hover:border-white/10 transition-all"
                             >
-                              <div className="w-10 h-10 rounded-xl bg-[#faf9f6] border border-zinc-200/80 flex items-center justify-center shrink-0 text-[#09090b] group-hover:bg-[#09090b] group-hover:text-[#d4a574] group-hover:border-[#09090b] transition-colors shadow-sm">
+                              <div className="w-10 h-10 rounded-xl bg-[#faf9f6] dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 flex items-center justify-center shrink-0 text-[#09090b] group-hover:bg-[#09090b] group-hover:text-[#d4a574] group-hover:border-[#09090b] transition-colors shadow-sm">
                                 <Boxes className="w-5 h-5" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-sm font-semibold text-[#09090b]">
+                                  <span className="text-sm font-semibold text-[#09090b] dark:text-white">
                                     {lang === "id" ? "Smartboard Geometri 2D & 3D" : "2D & 3D Spatial Smartboard"}
                                   </span>
                                   <ArrowRight className="w-3.5 h-3.5 text-zinc-300 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-[#09090b] transition-all" />
                                 </div>
-                                <p className="text-xs text-zinc-500 leading-relaxed line-clamp-1">
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed line-clamp-1">
                                   {lang === "id"
                                     ? "Visualisasi bangun ruang, irisan bidang, & grafik fungsi interaktif"
                                     : "Interactive 3D solids, plane cross-sections, & function plots"}
@@ -661,19 +848,19 @@ export default function LandingPage() {
                             <a
                               href="#explorer"
                               onClick={(e) => scrollToSection(e, "#explorer")}
-                              className="group flex items-start gap-3.5 p-2.5 rounded-2xl hover:bg-[#faf9f6] border border-transparent hover:border-zinc-200/70 transition-all"
+                              className="group flex items-start gap-3.5 p-2.5 rounded-2xl hover:bg-[#faf9f6] dark:hover:bg-white/5 border border-transparent hover:border-zinc-200/70 dark:hover:border-white/10 transition-all"
                             >
-                              <div className="w-10 h-10 rounded-xl bg-[#faf9f6] border border-zinc-200/80 flex items-center justify-center shrink-0 text-emerald-700 group-hover:bg-[#09090b] group-hover:text-[#d4a574] group-hover:border-[#09090b] transition-colors shadow-sm">
+                              <div className="w-10 h-10 rounded-xl bg-[#faf9f6] dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 flex items-center justify-center shrink-0 text-emerald-700 group-hover:bg-[#09090b] group-hover:text-[#d4a574] group-hover:border-[#09090b] transition-colors shadow-sm">
                                 <Cpu className="w-5 h-5" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-sm font-semibold text-[#09090b]">
+                                  <span className="text-sm font-semibold text-[#09090b] dark:text-white">
                                     SymPy CAS Diagnostic Sandbox
                                   </span>
                                   <ArrowRight className="w-3.5 h-3.5 text-zinc-300 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-[#09090b] transition-all" />
                                 </div>
-                                <p className="text-xs text-zinc-500 leading-relaxed line-clamp-1">
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed line-clamp-1">
                                   {lang === "id"
                                     ? "Uji langsung ekivalensi aljabar & konservasi akar di halaman ini"
                                     : "Test symbolic equivalence & root conservation live on this page"}
@@ -681,22 +868,22 @@ export default function LandingPage() {
                               </div>
                             </a>
 
-                            <Link
+                            <Link prefetch={false}
                               href="/connector"
                               onClick={() => setMegaMenuOpen(false)}
-                              className="group flex items-start gap-3.5 p-2.5 rounded-2xl hover:bg-[#faf9f6] border border-transparent hover:border-zinc-200/70 transition-all"
+                              className="group flex items-start gap-3.5 p-2.5 rounded-2xl hover:bg-[#faf9f6] dark:hover:bg-white/5 border border-transparent hover:border-zinc-200/70 dark:hover:border-white/10 transition-all"
                             >
-                              <div className="w-10 h-10 rounded-xl bg-[#faf9f6] border border-zinc-200/80 flex items-center justify-center shrink-0 text-[#8f5e32] group-hover:bg-[#09090b] group-hover:text-[#d4a574] group-hover:border-[#09090b] transition-colors shadow-sm">
+                              <div className="w-10 h-10 rounded-xl bg-[#faf9f6] dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 flex items-center justify-center shrink-0 text-[#8f5e32] group-hover:bg-[#09090b] group-hover:text-[#d4a574] group-hover:border-[#09090b] transition-colors shadow-sm">
                                 <KeyRound className="w-5 h-5" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-sm font-semibold text-[#09090b]">
+                                  <span className="text-sm font-semibold text-[#09090b] dark:text-white">
                                     BYOK Multi-LLM &amp; Ollama Hub
                                   </span>
                                   <ArrowRight className="w-3.5 h-3.5 text-zinc-300 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-[#09090b] transition-all" />
                                 </div>
-                                <p className="text-xs text-zinc-500 leading-relaxed line-clamp-1">
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed line-clamp-1">
                                   {lang === "id"
                                     ? "Hubungkan Gemini, OpenAI, Claude, DeepSeek, atau Ollama lokal"
                                     : "Connect Gemini, OpenAI, Claude, DeepSeek, or local Ollama"}
@@ -707,10 +894,10 @@ export default function LandingPage() {
                         </div>
 
                         {/* Right Column: Coming Soon / Ecosystem */}
-                        <div className="col-span-5 bg-[#faf9f6] rounded-2xl p-4 border border-zinc-200/80 flex flex-col justify-between">
+                        <div className="col-span-5 bg-[#faf9f6] dark:bg-white/5 rounded-2xl p-4 border border-zinc-200/80 dark:border-white/10 flex flex-col justify-between">
                           <div>
                             <div className="flex items-center justify-between mb-3">
-                              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400">
+                              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-600 dark:text-zinc-400">
                                 {lang === "id" ? "Ekosistem Segera Hadir" : "Upcoming Ecosystem"}
                               </span>
                               <span className="text-[9px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[#faf4ed] text-[#8f5e32] border border-[#d4a574]/40">
@@ -742,13 +929,13 @@ export default function LandingPage() {
                                     key={wItem.name}
                                     type="button"
                                     onClick={() => openWaitlist(wItem.name)}
-                                    className="w-full text-left group flex items-center gap-2.5 p-2 rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-zinc-200/80 transition-all cursor-pointer"
+                                    className="w-full text-left group flex items-center gap-2.5 p-2 rounded-xl hover:bg-white dark:hover:bg-white/10 hover:shadow-sm border border-transparent hover:border-zinc-200/80 dark:hover:border-white/10 transition-all cursor-pointer"
                                   >
-                                    <div className="w-8 h-8 rounded-lg bg-white border border-zinc-200/80 flex items-center justify-center text-zinc-600 group-hover:text-[#8f5e32] transition-colors shrink-0 shadow-sm">
+                                    <div className="w-8 h-8 rounded-lg bg-white dark:bg-white/10 border border-zinc-200/80 dark:border-white/10 flex items-center justify-center text-zinc-600 dark:text-zinc-300 group-hover:text-[#8f5e32] transition-colors shrink-0 shadow-sm">
                                       <WIcon className="w-4 h-4" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                      <div className="text-xs font-semibold text-[#09090b] truncate">
+                                      <div className="text-xs font-semibold text-[#09090b] dark:text-white truncate">
                                         {wItem.name}
                                       </div>
                                       <div className="text-[10px] text-zinc-500 truncate">
@@ -763,14 +950,14 @@ export default function LandingPage() {
 
                           <div className="mt-4 pt-3 border-t border-zinc-200/80 flex items-center justify-between">
                             <div>
-                              <div className="text-[11px] font-semibold text-[#09090b]">
+                              <div className="text-[11px] font-semibold text-[#09090b] dark:text-white">
                                 {lang === "id" ? "Siap mencoba sekarang?" : "Ready to start?"}
                               </div>
                               <div className="text-[10px] text-zinc-500">
                                 {lang === "id" ? "Tanpa kartu kredit · Langsung aktif" : "No credit card · Instant access"}
                               </div>
                             </div>
-                            <Link
+                            <Link prefetch={false}
                               href="/chat"
                               onClick={() => setMegaMenuOpen(false)}
                               className="inline-flex items-center gap-1 text-xs font-bold text-[#8f5e32] hover:text-[#09090b] transition-colors"
@@ -789,34 +976,34 @@ export default function LandingPage() {
               <a
                 href="#explorer"
                 onClick={(e) => scrollToSection(e, "#explorer")}
-                className="px-3.5 py-1.5 rounded-full hover:text-black hover:bg-zinc-900/[0.03] transition-colors"
+                className="px-3.5 py-1.5 rounded-full hover:text-black dark:hover:text-white hover:bg-zinc-900/[0.03] dark:hover:bg-white/[0.06] transition-colors"
               >
                 {lang === "id" ? "Uji CAS" : "CAS Explorer"}
               </a>
               <a
                 href="#showcase"
                 onClick={(e) => scrollToSection(e, "#showcase")}
-                className="px-3.5 py-1.5 rounded-full hover:text-black hover:bg-zinc-900/[0.03] transition-colors"
+                className="px-3.5 py-1.5 rounded-full hover:text-black dark:hover:text-white hover:bg-zinc-900/[0.03] dark:hover:bg-white/[0.06] transition-colors"
               >
-                {lang === "id" ? "Simulasi Live" : "Live Demo"}
+                {lang === "id" ? "Simulasi" : "Simulation"}
               </a>
               <a
                 href="#jenjang"
                 onClick={(e) => scrollToSection(e, "#jenjang")}
-                className="px-3.5 py-1.5 rounded-full hover:text-black hover:bg-zinc-900/[0.03] transition-colors"
+                className="px-3.5 py-1.5 rounded-full hover:text-black dark:hover:text-white hover:bg-zinc-900/[0.03] dark:hover:bg-white/[0.06] transition-colors"
               >
                 {lang === "id" ? "Modul & Jenjang" : "Modules & Tiers"}
               </a>
-              <Link
+              <Link prefetch={false}
                 href="/connector"
-                className="px-3.5 py-1.5 rounded-full hover:text-black hover:bg-zinc-900/[0.03] transition-colors"
+                className="px-3.5 py-1.5 rounded-full hover:text-black dark:hover:text-white hover:bg-zinc-900/[0.03] dark:hover:bg-white/[0.06] transition-colors"
               >
                 {lang === "id" ? "Konektor BYOK" : "BYOK Connector"}
               </Link>
               <a
                 href="#faq"
                 onClick={(e) => scrollToSection(e, "#faq")}
-                className="px-3.5 py-1.5 rounded-full hover:text-black hover:bg-zinc-900/[0.03] transition-colors"
+                className="px-3.5 py-1.5 rounded-full hover:text-black dark:hover:text-white hover:bg-zinc-900/[0.03] dark:hover:bg-white/[0.06] transition-colors"
               >
                 FAQ
               </a>
@@ -825,14 +1012,14 @@ export default function LandingPage() {
             {/* Right Actions: Language Pill Toggle + Dashboard CTA */}
             <div className="flex items-center gap-2 shrink-0">
               {/* Language Switcher Pill (Exact ai.databyte.co.id style) */}
-              <div className="inline-flex items-center bg-zinc-200/75 p-0.5 rounded-full text-xs font-medium border border-zinc-300/50">
+              <div className="inline-flex items-center bg-zinc-200/75 dark:bg-white/10 p-0.5 rounded-full text-xs font-medium border border-zinc-300/50 dark:border-white/10">
                 <button
                   type="button"
                   onClick={() => toggleLanguage("en")}
                   className={`px-2.5 py-1 rounded-full transition-all duration-200 ${
                     lang === "en"
                       ? "bg-[#09090b] text-white font-semibold shadow-sm"
-                      : "text-zinc-600 hover:text-black"
+                      : "text-zinc-600 dark:text-zinc-300 hover:text-black dark:hover:text-white"
                   }`}
                 >
                   EN
@@ -843,7 +1030,7 @@ export default function LandingPage() {
                   className={`px-2.5 py-1 rounded-full transition-all duration-200 ${
                     lang === "id"
                       ? "bg-[#09090b] text-white font-semibold shadow-sm"
-                      : "text-zinc-600 hover:text-black"
+                      : "text-zinc-600 dark:text-zinc-300 hover:text-black dark:hover:text-white"
                   }`}
                 >
                   ID
@@ -867,7 +1054,9 @@ export default function LandingPage() {
                 type="button"
                 onClick={() => setMobileMenuOpen((prev) => !prev)}
                 aria-label="Toggle Menu"
-                className="md:hidden w-9 h-9 rounded-full bg-zinc-900/5 hover:bg-zinc-900/10 flex items-center justify-center text-zinc-800 transition-colors"
+                aria-expanded={mobileMenuOpen}
+                aria-controls="zap-mobile-menu"
+                className="md:hidden w-9 h-9 rounded-full bg-zinc-900/5 dark:bg-white/10 hover:bg-zinc-900/10 dark:hover:bg-white/15 flex items-center justify-center text-zinc-800 dark:text-zinc-100 transition-colors"
               >
                 {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
               </button>
@@ -879,25 +1068,26 @@ export default function LandingPage() {
         <AnimatePresence>
           {mobileMenuOpen && (
             <motion.div
+              id="zap-mobile-menu"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
-              className="md:hidden mx-4 mt-2 rounded-3xl bg-white/95 backdrop-blur-xl border border-zinc-200 shadow-xl p-5 space-y-4"
+              className="md:hidden mx-4 mt-2 rounded-3xl bg-white/95 dark:bg-[#121317]/95 backdrop-blur-xl border border-zinc-200 dark:border-white/10 shadow-xl p-5 space-y-4"
             >
               <div className="grid grid-cols-1 gap-1.5 text-sm font-medium text-zinc-700">
-                <Link
+                <Link prefetch={false}
                   href="/chat"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-[#faf4ed] border border-[#d4a574]/35 text-[#09090b] font-semibold"
+                  className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-[#faf4ed] dark:bg-white/5 border border-[#d4a574]/35 text-[#09090b] dark:text-white font-semibold"
                 >
                   <span>ZAP Socratic Studio</span>
                   <ArrowRight className="w-4 h-4 text-[#8f5e32]" />
                 </Link>
-                <Link
+                <Link prefetch={false}
                   href="/chat?mode=smartboard"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between px-3.5 py-2.5 rounded-xl hover:bg-[#faf9f6]"
+                  className="flex items-center justify-between px-3.5 py-2.5 rounded-xl hover:bg-[#faf9f6] dark:hover:bg-white/5"
                 >
                   <span>{lang === "id" ? "Smartboard Geometri 3D" : "3D Geometry Smartboard"}</span>
                   <ArrowRight className="w-4 h-4 text-zinc-400" />
@@ -905,35 +1095,35 @@ export default function LandingPage() {
                 <a
                   href="#explorer"
                   onClick={(e) => scrollToSection(e, "#explorer")}
-                  className="px-3.5 py-2.5 rounded-xl hover:bg-[#faf9f6]"
+                  className="px-3.5 py-2.5 rounded-xl hover:bg-[#faf9f6] dark:hover:bg-white/5"
                 >
                   {lang === "id" ? "Uji Simbolik SymPy CAS" : "SymPy CAS Explorer"}
                 </a>
                 <a
                   href="#showcase"
                   onClick={(e) => scrollToSection(e, "#showcase")}
-                  className="px-3.5 py-2.5 rounded-xl hover:bg-[#faf9f6]"
+                  className="px-3.5 py-2.5 rounded-xl hover:bg-[#faf9f6] dark:hover:bg-white/5"
                 >
-                  {lang === "id" ? "Simulasi Terminal & Studio" : "Live Terminal & Studio"}
+                  {lang === "id" ? "Simulasi Terminal & Studio" : "Terminal & Studio Simulation"}
                 </a>
                 <a
                   href="#jenjang"
                   onClick={(e) => scrollToSection(e, "#jenjang")}
-                  className="px-3.5 py-2.5 rounded-xl hover:bg-[#faf9f6]"
+                  className="px-3.5 py-2.5 rounded-xl hover:bg-[#faf9f6] dark:hover:bg-white/5"
                 >
                   {lang === "id" ? "Modul & Kurikulum TK–S3" : "Modules & Curriculum"}
                 </a>
-                <Link
+                <Link prefetch={false}
                   href="/connector"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="px-3.5 py-2.5 rounded-xl hover:bg-[#faf9f6]"
+                  className="px-3.5 py-2.5 rounded-xl hover:bg-[#faf9f6] dark:hover:bg-white/5"
                 >
                   {lang === "id" ? "Konektor BYOK & Ollama" : "BYOK & Ollama Connector"}
                 </Link>
                 <a
                   href="#faq"
                   onClick={(e) => scrollToSection(e, "#faq")}
-                  className="px-3.5 py-2.5 rounded-xl hover:bg-[#faf9f6]"
+                  className="px-3.5 py-2.5 rounded-xl hover:bg-[#faf9f6] dark:hover:bg-white/5"
                 >
                   FAQ
                 </a>
@@ -959,32 +1149,32 @@ export default function LandingPage() {
           <ContainerScroll
             titleComponent={
               <div className="max-w-4xl mx-auto text-center">
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-zinc-200/80 text-xs font-mono font-semibold text-[#8f5e32] mb-5 shadow-sm">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 text-xs font-mono font-semibold text-[#8f5e32] dark:text-[#d4a574] mb-5 shadow-sm">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
                   <span>
                     {lang === "id"
                       ? "SymPy CAS Kernel · Zero-Answer Guardrail · 2D & 3D Smartboard"
                       : "SymPy CAS Kernel · Zero-Answer Guardrail · 2D & 3D Smartboard"}
                   </span>
                 </div>
-                <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-[#09090b] mb-6 leading-[1.12]">
+                <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-[#09090b] dark:text-white mb-6 leading-[1.12]">
                   {lang === "id" ? (
                     <>
                       Platform Penalaran Matematika &amp; CAS.{" "}
-                      <span className="font-serif font-normal text-[#c4956a] block sm:inline">
+                      <span className="font-serif font-normal text-[#7d551f] dark:text-[#c4956a] block sm:inline">
                         Zero Answer Leaks!
                       </span>
                     </>
                   ) : (
                     <>
                       All-in-One Symbolic Math &amp; Socratic AI.{" "}
-                      <span className="font-serif font-normal text-[#c4956a] block sm:inline">
+                      <span className="font-serif font-normal text-[#7d551f] dark:text-[#c4956a] block sm:inline">
                         Zero Answer Leaks!
                       </span>
                     </>
                   )}
                 </h1>
-                <p className="text-base sm:text-lg text-zinc-500 mb-9 max-w-2xl mx-auto leading-relaxed">
+                <p className="text-base sm:text-lg text-zinc-500 dark:text-zinc-400 mb-9 max-w-2xl mx-auto leading-relaxed">
                   {lang === "id"
                     ? "Verifikasi setiap langkah aljabar dengan SymPy Computer Algebra System (< 1 ms pre-parse), eksplorasi geometri 3D interaktif, dan bimbingan Sokrates dari jenjang TK hingga S3 dalam satu ruang kerja."
                     : "Verify every algebraic derivation step with our deterministic SymPy Computer Algebra System (< 1 ms pre-parse), explore 3D spatial geometry, and experience Socratic tutoring from primary school to doctoral research."}
@@ -1013,15 +1203,15 @@ export default function LandingPage() {
 
           {/* 3-Column Feature Strip below the Hero 3D frame */}
           <FadeInOnScroll className="max-w-5xl mx-auto mt-10 grid grid-cols-1 md:grid-cols-3 gap-5 text-left">
-            <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-white/80 border border-zinc-200/80 shadow-sm">
+            <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 shadow-sm">
               <div className="w-9 h-9 rounded-xl bg-[#faf4ed] border border-[#d4a574]/35 flex items-center justify-center shrink-0 mt-0.5">
                 <Zap className="w-4 h-4 text-[#8f5e32]" />
               </div>
               <div>
-                <h3 className="font-semibold text-sm text-[#09090b]">
+                <h3 className="font-semibold text-sm text-[#09090b] dark:text-white">
                   {lang === "id" ? "Verifikasi Simbolik < 1 ms" : "< 1 ms Pre-Parse Verification"}
                 </h3>
-                <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
                   {lang === "id"
                     ? "Whitelist aljabar & LaTeX memeriksa batas eksponen (≤ 100) sebelum dievaluasi oleh kernel SymPy CAS."
                     : "Strict algebraic & LaTeX whitelist validates exponent bounds (≤ 100) prior to SymPy CAS evaluation."}
@@ -1029,15 +1219,15 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-white/80 border border-zinc-200/80 shadow-sm">
+            <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 shadow-sm">
               <div className="w-9 h-9 rounded-xl bg-[#faf4ed] border border-[#d4a574]/35 flex items-center justify-center shrink-0 mt-0.5">
                 <ShieldCheck className="w-4 h-4 text-[#8f5e32]" />
               </div>
               <div>
-                <h3 className="font-semibold text-sm text-[#09090b]">
+                <h3 className="font-semibold text-sm text-[#09090b] dark:text-white">
                   {lang === "id" ? "Zero-Answer Guardrail Aktif" : "Zero-Answer Guardrail Active"}
                 </h3>
-                <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
                   {lang === "id"
                     ? "Semua respons disaring oleh RobustZeroAnswerGuardrail agar kunci jawaban akhir tidak pernah bocor."
                     : "Every explanation passes through RobustZeroAnswerGuardrail so final exercise solutions never leak."}
@@ -1045,15 +1235,15 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-white/80 border border-zinc-200/80 shadow-sm">
+            <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 shadow-sm">
               <div className="w-9 h-9 rounded-xl bg-[#faf4ed] border border-[#d4a574]/35 flex items-center justify-center shrink-0 mt-0.5">
                 <MessageSquare className="w-4 h-4 text-[#8f5e32]" />
               </div>
               <div>
-                <h3 className="font-semibold text-sm text-[#09090b]">
+                <h3 className="font-semibold text-sm text-[#09090b] dark:text-white">
                   {lang === "id" ? "Dialog Sokrates & Counter-Example" : "Socratic Dialogue & Counter-Examples"}
                 </h3>
-                <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
                   {lang === "id"
                     ? "Saat langkah keliru, mesin otomatis menyusun uji substitusi angka konkret untuk memicu pemahaman."
                     : "When a derivation step fails, the engine synthesizes concrete numerical counter-examples."}
@@ -1067,14 +1257,18 @@ export default function LandingPage() {
          * 3. WARM GOLD GRADIENT INTERACTIVE CAS & GEOMETRY EXPLORER BANNER
          * ==================================================================== */}
         <FadeInOnScroll>
-          <LiveCasExplorer lang={lang} />
+          <ViewportGate fallback={<ExplorerPlaceholder />}>
+            <LiveCasExplorer lang={lang} />
+          </ViewportGate>
         </FadeInOnScroll>
 
         {/* ====================================================================
          * 4. LIVE INTERACTIVE SHOWCASE (TERMINAL + STUDIO AUTO-TYPING DEMO)
          * ==================================================================== */}
         <FadeInOnScroll>
-          <LiveInteractiveShowcase lang={lang} />
+          <ViewportGate fallback={<ShowcasePlaceholder />}>
+            <LiveInteractiveShowcase lang={lang} />
+          </ViewportGate>
         </FadeInOnScroll>
 
         {/* ====================================================================
@@ -1085,28 +1279,28 @@ export default function LandingPage() {
             {/* Header + Filter Pills + Slide Counter */}
             <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
               <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-zinc-200/80 text-[11px] font-mono font-semibold uppercase tracking-wider text-[#8f5e32] mb-3 shadow-sm">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 text-[11px] font-mono font-semibold uppercase tracking-wider text-[#8f5e32] dark:text-[#d4a574] mb-3 shadow-sm">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#c4956a]" />
                   {lang === "id" ? "MODUL & KURIKULUM" : "MODULES & CURRICULUM"}
                 </div>
-                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#09090b] mb-3">
+                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#09090b] dark:text-white mb-3">
                   {lang === "id" ? (
                     <>
                       Pilihan Modul Unggulan{" "}
-                      <span className="font-serif font-normal text-[#c4956a]">
+                      <span className="font-serif font-normal text-[#7d551f] dark:text-[#c4956a]">
                         Tanpa Contek Instan
                       </span>
                     </>
                   ) : (
                     <>
                       Featured Verification Modules &amp;{" "}
-                      <span className="font-serif font-normal text-[#c4956a]">
+                      <span className="font-serif font-normal text-[#7d551f] dark:text-[#c4956a]">
                         Curriculum Tiers
                       </span>
                     </>
                   )}
                 </h2>
-                <p className="text-zinc-500 text-sm max-w-lg mb-5 leading-relaxed">
+                <p className="text-zinc-500 dark:text-zinc-400 text-sm max-w-lg mb-5 leading-relaxed">
                   {lang === "id"
                     ? "Akses penuh ruang kerja aljabar simbolik, kanvas geometri 3D, dan kurikulum bertahap dari TK hingga riset doktoral S3."
                     : "Full access to the symbolic algebra scratchpad, 3D spatial geometry canvas, and structured curricula from preschool to doctoral research."}
@@ -1124,7 +1318,7 @@ export default function LandingPage() {
                     className={`px-4 py-2 rounded-full text-xs font-semibold transition-all duration-300 cursor-pointer ${
                       planCategory === "all"
                         ? "bg-[#09090b] text-white shadow-sm"
-                        : "bg-white border border-zinc-200/90 text-zinc-600 hover:border-zinc-300 hover:text-[#09090b]"
+                        : "bg-white dark:bg-white/5 border border-zinc-200/90 dark:border-white/10 text-zinc-600 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-white/20 hover:text-[#09090b] dark:hover:text-white"
                     }`}
                   >
                     {lang === "id" ? "Semua Modul" : "All Modules"}
@@ -1140,7 +1334,7 @@ export default function LandingPage() {
                     className={`px-4 py-2 rounded-full text-xs font-semibold transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${
                       planCategory === "engine"
                         ? "bg-[#09090b] text-white shadow-sm"
-                        : "bg-white border border-zinc-200/90 text-zinc-600 hover:border-zinc-300 hover:text-[#09090b]"
+                        : "bg-white dark:bg-white/5 border border-zinc-200/90 dark:border-white/10 text-zinc-600 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-white/20 hover:text-[#09090b] dark:hover:text-white"
                     }`}
                   >
                     <Cpu className="w-3.5 h-3.5 text-[#c4956a]" />
@@ -1157,7 +1351,7 @@ export default function LandingPage() {
                     className={`px-4 py-2 rounded-full text-xs font-semibold transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${
                       planCategory === "curriculum"
                         ? "bg-[#09090b] text-white shadow-sm"
-                        : "bg-white border border-zinc-200/90 text-zinc-600 hover:border-zinc-300 hover:text-[#09090b]"
+                        : "bg-white dark:bg-white/5 border border-zinc-200/90 dark:border-white/10 text-zinc-600 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-white/20 hover:text-[#09090b] dark:hover:text-white"
                     }`}
                   >
                     <GraduationCap className="w-3.5 h-3.5 text-[#c4956a]" />
@@ -1168,8 +1362,8 @@ export default function LandingPage() {
 
               {/* Right Counter & Prev/Next Buttons */}
               <div className="flex items-center gap-3 self-end">
-                <span className="text-xs font-mono text-zinc-400 mr-1">
-                  <strong className="text-[#09090b]">
+                <span className="text-xs font-mono text-zinc-600 dark:text-zinc-400 mr-1">
+                  <strong className="text-[#09090b] dark:text-white">
                     {String(activeSlideIndex + 1).padStart(2, "0")}
                   </strong>{" "}
                   / {String(filteredPlans.length).padStart(2, "0")}
@@ -1178,17 +1372,17 @@ export default function LandingPage() {
                   type="button"
                   onClick={() => scrollCarousel("left")}
                   aria-label="Slide Sebelumnya"
-                  className="w-10 h-10 rounded-full border border-zinc-200 bg-white flex items-center justify-center hover:bg-[#faf9f6] hover:border-zinc-300 transition-all shadow-sm active:scale-95 cursor-pointer"
+                  className="w-10 h-10 rounded-full border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/5 flex items-center justify-center hover:bg-[#faf9f6] dark:hover:bg-white/10 hover:border-zinc-300 transition-all shadow-sm active:scale-95 cursor-pointer"
                 >
-                  <ChevronLeft className="w-4 h-4 text-zinc-700" />
+                  <ChevronLeft className="w-4 h-4 text-zinc-700 dark:text-zinc-200" />
                 </button>
                 <button
                   type="button"
                   onClick={() => scrollCarousel("right")}
                   aria-label="Slide Berikutnya"
-                  className="w-10 h-10 rounded-full border border-zinc-200 bg-white flex items-center justify-center hover:bg-[#faf9f6] hover:border-zinc-300 transition-all shadow-sm active:scale-95 cursor-pointer"
+                  className="w-10 h-10 rounded-full border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/5 flex items-center justify-center hover:bg-[#faf9f6] dark:hover:bg-white/10 hover:border-zinc-300 transition-all shadow-sm active:scale-95 cursor-pointer"
                 >
-                  <ChevronRight className="w-4 h-4 text-zinc-700" />
+                  <ChevronRight className="w-4 h-4 text-zinc-700 dark:text-zinc-200" />
                 </button>
               </div>
             </div>
@@ -1204,8 +1398,8 @@ export default function LandingPage() {
                   key={plan.id}
                   className={`min-w-[300px] sm:min-w-[345px] max-w-[345px] rounded-3xl p-6 flex flex-col justify-between snap-start shrink-0 transition-all duration-300 hover:-translate-y-1 relative ${
                     plan.isFeatured
-                      ? "bg-gradient-to-b from-[#fffdf9] to-white border-2 border-[#c4956a] shadow-[0_14px_40px_-12px_rgba(196,149,106,0.28)]"
-                      : "bg-white border border-zinc-200/90 shadow-sm hover:shadow-md"
+                      ? "bg-gradient-to-b from-[#fffdf9] to-white dark:from-[#171410] dark:to-[#121317] border-2 border-[#c4956a] shadow-[0_14px_40px_-12px_rgba(196,149,106,0.28)]"
+                      : "bg-white dark:bg-[#121317] border border-zinc-200/90 dark:border-white/10 shadow-sm hover:shadow-md"
                   }`}
                 >
                   {/* Top Popular Floating Pill Badge */}
@@ -1219,7 +1413,7 @@ export default function LandingPage() {
                   <div>
                     {/* Category & Highlight Badge Row */}
                     <div className="flex items-center justify-between gap-2 mb-4">
-                      <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-zinc-700 bg-[#f5f3ef] border border-zinc-200/80 px-3 py-1 rounded-full">
+                      <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-zinc-700 dark:text-zinc-200 bg-[#f5f3ef] dark:bg-white/10 border border-zinc-200/80 dark:border-white/10 px-3 py-1 rounded-full">
                         {plan.category === "engine" ? (
                           <Cpu className="w-3 h-3 text-[#8f5e32]" />
                         ) : (
@@ -1235,18 +1429,18 @@ export default function LandingPage() {
                     </div>
 
                     {/* Title & Description */}
-                    <h3 className="text-xl font-bold text-[#09090b] mb-1 tracking-tight">{plan.name}</h3>
-                    <p className="text-xs text-zinc-500 mb-5 min-h-[34px] leading-relaxed">
+                    <h3 className="text-xl font-bold text-[#09090b] dark:text-white mb-1 tracking-tight">{plan.name}</h3>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-5 min-h-[34px] leading-relaxed">
                       {lang === "id" ? plan.descId : plan.descEn}
                     </p>
 
                     {/* Metric Display */}
                     <div className="mb-5">
                       <div className="flex items-baseline gap-1.5">
-                        <span className="text-3xl font-bold tracking-tight text-[#09090b] font-mono">
+                        <span className="text-3xl font-bold tracking-tight text-[#09090b] dark:text-white font-mono">
                           {plan.metricMain}
                         </span>
-                        <span className="text-xs text-zinc-400 font-normal">
+                        <span className="text-xs text-zinc-600 dark:text-zinc-400 font-normal">
                           {lang === "id" ? plan.metricUnitId : plan.metricUnitEn}
                         </span>
                       </div>
@@ -1255,14 +1449,14 @@ export default function LandingPage() {
                           {plan.metricSub}
                         </div>
                       ) : (
-                        <div className="text-[11px] text-zinc-400 font-mono mt-0.5">
+                        <div className="text-[11px] text-zinc-600 dark:text-zinc-400 font-mono mt-0.5">
                           Deterministic SymPy CAS
                         </div>
                       )}
                     </div>
 
                     {/* Monospace Spec Box (Warm Editorial Style) */}
-                    <div className="bg-[#faf9f6] rounded-2xl p-3.5 mb-5 border border-zinc-200/80 space-y-2 text-xs font-mono">
+                    <div className="bg-[#faf9f6] dark:bg-white/5 rounded-2xl p-3.5 mb-5 border border-zinc-200/80 dark:border-white/10 space-y-2 text-xs font-mono">
                       {plan.quotaRows.map((row, rIdx) => (
                         <div
                           key={rIdx}
@@ -1275,13 +1469,13 @@ export default function LandingPage() {
                           <span className="text-zinc-500">
                             {lang === "id" ? row.labelId : row.labelEn}
                           </span>
-                          <span className="font-bold text-[#09090b]">{row.value}</span>
+                          <span className="font-bold text-[#09090b] dark:text-white">{row.value}</span>
                         </div>
                       ))}
                     </div>
 
                     {/* Feature Checklist */}
-                    <ul className="space-y-2.5 text-xs text-zinc-600 mb-6">
+                    <ul className="space-y-2.5 text-xs text-zinc-600 dark:text-zinc-300 mb-6">
                       {(lang === "id" ? plan.featuresId : plan.featuresEn).map((feat, fIdx) => (
                         <li key={fIdx} className="flex items-start gap-2">
                           <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
@@ -1313,15 +1507,15 @@ export default function LandingPage() {
                   aria-label={`Ke kartu ${idx + 1}`}
                   onClick={() => {
                     carouselRef.current?.scrollTo({
-                      left: idx * 364,
+                      left: idx * 369,
                       behavior: "smooth",
                     });
                     setActiveSlideIndex(idx);
                   }}
                   className={`h-1.5 rounded-full transition-all duration-300 ${
                     activeSlideIndex === idx
-                      ? "w-6 bg-zinc-900"
-                      : "w-1.5 bg-zinc-300 hover:bg-zinc-400"
+                      ? "w-6 bg-zinc-900 dark:bg-white"
+                      : "w-1.5 bg-zinc-300 dark:bg-zinc-600 hover:bg-zinc-400"
                   }`}
                 />
               ))}
@@ -1335,32 +1529,32 @@ export default function LandingPage() {
         <FadeInOnScroll>
           <section id="ekosistem" className="py-14 overflow-hidden">
             <div className="max-w-6xl mx-auto px-6 text-center mb-8">
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 mb-2">
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white mb-2">
                 {lang === "id" ? (
                   <>
                     Terhubung Mulus dengan Model Terdepan,{" "}
-                    <span className="font-serif italic font-normal text-[#c4956a]">
+                    <span className="font-serif italic font-normal text-[#7d551f] dark:text-[#c4956a]">
                       SymPy CAS, &amp; Ekosistem
                     </span>
                   </>
                 ) : (
                   <>
                     Seamlessly Connected with Frontier Models,{" "}
-                    <span className="font-serif italic font-normal text-[#c4956a]">
+                    <span className="font-serif italic font-normal text-[#7d551f] dark:text-[#c4956a]">
                       SymPy CAS, &amp; Ecosystem
                     </span>
                   </>
                 )}
               </h2>
-              <p className="text-zinc-500 text-xs sm:text-sm max-w-xl mx-auto">
+              <p className="text-zinc-500 dark:text-zinc-400 text-xs sm:text-sm max-w-xl mx-auto">
                 {lang === "id"
                   ? "Gunakan API key BYOK Anda atau jalankan Ollama lokal untuk memadukan kecerdasan LLM dengan kepastian aljabar simbolik."
                   : "Use your own BYOK API keys or local Ollama models to combine frontier conversational AI with symbolic mathematical certainty."}
               </p>
             </div>
 
-            {/* Marquee Edge Mask Container */}
-            <div
+            {/* Marquee Edge Mask Container (animasi dijeda saat di luar layar) */}
+            <PauseAnimationsOffscreen
               className="relative space-y-3"
               style={{
                 maskImage:
@@ -1374,16 +1568,17 @@ export default function LandingPage() {
                 {[...MARQUEE_ROW_1, ...MARQUEE_ROW_1].map((item, idx) => (
                   <div
                     key={`r1-${idx}`}
-                    className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-white border border-zinc-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:border-[#d4a574]/60 transition-colors shrink-0"
+                    aria-hidden={idx >= MARQUEE_ROW_1.length || undefined}
+                    className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-white dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:border-[#d4a574]/60 transition-colors shrink-0"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 rounded-xl bg-zinc-50 dark:bg-white/10 border border-zinc-100 dark:border-white/10 flex items-center justify-center shrink-0">
                       {item.icon}
                     </div>
                     <div className="text-left pr-1">
-                      <div className="text-xs font-semibold text-zinc-900 leading-tight">
+                      <div className="text-xs font-semibold text-zinc-900 dark:text-white leading-tight">
                         {item.name}
                       </div>
-                      <div className="text-[10px] text-zinc-400 leading-tight mt-0.5">
+                      <div className="text-[10px] text-zinc-600 dark:text-zinc-400 leading-tight mt-0.5">
                         {item.sub}
                       </div>
                     </div>
@@ -1396,23 +1591,24 @@ export default function LandingPage() {
                 {[...MARQUEE_ROW_2, ...MARQUEE_ROW_2].map((item, idx) => (
                   <div
                     key={`r2-${idx}`}
-                    className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-white border border-zinc-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:border-[#d4a574]/60 transition-colors shrink-0"
+                    aria-hidden={idx >= MARQUEE_ROW_2.length || undefined}
+                    className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-white dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:border-[#d4a574]/60 transition-colors shrink-0"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 rounded-xl bg-zinc-50 dark:bg-white/10 border border-zinc-100 dark:border-white/10 flex items-center justify-center shrink-0">
                       {item.icon}
                     </div>
                     <div className="text-left pr-1">
-                      <div className="text-xs font-semibold text-zinc-900 leading-tight">
+                      <div className="text-xs font-semibold text-zinc-900 dark:text-white leading-tight">
                         {item.name}
                       </div>
-                      <div className="text-[10px] text-zinc-400 leading-tight mt-0.5">
+                      <div className="text-[10px] text-zinc-600 dark:text-zinc-400 leading-tight mt-0.5">
                         {item.sub}
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </PauseAnimationsOffscreen>
           </section>
         </FadeInOnScroll>
 
@@ -1422,24 +1618,24 @@ export default function LandingPage() {
         <FadeInOnScroll>
           <section id="faq" className="py-16 px-6 max-w-3xl mx-auto border-t border-zinc-200/60">
             <div className="text-center mb-10">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-zinc-200/80 text-[11px] font-mono font-semibold uppercase tracking-wider text-[#8f5e32] mb-3 shadow-sm">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 text-[11px] font-mono font-semibold uppercase tracking-wider text-[#8f5e32] dark:text-[#d4a574] mb-3 shadow-sm">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#c4956a]" />
                 {lang === "id" ? "PERTANYAAN UMUM" : "FREQUENTLY ASKED QUESTIONS"}
               </div>
-              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#09090b] mb-2">
+              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#09090b] dark:text-white mb-2">
                 {lang === "id" ? (
                   <>
                     Semua yang Perlu{" "}
-                    <span className="font-serif font-normal text-[#c4956a]">Anda Ketahui</span>
+                    <span className="font-serif font-normal text-[#7d551f] dark:text-[#c4956a]">Anda Ketahui</span>
                   </>
                 ) : (
                   <>
                     Everything You{" "}
-                    <span className="font-serif font-normal text-[#c4956a]">Need to Know</span>
+                    <span className="font-serif font-normal text-[#7d551f] dark:text-[#c4956a]">Need to Know</span>
                   </>
                 )}
               </h2>
-              <p className="text-zinc-500 text-xs sm:text-sm max-w-md mx-auto leading-relaxed">
+              <p className="text-zinc-500 dark:text-zinc-400 text-xs sm:text-sm max-w-md mx-auto leading-relaxed">
                 {lang === "id"
                   ? "Jawaban atas pertanyaan seputar mesin simbolik SymPy CAS, Zero-Answer Policy, dan konektor BYOK."
                   : "Answers to common questions about the SymPy CAS symbolic engine, Zero-Answer Policy, and BYOK connectors."}
@@ -1452,7 +1648,7 @@ export default function LandingPage() {
                 return (
                   <div
                     key={idx}
-                    className={`bg-white rounded-2xl border overflow-hidden transition-all ${
+                    className={`bg-white dark:bg-[#121317] rounded-2xl border overflow-hidden transition-all ${
                       isOpen
                         ? "border-[#c4956a]/60 shadow-sm"
                         : "border-zinc-200/80 hover:border-zinc-300"
@@ -1461,7 +1657,9 @@ export default function LandingPage() {
                     <button
                       type="button"
                       onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
-                      className="w-full p-5 text-left flex items-center justify-between gap-4 font-semibold text-sm text-[#09090b] hover:bg-[#faf9f6]/70 transition-colors cursor-pointer"
+                      aria-expanded={isOpen}
+                      aria-controls={`faq-panel-${idx}`}
+                      className="w-full p-5 text-left flex items-center justify-between gap-4 font-semibold text-sm text-[#09090b] dark:text-white hover:bg-[#faf9f6]/70 dark:hover:bg-white/5 transition-colors cursor-pointer"
                     >
                       <span>{lang === "id" ? faq.qId : faq.qEn}</span>
                       <span
@@ -1475,7 +1673,11 @@ export default function LandingPage() {
                       </span>
                     </button>
                     {isOpen && (
-                      <div className="px-5 pb-5 text-xs sm:text-sm text-zinc-600 leading-relaxed border-t border-zinc-100 pt-3.5">
+                      <div
+                        id={`faq-panel-${idx}`}
+                        role="region"
+                        className="px-5 pb-5 text-xs sm:text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed border-t border-zinc-100 dark:border-white/10 pt-3.5"
+                      >
                         {lang === "id" ? faq.aId : faq.aEn}
                       </div>
                     )}
@@ -1530,8 +1732,8 @@ export default function LandingPage() {
                 </div>
                 <p className="text-[11px] text-zinc-500 mt-6 font-mono">
                   {lang === "id"
-                    ? "SymPy CAS < 1 ms Pre-Parse · 64 Automated Test Suites · Zero Answer Leaks"
-                    : "SymPy CAS < 1 ms Pre-Parse · 64 Automated Test Suites · Zero Answer Leaks"}
+                    ? "SymPy CAS < 1 ms Pre-Parse · 70 Automated Tests Passed · Zero Answer Leaks"
+                    : "SymPy CAS < 1 ms Pre-Parse · 70 Automated Tests Passed · Zero Answer Leaks"}
                 </p>
               </div>
             </SpotlightCard>
@@ -1542,45 +1744,45 @@ export default function LandingPage() {
       {/* ====================================================================
        * 9. EDITORIAL FOOTER (Matching ai.databyte.co.id)
        * ==================================================================== */}
-      <footer className="py-12 px-6 border-t border-zinc-200/60 text-xs text-zinc-400 max-w-6xl mx-auto">
+      <footer className="py-12 px-6 border-t border-zinc-200/60 text-xs text-zinc-600 dark:text-zinc-400 max-w-6xl mx-auto">
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pb-8 mb-8 border-b border-zinc-200/50 text-zinc-500">
-          <Link href="/chat" className="hover:text-zinc-900 transition-colors">
+          <Link prefetch={false} href="/chat" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
             ZAP Socratic Studio
           </Link>
-          <Link
+          <Link prefetch={false}
             href="/chat?mode=smartboard"
-            className="hover:text-zinc-900 transition-colors"
+            className="hover:text-zinc-900 dark:hover:text-white transition-colors"
           >
             Smartboard Geometri 3D
           </Link>
           <a
             href="#explorer"
             onClick={(e) => scrollToSection(e, "#explorer")}
-            className="hover:text-zinc-900 transition-colors"
+            className="hover:text-zinc-900 dark:hover:text-white transition-colors"
           >
             SymPy CAS Sandbox
           </a>
           <a
             href="#showcase"
             onClick={(e) => scrollToSection(e, "#showcase")}
-            className="hover:text-zinc-900 transition-colors"
+            className="hover:text-zinc-900 dark:hover:text-white transition-colors"
           >
             CFL Terminal Demo
           </a>
           <a
             href="#jenjang"
             onClick={(e) => scrollToSection(e, "#jenjang")}
-            className="hover:text-zinc-900 transition-colors"
+            className="hover:text-zinc-900 dark:hover:text-white transition-colors"
           >
             Kurikulum TK–S3
           </a>
-          <Link href="/connector" className="hover:text-zinc-900 transition-colors">
+          <Link prefetch={false} href="/connector" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
             BYOK Multi-LLM Connector
           </Link>
           <a
             href="#faq"
             onClick={(e) => scrollToSection(e, "#faq")}
-            className="hover:text-zinc-900 transition-colors"
+            className="hover:text-zinc-900 dark:hover:text-white transition-colors"
           >
             FAQ &amp; Privasi UU PDP
           </a>
@@ -1597,23 +1799,23 @@ export default function LandingPage() {
           </div>
 
           <div className="flex flex-wrap justify-center gap-5 text-zinc-500">
-            <Link href="/chat" className="hover:text-zinc-900 transition-colors">
+            <Link prefetch={false} href="/chat" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
               Studio
             </Link>
-            <Link href="/connector" className="hover:text-zinc-900 transition-colors">
+            <Link prefetch={false} href="/connector" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
               Connector
             </Link>
             <a
               href="#explorer"
               onClick={(e) => scrollToSection(e, "#explorer")}
-              className="hover:text-zinc-900 transition-colors"
+              className="hover:text-zinc-900 dark:hover:text-white transition-colors"
             >
               CAS Verifier
             </a>
             <a
               href="#faq"
               onClick={(e) => scrollToSection(e, "#faq")}
-              className="hover:text-zinc-900 transition-colors"
+              className="hover:text-zinc-900 dark:hover:text-white transition-colors"
             >
               Zero-Answer Contract
             </a>
@@ -1638,13 +1840,13 @@ export default function LandingPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              className="bg-white rounded-3xl max-w-md w-full p-6 border border-zinc-200 shadow-2xl relative"
+              className="bg-white dark:bg-[#121317] rounded-3xl max-w-md w-full p-6 border border-zinc-200 dark:border-white/10 shadow-2xl relative"
             >
               <button
                 type="button"
                 onClick={() => setWaitlistProduct(null)}
                 aria-label="Tutup modal"
-                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-500 transition-colors"
+                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-zinc-100 dark:bg-white/10 hover:bg-zinc-200 dark:hover:bg-white/15 flex items-center justify-center text-zinc-500 dark:text-zinc-300 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1654,24 +1856,24 @@ export default function LandingPage() {
                 <span>Waiting List Ekosistem ChatZAP</span>
               </div>
 
-              <h3 className="text-xl font-bold text-zinc-900 mb-1.5">
+              <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-1.5">
                 {waitlistProduct}
               </h3>
-              <p className="text-xs text-zinc-500 leading-relaxed mb-5">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-5">
                 {lang === "id"
                   ? "Modul ini sedang dalam tahap kalibrasi kurikuler dan uji coba terbatas. Daftarkan email Anda untuk memperoleh akses prioritas saat rilis."
                   : "This module is currently in curricular calibration and private beta. Register your email for priority access upon release."}
               </p>
 
               {waitlistSubmitted ? (
-                <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-center space-y-2">
+                <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 p-4 text-center space-y-2">
                   <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
-                  <div className="text-sm font-bold text-emerald-950">
+                  <div className="text-sm font-bold text-emerald-950 dark:text-emerald-100">
                     {lang === "id"
                       ? "Terdaftar di Antrean Prioritas!"
                       : "Added to Priority Waitlist!"}
                   </div>
-                  <p className="text-xs text-emerald-800">
+                  <p className="text-xs text-emerald-800 dark:text-emerald-200">
                     {lang === "id"
                       ? `Kami akan mengirimkan undangan akses ${waitlistProduct} ke ${waitlistEmail}.`
                       : `We will send your ${waitlistProduct} invite to ${waitlistEmail}.`}
@@ -1692,39 +1894,62 @@ export default function LandingPage() {
               ) : (
                 <form onSubmit={handleWaitlistSubmit} className="space-y-3">
                   <div>
-                    <label className="block text-[11px] font-semibold text-zinc-700 mb-1">
+                    <label
+                      htmlFor="waitlist-name"
+                      className="block text-[11px] font-semibold text-zinc-700 dark:text-zinc-200 mb-1"
+                    >
                       {lang === "id" ? "Nama Lengkap / Institusi" : "Full Name / Institution"}
                     </label>
                     <input
+                      id="waitlist-name"
                       type="text"
                       required
                       value={waitlistName}
                       onChange={(e) => setWaitlistName(e.target.value)}
                       placeholder={lang === "id" ? "Contoh: Budi Santoso (SMA 8 / ITB)" : "e.g., Alex Rivera"}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-[#c4956a] focus:bg-white transition-all"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/10 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-[#c4956a] focus:bg-white dark:focus:bg-white/10 transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-zinc-700 mb-1">
+                    <label
+                      htmlFor="waitlist-email"
+                      className="block text-[11px] font-semibold text-zinc-700 dark:text-zinc-200 mb-1"
+                    >
                       {lang === "id" ? "Alamat Email" : "Email Address"}
                     </label>
                     <input
+                      id="waitlist-email"
                       type="email"
                       required
                       value={waitlistEmail}
                       onChange={(e) => setWaitlistEmail(e.target.value)}
                       placeholder="nama@sekolah.sch.id"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-[#c4956a] focus:bg-white transition-all"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/10 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-[#c4956a] focus:bg-white dark:focus:bg-white/10 transition-all"
                     />
                   </div>
+                  {waitlistError && (
+                    <div
+                      role="alert"
+                      className="rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 px-3.5 py-2.5 text-xs text-red-800 dark:text-red-200"
+                    >
+                      {waitlistError}
+                    </div>
+                  )}
                   <div className="pt-2 flex items-center justify-end gap-2">
                     <ActionButton
                       type="submit"
                       variant="gold"
                       size="md"
+                      disabled={waitlistSubmitting}
                       className="w-full justify-between"
                     >
-                      {lang === "id" ? "Daftar Waiting List" : "Join Waiting List"}
+                      {waitlistSubmitting
+                        ? lang === "id"
+                          ? "Mengirim..."
+                          : "Submitting..."
+                        : lang === "id"
+                        ? "Daftar Waiting List"
+                        : "Join Waiting List"}
                     </ActionButton>
                   </div>
                 </form>

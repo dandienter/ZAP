@@ -44,6 +44,76 @@ interface SyncRequestBody {
   replaceConversations?: boolean;
 }
 
+// ---------------- Autentikasi wajib (Google ID token) ----------------
+// Semua method route ini WAJIB membawa header:
+//   Authorization: Bearer <Google ID token>
+// Token diverifikasi ke Google (tokeninfo), aud harus cocok dengan client ID
+// server, email_verified harus true, dan email di token harus sama dengan
+// email yang disinkronkan. Tidak ada jalur tanpa auth (fail-closed).
+
+type AuthResult = { email: string } | { errorResponse: NextResponse };
+
+async function requireGoogleIdentity(req: Request): Promise<AuthResult> {
+  const unauthorized = (message: string, status: number = 401) => ({
+    errorResponse: NextResponse.json({ error: message }, { status }),
+  });
+
+  const authHeader = req.headers.get("authorization") || "";
+  if (!authHeader.startsWith("Bearer ")) {
+    return unauthorized("Autentikasi diperlukan. Sertakan Google ID token pada header Authorization.");
+  }
+  const idToken = authHeader.slice("Bearer ".length).trim();
+  if (!idToken) {
+    return unauthorized("Autentikasi diperlukan. Sertakan Google ID token pada header Authorization.");
+  }
+
+  const expectedAud =
+    process.env.ZAP_GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+  if (!expectedAud) {
+    return unauthorized(
+      "Server belum dikonfigurasi untuk verifikasi Google (ZAP_GOOGLE_CLIENT_ID kosong).",
+      500
+    );
+  }
+
+  let info: Record<string, unknown>;
+  try {
+    const res = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
+      { signal: AbortSignal.timeout(6000) }
+    );
+    if (!res.ok) {
+      return unauthorized("Token Google tidak valid atau sudah kedaluwarsa.");
+    }
+    info = (await res.json()) as Record<string, unknown>;
+  } catch {
+    return unauthorized("Gagal memverifikasi token Google. Silakan coba lagi.");
+  }
+
+  if (info.aud !== expectedAud) {
+    return unauthorized("Token Google tidak diterbitkan untuk aplikasi ini.");
+  }
+  if (info.email_verified !== "true" && info.email_verified !== true) {
+    return unauthorized("Email Google belum terverifikasi.");
+  }
+  const email = typeof info.email === "string" ? info.email.trim().toLowerCase() : "";
+  if (!email) {
+    return unauthorized("Token Google tidak memuat email.");
+  }
+
+  return { email };
+}
+
+function assertEmailMatches(identityEmail: string, targetEmail: string): NextResponse | null {
+  if (targetEmail && targetEmail.trim().toLowerCase() !== identityEmail) {
+    return NextResponse.json(
+      { error: "Email yang disinkronkan tidak cocok dengan identitas token." },
+      { status: 403 }
+    );
+  }
+  return null;
+}
+
 // Serverless-safe fallback in-memory store for environments with read-only filesystems (Vercel, Cloudflare, Lambda)
 const memoryVault = new Map<string, VaultData>();
 
@@ -81,19 +151,21 @@ function getVaultFilePath(email: string, userId: string): string {
   return targetPath;
 }
 
-// GET: Ambil backup data pengguna berdasarkan email / userId
+// GET: Ambil backup data pengguna (identitas diambil dari Google ID token)
 export async function GET(req: Request) {
   try {
+    const auth = await requireGoogleIdentity(req);
+    if ("errorResponse" in auth) return auth.errorResponse;
+
     const { searchParams } = new URL(req.url);
     const email = searchParams.get("email") || "";
-    const userId = searchParams.get("userId") || "";
+    const mismatch = assertEmailMatches(auth.email, email);
+    if (mismatch) return mismatch;
 
-    if (!email && !userId) {
-      return NextResponse.json({ error: "Email atau userId diperlukan" }, { status: 400 });
-    }
-
-    const safeKey = getVaultSafeKey(email, userId);
-    const filePath = getVaultFilePath(email, userId);
+    // Identitas otoritatif = email dari token terverifikasi, bukan parameter.
+    const identityEmail = auth.email;
+    const safeKey = getVaultSafeKey(identityEmail, "");
+    const filePath = getVaultFilePath(identityEmail, "");
     let data: VaultData | null = memoryVault.get(safeKey) || null;
 
     if (!data && filePath && fs.existsSync(filePath)) {
@@ -120,9 +192,12 @@ export async function GET(req: Request) {
   }
 }
 
-// POST: Simpan atau merge backup data pengguna
+// POST: Simpan atau merge backup data pengguna (wajib Google ID token)
 export async function POST(req: Request) {
   try {
+    const auth = await requireGoogleIdentity(req);
+    if ("errorResponse" in auth) return auth.errorResponse;
+
     const body: SyncRequestBody = await req.json();
     const {
       user,
@@ -137,6 +212,11 @@ export async function POST(req: Request) {
     if (!user || (!user.email && !user.id)) {
       return NextResponse.json({ error: "Data pengguna tidak valid" }, { status: 400 });
     }
+
+    // Email pada body harus sama dengan email token terverifikasi.
+    const mismatch = assertEmailMatches(auth.email, user.email || "");
+    if (mismatch) return mismatch;
+    user.email = auth.email;
 
     const safeKey = getVaultSafeKey(user.email, user.id);
     const filePath = getVaultFilePath(user.email, user.id);
@@ -276,22 +356,28 @@ export async function POST(req: Request) {
   }
 }
 
-// DELETE: Hapus percakapan tertentu secara permanen dari cloud vault
+// DELETE: Hapus percakapan tertentu secara permanen dari cloud vault (wajib token)
 export async function DELETE(req: Request) {
   try {
+    const auth = await requireGoogleIdentity(req);
+    if ("errorResponse" in auth) return auth.errorResponse;
+
     const { searchParams } = new URL(req.url);
     const email = searchParams.get("email") || "";
-    const userId = searchParams.get("userId") || "";
     const convId = searchParams.get("convId") || "";
 
-    if ((!email && !userId) || !convId) {
+    if (!convId) {
       return NextResponse.json(
-        { error: "Email/userId dan convId diperlukan untuk penghapusan" },
+        { error: "convId diperlukan untuk penghapusan" },
         { status: 400 }
       );
     }
 
-    const safeKey = getVaultSafeKey(email, userId);
+    const mismatch = assertEmailMatches(auth.email, email);
+    if (mismatch) return mismatch;
+
+    const identityEmail = auth.email;
+    const safeKey = getVaultSafeKey(identityEmail, "");
     const memData = memoryVault.get(safeKey);
     if (memData && Array.isArray(memData.conversations)) {
       memData.conversations = memData.conversations.filter((c) => c.id !== convId);
@@ -299,7 +385,7 @@ export async function DELETE(req: Request) {
       memoryVault.set(safeKey, memData);
     }
 
-    const filePath = getVaultFilePath(email, userId);
+    const filePath = getVaultFilePath(identityEmail, "");
     if (filePath && fs.existsSync(filePath)) {
       try {
         const raw = fs.readFileSync(filePath, "utf-8");
