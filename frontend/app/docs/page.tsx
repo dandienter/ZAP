@@ -52,17 +52,116 @@ const geometrySnippet = String.raw`// Urutan penalaran permintaan geometri di Ch
 //    lalu disimpan sebagai pola baru. Spec yang gagal = klarifikasi jujur,
 //    tidak ada bangun pengganti yang dikarang.`;
 
-const harnessSnippet = String.raw`# ZAP Agent Skills - alur belajar harness (backend/data_engine/agent_harness.py)
-# 1. Kandidat soal masuk dari percakapan pengguna atau impor korpus.
-# 2. Kandidat WAJIB lolos verifikasi CAS (SymPy) sebelum dipromosikan:
-#    langkah-langkah pengerjaan dicek satu per satu terhadap kebenaran aljabar.
-# 3. Yang lolos naik tier (candidate -> verified) dan tersimpan di SQLite
-#    zap_math_corpus.db; yang gagal tetap candidate dan tidak pernah
-#    disajikan sebagai soal terverifikasi.
-# 4. Endpoint belajar/pola bersifat secret-gated (header X-Harness-Secret)
-#    dan fail-closed: tanpa secret yang benar server menjawab 503.
-# 5. Statistik publik (GET /api/v1/harness/stats) hanya membaca agregat:
-#    jumlah record, distribusi tier, dan jumlah pola geometri.`;
+
+const learnGateSnippet = String.raw`# backend/data_engine/agent_harness.py - learn_from_conversation, langkah 3
+# Gerbang CFL: diagnosis kesalahan BUKAN verifikasi.
+if len(steps) >= 2:
+    fault_idx, diag = isolate_first_fault_breakpoint(steps, target_var=target_var)
+    cfl_status = diag.get("status", "UNKNOWN")
+    if cfl_status == "FAULT_DETECTED":
+        misconception_type = diag.get("misconception_type")
+        counter_example = diag.get("counter_example")
+        # A detected fault is a diagnosis, NOT a verification: the
+        # student's derivation is wrong, so it must never be flagged
+        # sympy_verified nor promoted into the corpus.
+        sympy_verified = False
+    elif cfl_status == "ALL_STEPS_VALID":
+        sympy_verified = True
+elif len(steps) == 1:
+    try:
+        parse_step_to_symbolic(steps[0])
+        cfl_status = "SINGLE_EXPRESSION_VALID"
+        sympy_verified = True
+    except Exception:
+        cfl_status = "CONCEPTUAL_QUERY"`;
+
+const promotionSnippet = String.raw`# backend/data_engine/agent_harness.py - learn_from_conversation, langkah 6
+# Promote to permanent MathCorpusStore ONLY when the CFL verdict is
+# ALL_STEPS_VALID and the derivation is genuinely valid (is_valid True).
+promoted_to_corpus = False
+if cfl_status == "ALL_STEPS_VALID" and sympy_verified and len(steps) >= 2:
+    corpus_item = {
+        "id": f"conv_{memory_id}",
+        "tier": tier,
+        "topic": f"Pembelajaran Percakapan ({topic.capitalize()})",
+        "question": clean_user[:500],
+        "steps": steps,
+        "target_variable": target_var,
+        "sympy_verification": {
+            "cfl_status": cfl_status,
+            "is_valid": cfl_status == "ALL_STEPS_VALID",
+        },
+        "socratic_prompt": socratic_resolution,
+        "source": "ZAP Continuous User Conversation Memory",
+    }
+    self.corpus_store.insert_batch([corpus_item])
+    promoted_to_corpus = True`;
+
+const boxedSnippet = String.raw`# backend/data_engine/build_corpus.py - gerbang MATH/Numina
+def _boxed_parseable(boxed: str) -> Optional[Dict[str, Any]]:
+    """Gerbang MATH/Numina: isi boxed harus terparse SymPy jadi ekspresi konkret."""
+    if not boxed or len(boxed) > 120:
+        return None
+    expr = boxed
+    expr = re.sub(r"\text\{[^}]*\}", "", expr)
+    expr = expr.replace("\dfrac", "\frac").replace("\tfrac", "\frac")
+    expr = re.sub(r"\frac\{([^{}]+)\}\{([^{}]+)\}", r"((\1)/(\2))", expr)
+    expr = re.sub(r"\sqrt\{([^{}]+)\}", r"sqrt(\1)", expr)
+    expr = expr.replace("\pi", "pi").replace("\cdot", "*").replace("\times", "*")
+    expr = expr.replace("^", "**").replace("$", "").replace(",", "").strip()
+    if not re.fullmatch(r"[0-9a-zA-Z+\-*/().\s]+", expr):
+        return None
+    try:
+        value = sp.sympify(expr, rational=True)
+        if value.free_symbols:   # masih mengandung variabel bebas = belum konkret
+            return None
+        float(value.evalf())
+    except Exception:
+        return None
+    return {"expected_value": boxed, "is_valid": True,
+            "status": "verified_boxed", "engine": "SymPy CAS"}`;
+
+const matchSnippet = String.raw`# backend/data_engine/agent_harness.py - match_geometry_pattern (inti)
+def match_geometry_pattern(self, query):
+    normalized = self._normalize_phrase(query)
+    if not normalized:
+        return None
+    query_tokens = set(normalized.split())
+    best, best_score = None, 0.0
+    for item in self.list_geometry_patterns(limit=500):
+        phrase = item["phrase"]
+        if phrase in normalized:                 # containment penuh
+            score = 1.0 + len(phrase) / 1000.0
+        else:
+            tokens = set(phrase.split())
+            if not tokens:
+                continue
+            # Angka adalah identitas bangun (segi 8 != segi 9): pola yang
+            # mengandung angka hanya boleh cocok bila angkanya persis sama.
+            pattern_digits = {tok for tok in tokens if tok.isdigit()}
+            query_digits = {tok for tok in query_tokens if tok.isdigit()}
+            if pattern_digits and pattern_digits != query_digits:
+                continue
+            overlap = len(tokens & query_tokens) / len(tokens)
+            if overlap < 0.8:                    # ambang kemiripan token
+                continue
+            score = overlap
+        if score > best_score:
+            best_score, best = score, item
+    return {"phrase": best["phrase"], "spec": best["spec"],
+            "hits": best["hits"], "score": round(best_score, 3)} if best else None`;
+
+const cliSnippet = String.raw`# Satu CLI untuk semua pelatihan (Windows / PowerShell):
+python .agents/skills/zap-skills/scripts/train_zap_sources.py --train --tier ALL --count 25 --harvest --seed-memory --audit --verify
+
+# Panen sumber internet terverifikasi saja:
+python .agents/skills/zap-skills/scripts/train_zap_sources.py --harvest --max-items 25
+
+# Latih harness dari satu giliran percakapan:
+python .agents/skills/zap-skills/scripts/train_zap_sources.py --learn-turn "Bantu cek coretan saya: 2x + 6 = 14 -> 2x = 20 -> x = 10"
+
+# Audit 5 pilar + kepatuhan Zero-Answer:
+python .agents/skills/zap-skills/scripts/train_zap_sources.py --audit`;
 
 function CodeBlock({ title, code }: { title: string; code: string }) {
   return (
@@ -97,6 +196,8 @@ function Section({
 const endpoints: Array<[string, string, string]> = [
   ["POST", "/api/v1/verify", "Verifikasi satu langkah pengerjaan siswa terhadap CAS. Mengembalikan status langkah dan diagnosis deterministik, tanpa jawaban akhir."],
   ["GET", "/api/v1/harness/stats", "Agregat korpus: jumlah record per tier dan jumlah pola geometri yang dipelajari."],
+  ["POST", "/api/v1/harness/learn", "Satu giliran percakapan dilatih ke memori episodik: redaksi PII, ekstraksi langkah, diagnosis CFL, promosi korpus bila ALL_STEPS_VALID. Wajib header X-Harness-Secret."],
+  ["POST", "/api/v1/harness/context", "Mengambil konteks harness untuk satu kueri: memori episodik relevan, contoh korpus terverifikasi, dan rumus geometri untuk prompt chat."],
   ["POST", "/api/v1/harness/geometry-match", "Mencocokkan frasa permintaan geometri ke pola yang sudah dipelajari (dengan penjaga angka)."],
   ["POST", "/api/v1/harness/geometry-pattern", "Menyimpan pola geometri baru yang sudah lolos validator. Wajib header X-Harness-Secret."],
   ["GET", "/api/v1/harness/geometry-patterns", "Daftar pola geometri yang tersimpan."],
@@ -245,23 +346,88 @@ export default function DocsPage() {
           </p>
         </Section>
 
-        <Section id="skills" title="5. ZAP Agent Skills: korpus yang belajar, dengan gerbang CAS">
+        <Section id="skills" title="5. ZAP Agent Skills: dokumentasi lengkap dan source code algoritma">
           <p>
-            ZAP Agent Skills adalah lapisan keterampilan agen untuk melatih dan mengumpulkan sumber belajar
-            secara berkelanjutan. Korpus soal dibangun dari sumber terbuka berlisensi jelas dan disimpan
-            sebagai JSONL kanonik (12.428 record pada rilis dokumentasi ini):
+            ZAP Agent Skills adalah satu skill induk terpadu yang didefinisikan di{" "}
+            <strong>.agents/skills/zap-skills/SKILL.md</strong> (dengan skrip{" "}
+            <em>scripts/train_zap_sources.py</em> dan referensi <em>references/DATA_SOURCES_SCHEMA.md</em>{" "}
+            serta <em>references/SOCRATIC_ONTOLOGY.md</em>). Skill ini menggabungkan lima pilar:
           </p>
-          <ul className="list-disc pl-5 space-y-1.5">
-            <li>OpenAI GSM8K (MIT) - 8.187 record</li>
-            <li>MATH Dataset, Hendrycks et al. (MIT) - 2.796 record</li>
-            <li>NuminaMath-CoT, Project Numina (Apache-2.0) - 1.323 record</li>
-            <li>Sisanya: generated_local, GSM8K Reasoning, Wikimedia Mathematical Knowledge Graph, dan promosi self-learning terverifikasi</li>
-          </ul>
+          <div className="rounded-2xl border border-zinc-200 dark:border-white/10 overflow-hidden my-4">
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="bg-zinc-100 dark:bg-white/[0.05] text-left">
+                  <th className="px-4 py-2.5 font-semibold w-56">Pilar</th>
+                  <th className="px-4 py-2.5 font-semibold w-64">Modul inti</th>
+                  <th className="px-4 py-2.5 font-semibold">Peran</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ["1. Ontologi Kurikulum TK-S3", "data_engine/taxonomy.py", "7 jenjang, 18 topik, 34 subtopik, rumus, dan target kanvas WebGL."],
+                  ["2. Korpus Prosedural + Crawler", "data_engine/generators.py, harvester.py, build_corpus.py", "Sintesis derivasi terverifikasi SymPy dan panen sumber terbuka (GSM8K, HuggingFace, Wikimedia, Kurikulum Merdeka)."],
+                  ["3. Basis Geometri 2D/3D", "cfl/geometry_db.py, frontend/data/geometry-database.ts", "Sinkronisasi bangun parametrik, bangun ruang, dan jaring-jaring antara backend SymPy dan Smartboard."],
+                  ["4. CFL + Flywheel Belajar", "backend/cfl/, zapcore/learning.py", "Lokalisasi kesalahan deterministik, contoh penyangkal, dan RobustZeroAnswerGuardrail."],
+                  ["5. Agent Harness (Memori Episodik)", "data_engine/agent_harness.py, app/api/chat/route.ts", "Belajar berkelanjutan dari percakapan: redaksi PII, ekstraksi langkah, verifikasi CAS, promosi korpus, profil pembelajar."],
+                ].map(([a, b, c]) => (
+                  <tr key={a} className="border-t border-zinc-200/70 dark:border-white/[0.06] align-top">
+                    <td className="px-4 py-2.5 font-medium">{a}</td>
+                    <td className="px-4 py-2.5 font-mono text-[12px]">{b}</td>
+                    <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-300">{c}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <CodeBlock title="CLI pelatihan - .agents/skills/zap-skills/scripts/train_zap_sources.py" code={cliSnippet} />
+
+          <h3 className="text-base font-bold text-zinc-900 dark:text-white pt-4">5.1 Algoritma belajar dari percakapan: learn_from_conversation</h3>
           <p>
-            Angka 12.428 juga tampil langsung di beranda dan kartu korpus aplikasi - diambil dari endpoint
-            statistik yang sama, bukan angka salinan.
+            Setiap giliran percakapan yang valid dikirim ke{" "}
+            <strong>ZAPAgentHarness.learn_from_conversation()</strong> (backend/data_engine/agent_harness.py)
+            melalui POST /api/v1/harness/learn. Alurnya enam langkah:
           </p>
-          <CodeBlock title="backend/data_engine/agent_harness.py - kontrak alur belajar" code={harnessSnippet} />
+          <ol className="list-decimal pl-5 space-y-1.5">
+            <li><strong>Redaksi PII</strong> - redact_pii() membuang email, nomor telepon, dan kunci API dari teks.</li>
+            <li><strong>Ekstraksi langkah</strong> - extract_math_steps_from_text() mengambil persamaan/langkah dari teks (pemisah -&gt;, multi-baris, atau inline); topik, jenjang, dan intensi geometri diklasifikasikan.</li>
+            <li><strong>Gerbang CFL</strong> - langkah diperiksa isolate_first_fault_breakpoint() (SymPy). Hasil FAULT_DETECTED adalah diagnosis, bukan verifikasi: tidak pernah ditandai sympy_verified.</li>
+            <li><strong>Resolusi Sokratik</strong> - disusun dari jenis miskonsepsi (mis. DISTRIBUTIVE_EXPANSION_ILLUSION, SIGN_INVERSION_OR_TRANSPOSITION_ERROR, ROOT_LOSS) lalu disanitasi RobustZeroAnswerGuardrail.</li>
+            <li><strong>Upsert memori episodik</strong> - tersimpan di SQLite agent_episodic_memory dan data/zap_agent_memory.jsonl, dideduplikasi oleh memory_id; miskonsepsi yang berulang menaikkan hit_count.</li>
+            <li><strong>Promosi korpus</strong> - hanya derivasi ALL_STEPS_VALID yang terverifikasi yang naik ke MathCorpusStore permanen.</li>
+          </ol>
+          <CodeBlock title="agent_harness.py - gerbang CFL di learn_from_conversation (kode asli)" code={learnGateSnippet} />
+          <CodeBlock title="agent_harness.py - gerbang promosi ke korpus permanen (kode asli)" code={promotionSnippet} />
+          <p>
+            Sebelum menjawab, rute chat juga memanggil POST /api/v1/harness/context: harness mengambil memori
+            episodik yang relevan (retrieve_relevant_memories, diurutkan kecocokan topik dan hit_count),
+            contoh korpus terverifikasi, dan rumus geometri, lalu menyuntikkannya ke prompt sistem sebagai{" "}
+            <em>&lt;ZAP_AGENT_HARNESS_CONTEXT&gt;</em>. Profil pembelajar per pengguna (learner_profiles)
+            ikut diperbarui dari status CFL setiap giliran.
+          </p>
+
+          <h3 className="text-base font-bold text-zinc-900 dark:text-white pt-4">5.2 Algoritma pembangunan korpus: gerbang boxed terverifikasi</h3>
+          <p>
+            Korpus dibangun oleh backend/data_engine/build_corpus.py dari sumber terbuka berlisensi jelas
+            (12.428 record pada rilis dokumentasi ini: GSM8K 8.187, MATH 2.796, NuminaMath-CoT 1.323, sisanya
+            generated_local, GSM8K Reasoning, Wikimedia, dan promosi percakapan terverifikasi). Untuk dataset
+            MATH dan Numina, jawaban akhir di dalam \boxed&#123;...&#125; wajib lolos gerbang berikut: sesudah
+            normalisasi LaTeX, isi boxed harus terparse SymPy menjadi nilai konkret tanpa variabel bebas.
+            Yang gagal tidak masuk korpus.
+          </p>
+          <CodeBlock title="build_corpus.py - _boxed_parseable (kode asli)" code={boxedSnippet} />
+
+          <h3 className="text-base font-bold text-zinc-900 dark:text-white pt-4">5.3 Algoritma pencocokan pola geometri yang dipelajari</h3>
+          <p>
+            Pola frasa geometri yang lolos validator disimpan di tabel SQLite geometry_patterns. Pencocokannya
+            memakai containment penuh atau overlap token minimal 0,8, dengan penjaga angka: angka adalah
+            identitas bangun, sehingga pola berangka hanya cocok bila himpunan angkanya persis sama.
+          </p>
+          <CodeBlock title="agent_harness.py - match_geometry_pattern (kode asli, inti)" code={matchSnippet} />
+          <p>
+            Seluruh endpoint belajar dan pola bersifat secret-gated (header X-Harness-Secret) dan fail-closed:
+            tanpa secret yang benar, server menjawab 503. Statistik publik (GET /api/v1/harness/stats) hanya
+            membaca agregat.
+          </p>
         </Section>
 
         <Section id="api" title="6. Referensi API">
