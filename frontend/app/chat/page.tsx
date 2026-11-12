@@ -48,7 +48,7 @@ import {
 } from "@/utils/account-sync";
 import { useTheme } from "@/utils/theme";
 import { markSessionCookie } from "@/lib/session-cookie";
-import { resolveGeometricIntent } from "@/data/geometry-database";
+import { resolveGeometricIntent, looksLikeGeometryRequest } from "@/data/geometry-database";
 import {
   Plus,
   PlusCircle,
@@ -389,6 +389,13 @@ function detectSmartboardItem(
     // panel TIDAK dibuka dan detektor legacy tidak boleh menimpa.
     return null;
   }
+  // Pola geometri yang tidak dikenal resolver deterministik dan tidak punya
+  // bentuk konkret untuk detektor legacy: biarkan server memutuskan lewat
+  // jalur self-learning (pola dipelajari / penalaran LLM / klarifikasi).
+  if (!resolved && looksLikeGeometryRequest(t) && !detectShapeKind(t)) {
+    return null;
+  }
+
   const resolvedItem = resolved?.smartboardItem;
   if (resolved && resolvedItem) {
     return {

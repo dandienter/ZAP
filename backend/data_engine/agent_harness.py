@@ -522,6 +522,102 @@ class ZAPAgentHarness:
         lines.append("    (Profil ini konteks internal tutor; jangan menyebutkannya secara eksplisit ke pengguna.)")
         return lines
 
+    # ---------------- Pola Geometri Self-Learning ----------------
+    # Pola frasa -> spesifikasi bangun yang SUDAH lolos validasi mesin
+    # geometri. Hanya resolusi LLM yang tervalidasi yang boleh masuk;
+    # pola mentah / tebakan model tidak pernah disimpan (fail-closed).
+
+    @staticmethod
+    def _normalize_phrase(text: str) -> str:
+        import re as _re
+        lowered = (text or "").lower()
+        cleaned = _re.sub(r"[^a-z0-9\s]", " ", lowered)
+        return _re.sub(r"\s+", " ", cleaned).strip()
+
+    def _init_geometry_patterns_table(self, conn: sqlite3.Connection) -> None:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS geometry_patterns (
+                pattern_key TEXT PRIMARY KEY,
+                phrase TEXT NOT NULL,
+                spec_json TEXT NOT NULL,
+                hits INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+
+    def learn_geometry_pattern(self, phrase: str, spec: Dict[str, Any]) -> Dict[str, Any]:
+        normalized = self._normalize_phrase(phrase)
+        if not normalized or not isinstance(spec, dict) or not spec.get("family"):
+            return {"status": "rejected", "reason": "frasa kosong atau spec tidak valid"}
+        key = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
+        now = datetime.now(timezone.utc).isoformat()
+        with sqlite3.connect(self.db_path) as conn:
+            self._init_geometry_patterns_table(conn)
+            row = conn.execute(
+                "SELECT hits FROM geometry_patterns WHERE pattern_key = ?", (key,)
+            ).fetchone()
+            if row:
+                conn.execute(
+                    "UPDATE geometry_patterns SET hits = hits + 1, spec_json = ?, updated_at = ? WHERE pattern_key = ?",
+                    (json.dumps(spec, ensure_ascii=False), now, key),
+                )
+                hits = int(row[0]) + 1
+                status = "updated"
+            else:
+                conn.execute(
+                    "INSERT INTO geometry_patterns (pattern_key, phrase, spec_json, hits, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?)",
+                    (key, normalized, json.dumps(spec, ensure_ascii=False), now, now),
+                )
+                hits = 1
+                status = "learned"
+            conn.commit()
+        return {"status": status, "pattern_key": key, "phrase": normalized, "hits": hits}
+
+    def list_geometry_patterns(self, limit: int = 200) -> List[Dict[str, Any]]:
+        with sqlite3.connect(self.db_path) as conn:
+            self._init_geometry_patterns_table(conn)
+            rows = conn.execute(
+                "SELECT phrase, spec_json, hits FROM geometry_patterns ORDER BY hits DESC, updated_at DESC LIMIT ?",
+                (max(1, min(limit, 500)),),
+            ).fetchall()
+        out: List[Dict[str, Any]] = []
+        for phrase, spec_json, hits in rows:
+            try:
+                spec = json.loads(spec_json)
+            except (TypeError, ValueError):
+                continue
+            out.append({"phrase": phrase, "spec": spec, "hits": int(hits)})
+        return out
+
+    def match_geometry_pattern(self, query: str) -> Optional[Dict[str, Any]]:
+        normalized = self._normalize_phrase(query)
+        if not normalized:
+            return None
+        query_tokens = set(normalized.split())
+        best: Optional[Dict[str, Any]] = None
+        best_score = 0.0
+        for item in self.list_geometry_patterns(limit=500):
+            phrase = item["phrase"]
+            if phrase in normalized:
+                score = 1.0 + len(phrase) / 1000.0
+            else:
+                tokens = set(phrase.split())
+                if not tokens:
+                    continue
+                overlap = len(tokens & query_tokens) / len(tokens)
+                if overlap < 0.8:
+                    continue
+                score = overlap
+            if score > best_score:
+                best_score = score
+                best = item
+        if best is None:
+            return None
+        return {"phrase": best["phrase"], "spec": best["spec"], "hits": best["hits"], "score": round(best_score, 3)}
+
     def retrieve_relevant_memories(self, query: str, limit: int = 3) -> List[Dict[str, Any]]:
         """Retrieve relevant episodic memories ordered by keyword/topic match and hit_count."""
         topic, hits = classify_topic(query)

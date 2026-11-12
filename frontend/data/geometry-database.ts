@@ -626,6 +626,7 @@ export interface ResolvedGeometricResult {
   unit: string;
   reply: string;
   clarify?: boolean;
+  clarifyKind?: "terminal" | "generic";
   smartboardItem?: {
     targetTab: "2d" | "3d";
     model: string;
@@ -703,7 +704,7 @@ function positionalPool(lower: string): number[] {
   return (cleaned.match(/\d+(?:[.,]\d+)?/g) || []).map((x) => parseFloat(x.replace(",", ".")));
 }
 
-function clarifyResult(reply: string, dimension: "2D" | "3D" = "3D"): ResolvedGeometricResult {
+function clarifyResult(reply: string, dimension: "2D" | "3D" = "3D", kind: "terminal" | "generic" = "terminal"): ResolvedGeometricResult {
   return {
     dimension,
     targetTab: dimension === "3D" ? "3d" : "2d",
@@ -712,6 +713,7 @@ function clarifyResult(reply: string, dimension: "2D" | "3D" = "3D"): ResolvedGe
     unit: "cm",
     reply,
     clarify: true,
+    clarifyKind: kind,
   };
 }
 
@@ -789,6 +791,136 @@ function poligon2DResult(n: number, s: number, unit: string): ResolvedGeometricR
       unit,
     },
   };
+}
+
+// ============================================================
+// SPESIFIKASI GEOMETRI TERSTRUKTUR (jembatan penalaran LLM -> mesin)
+// LLM boleh MIKIR dan mengusulkan spec, tetapi yang memutuskan
+// render adalah validator deterministik di sini. Spec yang tidak
+// lolos validasi tidak pernah digambar dan tidak pernah dipelajari.
+// ============================================================
+export interface GeometrySpec {
+  family: "prisma" | "limas" | "poligon" | "entity" | "none";
+  sides?: number | null;
+  entity_id?: string | null;
+  params?: { s?: number | null; t?: number | null; r?: number | null; p?: number | null; l?: number | null };
+  reason?: string;
+}
+
+const ENTITY_IDS = [
+  "kubus", "balok", "tabung", "bola", "kerucut",
+  "persegi", "persegi_panjang", "lingkaran", "segitiga",
+  "jajar_genjang", "trapesium", "belah_ketupat", "layang_layang",
+];
+
+export function validateGeometrySpec(spec: GeometrySpec | null | undefined): string | null {
+  if (!spec || typeof spec !== "object") return "spec kosong";
+  if (spec.family === "none") return "bangun tidak didukung";
+  if (spec.family === "prisma" || spec.family === "limas" || spec.family === "poligon") {
+    const n = spec.sides;
+    if (typeof n !== "number" || !Number.isInteger(n) || n < 3 || n > 12) {
+      return "jumlah sisi harus bilangan bulat 3 sampai 12";
+    }
+  } else if (spec.family === "entity") {
+    if (!spec.entity_id || !ENTITY_IDS.includes(spec.entity_id)) return "entity_id tidak dikenal";
+  } else {
+    return "family tidak dikenal";
+  }
+  const params = spec.params || {};
+  for (const key of ["s", "t", "r", "p", "l"] as const) {
+    const v = params[key];
+    if (v !== undefined && v !== null && (typeof v !== "number" || !Number.isFinite(v) || v <= 0 || v > 100000)) {
+      return `parameter ${key} di luar rentang wajar`;
+    }
+  }
+  return null;
+}
+
+function limasSegiEmpatSpecResult(s: number, t: number, unit: string): ResolvedGeometricResult {
+  return {
+    dimension: "3D",
+    targetTab: "3d",
+    entity: GEOMETRY_DATABASE.shapes_3d.find((x) => x.id === "limas")!,
+    params: { s, t },
+    unit,
+    reply: `Objek geometri 3D **Limas Segi Empat (Piramida)** telah **AKTIF** di Papan Tulis Pintar 3D! \u{1F389}\n\n### Parameter & Rumus Limas / Piramida ($s = ${s}\\text{ ${unit}},\\ t = ${t}\\text{ ${unit}}$):\n- **Panjang Rusuk Alas Persegi ($s$):** $${s}\\text{ ${unit}}$\n- **Tinggi Tegak Limas ($t$):** $${t}\\text{ ${unit}}$\n- **Rumus Tinggi Apotema ($t_s$):** $$t_s = \\sqrt{(s/2)^2 + t^2}$$\n- **Rumus Luas Alas ($L_a$):** $$L_a = s^2$$\n- **Rumus Luas Selimut ($L_s$):** $$L_s = 2 s \\cdot t_s$$\n- **Rumus Volume Ruang ($V$):** $$V = \\frac{1}{3}s^2 t$$\n\n\u{1F4A1} **Tantangan Eksplorasi 3D:** Putar model 3D di kanvas! Dapatkah kamu menghitung volume limas ini menggunakan rumus di atas?`,
+    smartboardItem: {
+      targetTab: "3d",
+      model: "solids",
+      solidKind: "limas",
+      label: "Limas Segi Empat 3D (Piramida)",
+      desc: `Limas segi empat beraturan (piramida) alas ${s} ${unit}, tinggi ${t} ${unit}`,
+      paramA: s,
+      paramB: t,
+      unit,
+    },
+  };
+}
+
+export function buildResultFromSpec(spec: GeometrySpec, unit: string = "cm"): ResolvedGeometricResult | null {
+  if (validateGeometrySpec(spec) !== null) return null;
+  const prm = spec.params || {};
+  if (spec.family === "prisma") {
+    return prismaPoligonResult(spec.sides!, prm.s ?? 8, prm.t ?? 10, unit);
+  }
+  if (spec.family === "limas") {
+    if (spec.sides === 4) return limasSegiEmpatSpecResult(prm.s ?? 8, prm.t ?? 10, unit);
+    return limasPoligonResult(spec.sides!, prm.s ?? 8, prm.t ?? 10, unit);
+  }
+  if (spec.family === "poligon") {
+    return poligon2DResult(spec.sides!, prm.s ?? 10, unit);
+  }
+  if (spec.family === "entity") {
+    const all = [...GEOMETRY_DATABASE.shapes_3d, ...GEOMETRY_DATABASE.shapes_2d];
+    const entity = all.find((e) => e.id === spec.entity_id);
+    if (!entity) return null;
+    const d0 = entity.parameters[0]?.default ?? 10;
+    const d1 = entity.parameters[1]?.default;
+    const d2 = entity.parameters[2]?.default;
+    let paramA = prm.s ?? prm.r ?? prm.p ?? d0;
+    let paramB = prm.t ?? prm.l ?? d1;
+    let paramC = d2;
+    if (entity.id === "balok") {
+      paramA = prm.p ?? d0;
+      paramB = prm.l ?? d1;
+      paramC = prm.t ?? d2;
+    }
+    if (entity.id === "tabung" || entity.id === "kerucut") {
+      paramA = prm.r ?? d0;
+      paramB = prm.t ?? d1;
+    }
+    const formulaLines = Object.values(entity.formulas || {})
+      .map((f) => `- **${f.explanation}:** $$${f.katex}$$`)
+      .join("\n");
+    return {
+      dimension: entity.smartboard.targetTab === "3d" ? "3D" : "2D",
+      targetTab: entity.smartboard.targetTab,
+      entity,
+      params: { a: paramA, b: paramB ?? 0, c: paramC ?? 0 },
+      unit,
+      reply: `Objek geometri **${entity.name_id}** telah **AKTIF** dan ditampilkan di Papan Tulis Pintar! \u{1F389}\n\n### Rumus ${entity.name_id}:\n${formulaLines}\n\n\u{1F4A1} **Tantangan Eksplorasi:** Model siap dieksplorasi di kanvas! Coba hitung luas atau volumenya dari parameter yang tampil di panel.`,
+      smartboardItem: {
+        targetTab: entity.smartboard.targetTab,
+        model: entity.smartboard.model,
+        solidKind: entity.smartboard.solidKind,
+        planeShapeKind: entity.smartboard.planeShapeKind,
+        label: entity.smartboard.label,
+        desc: `${entity.name_id} dari penalaran terstruktur (spec tervalidasi)`,
+        paramA,
+        paramB,
+        paramC,
+        unit,
+      },
+    };
+  }
+  return null;
+}
+
+/** Gerbang murah: apakah pesan ini pantas masuk jalur penalaran geometri LLM? */
+export function looksLikeGeometryRequest(lower: string): boolean {
+  const hasVisualCommand = /\b(buatkan|buatin|buat|bikinin|bikin|tampilkan|gambarkan|gambar|lukiskan|visualisasikan|render|modelkan|buka|show|draw|create|generate)\b/i.test(lower);
+  if (!hasVisualCommand) return false;
+  return /\b(2d|3d|dua dimensi|tiga dimensi|bangun|bentuk|solid|objek|geometri|papan|kanvas|smartboard|menara|donat|frustum|bola|tabung|kerucut|kubus|balok|limas|piramida|prisma|segi|datar|ruang)\b/i.test(lower);
 }
 
 /**
@@ -1313,12 +1445,12 @@ export function resolveGeometricIntent(
 
   // Fallback 2D umum: JANGAN buka papan dengan bangun bawaan - minta nama bangunnya
   if (has2DToken && hasVisualCommand) {
-    return clarifyResult(`Permintaan 2D kamu belum menyebut bangun datarnya, jadi papan tidak saya buka dengan bangun bawaan.\n\nSebutkan bangunnya, misalnya: \`buatin 2d segi 8\`, \`buatin 2d lingkaran jari-jari 7\`, \`buatin 2d persegi panjang\`, atau jaring-jaring seperti \`buatin jaring-jaring kubus\``, "2D");
+    return clarifyResult(`Permintaan 2D kamu belum menyebut bangun datarnya, jadi papan tidak saya buka dengan bangun bawaan.\n\nSebutkan bangunnya, misalnya: \`buatin 2d segi 8\`, \`buatin 2d lingkaran jari-jari 7\`, \`buatin 2d persegi panjang\`, atau jaring-jaring seperti \`buatin jaring-jaring kubus\``, "2D", "generic");
   }
 
   // Fallback 3D umum: JANGAN buka papan dengan kubus bawaan - minta nama bangunnya
   if (has3DToken && hasVisualCommand) {
-    return clarifyResult(`Permintaan 3D kamu belum menyebut bangun ruangnya, jadi papan tidak saya buka dengan bangun bawaan.\n\nSebutkan bangunnya, misalnya: \`buatin piramida segi enam dengan sisi 60 dan tinggi 120\`, \`buatin prisma segi 7\`, \`buatin kubus sisi 5\`, atau \`buatin tabung jari-jari 7 tinggi 12\``, "3D");
+    return clarifyResult(`Permintaan 3D kamu belum menyebut bangun ruangnya, jadi papan tidak saya buka dengan bangun bawaan.\n\nSebutkan bangunnya, misalnya: \`buatin piramida segi enam dengan sisi 60 dan tinggi 120\`, \`buatin prisma segi 7\`, \`buatin kubus sisi 5\`, atau \`buatin tabung jari-jari 7 tinggi 12\``, "3D", "generic");
   }
 
   return null;

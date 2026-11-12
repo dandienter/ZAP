@@ -470,6 +470,52 @@ def harness_learner_profile(user_id: str):
     return {"status": "success", "learner_profile": profile}
 
 
+class GeometryPatternRequest(BaseModel):
+    phrase: str = Field(..., max_length=500, description="Frasa pengguna yang resolusinya tervalidasi")
+    spec: dict = Field(..., description="Spesifikasi bangun tervalidasi (family, sides, entity_id, params)")
+
+
+class GeometryMatchRequest(BaseModel):
+    query: str = Field(..., max_length=500, description="Pesan pengguna untuk dicocokkan ke pola geometri yang sudah dipelajari")
+
+
+def _require_harness_secret(http_request: Request) -> None:
+    harness_secret = os.environ.get("ZAP_HARNESS_SECRET", "").strip()
+    if harness_secret:
+        provided = http_request.headers.get("X-Harness-Secret", "")
+        if not provided or not hmac.compare_digest(provided, harness_secret):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Header X-Harness-Secret tidak ada atau tidak cocok.",
+            )
+    elif os.environ.get("ZAP_ENV", "").strip().lower() == "production":
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="ZAP_HARNESS_SECRET belum diatur; endpoint tulis dinonaktifkan pada mode production.",
+        )
+
+
+@app.post("/api/v1/harness/geometry-pattern", status_code=status.HTTP_200_OK, tags=["Agent Harness"])
+def harness_learn_geometry_pattern(req: GeometryPatternRequest, http_request: Request):
+    """Simpan pola frasa -> spec geometri yang SUDAH tervalidasi mesin (self-learning, fail-closed, secret-gated)."""
+    _require_harness_secret(http_request)
+    return agent_harness.learn_geometry_pattern(phrase=req.phrase, spec=req.spec)
+
+
+@app.get("/api/v1/harness/geometry-patterns", status_code=status.HTTP_200_OK, tags=["Agent Harness"])
+def harness_list_geometry_patterns(limit: int = 200):
+    """Daftar pola geometri yang sudah dipelajari agen dari resolusi tervalidasi."""
+    patterns = agent_harness.list_geometry_patterns(limit=limit)
+    return {"status": "success", "total": len(patterns), "patterns": patterns}
+
+
+@app.post("/api/v1/harness/geometry-match", status_code=status.HTTP_200_OK, tags=["Agent Harness"])
+def harness_match_geometry_pattern(req: GeometryMatchRequest):
+    """Cocokkan pesan ke pola geometri yang sudah dipelajari (deterministik, tanpa LLM)."""
+    match = agent_harness.match_geometry_pattern(req.query)
+    return {"status": "success", "matched": match is not None, "match": match}
+
+
 @app.get("/api/v1/harness/stats", status_code=status.HTTP_200_OK, tags=["Agent Harness"])
 def harness_memory_stats():
     """Mengambil statistik memori agen dan korpus pembelajaran berkelanjutan."""
