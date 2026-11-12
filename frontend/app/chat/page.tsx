@@ -1335,17 +1335,15 @@ export default function ZAPApp() {
   const updateUrlForConversation = useCallback((convId: string | null) => {
     if (typeof window === "undefined") return;
     const isUnderC = window.location.pathname.startsWith("/c/");
+    const hash = window.location.hash || "";
     if (convId) {
-      if (isUnderC) {
-        window.history.replaceState(null, "", `/c/${encodeURIComponent(convId)}`);
-      } else {
-        window.history.replaceState(null, "", `/chat?id=${encodeURIComponent(convId)}`);
-      }
+      // Skema URL kanonik: path /c/<uuid> seperti Claude/ChatGPT (bukan query ?id=)
+      window.history.replaceState(null, "", `/c/${encodeURIComponent(convId)}${hash}`);
     } else {
       if (isUnderC) {
-        window.history.replaceState(null, "", "/c/new");
+        window.history.replaceState(null, "", `/c/new${hash}`);
       } else {
-        window.history.replaceState(null, "", "/chat");
+        window.history.replaceState(null, "", `/chat${hash}`);
       }
     }
   }, []);
@@ -2028,17 +2026,13 @@ export default function ZAPApp() {
         syncAccountBackup(currentUser, { conversations: next });
       }, 1500);
 
-      // Sinkronkan URL browser ke path percakapan tanpa memicu unmount antar-segment route
+      // Sinkronkan URL browser ke path percakapan /c/<uuid> tanpa memicu unmount antar-segment route
       if (typeof window !== "undefined") {
-        const isUnderC = window.location.pathname.startsWith("/c/");
-        const expectedPath = isUnderC
-          ? `/c/${encodeURIComponent(activeConversationId)}`
-          : `/chat?id=${encodeURIComponent(activeConversationId)}`;
-        const currentPathWithSearch = isUnderC
-          ? window.location.pathname
-          : `${window.location.pathname}${window.location.search}`;
+        const hash = window.location.hash || "";
+        const expectedPath = `/c/${encodeURIComponent(activeConversationId)}${hash}`;
+        const currentFull = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 
-        if (currentPathWithSearch !== expectedPath) {
+        if (currentFull !== expectedPath) {
           window.history.replaceState(null, "", expectedPath);
         }
       }

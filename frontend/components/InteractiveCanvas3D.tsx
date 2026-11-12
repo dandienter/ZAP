@@ -786,7 +786,11 @@ export default function InteractiveCanvas3D({
     wsRef.current = ws;
     collabRoomRef.current = room;
     setCollabRoom(room);
-    try { window.history.replaceState(null, "", `#board=${room}`); } catch { /* abaikan */ }
+    try {
+      const u = new URL(window.location.href);
+      u.hash = `board=${room}`;
+      window.history.replaceState(null, "", u.toString());
+    } catch { /* abaikan */ }
     ws.onmessage = (ev) => {
       try { collabHandlerRef.current?.(JSON.parse(ev.data)); } catch { /* abaikan */ }
     };
@@ -4123,7 +4127,11 @@ export default function InteractiveCanvas3D({
                       onClick={() => {
                         disconnectBoard();
                         setShowSharePanel(false);
-                        try { window.history.replaceState(null, "", window.location.pathname); } catch { /* abaikan */ }
+                        try {
+                          const u = new URL(window.location.href);
+                          u.hash = "";
+                          window.history.replaceState(null, "", u.toString());
+                        } catch { /* abaikan */ }
                       }}
                       className="mt-1.5 w-full py-2 rounded-xl text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
                     >
