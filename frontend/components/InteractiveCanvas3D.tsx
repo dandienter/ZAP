@@ -33,6 +33,8 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/utils/theme";
 import MathView from "@/components/MathView";
+import { Dock, DockItem, DockIcon, DockLabel } from "@/components/ui/dock";
+import { motion, AnimatePresence } from "framer-motion";
 import ZapLogo from "@/components/ZapLogo";
 
 export type MathModelType =
@@ -481,6 +483,13 @@ export default function InteractiveCanvas3D({
   // On-Canvas Direct Typing & Selection State
   const [isTypingToolActive, setIsTypingToolActive] = useState(false);
   const [selectedFormulaId, setSelectedFormulaId] = useState<string | null>(null);
+  const selectedNote = formulaNotes.find((n) => n.id === selectedFormulaId) || null;
+  const selectedNoteIsMath = selectedNote
+    ? selectedNote.kind
+      ? selectedNote.kind === "math"
+      : looksLikeMath(selectedNote.rawText || selectedNote.latex)
+    : false;
+  const selectedDetected = selectedNote ? detectMathTransform(selectedNote.rawText || selectedNote.latex) : null;
 
   // Kolaborasi realtime (papan bersama via WebSocket)
   type CollabPeer = { id: string; name: string; color: string };
@@ -5414,148 +5423,298 @@ export default function InteractiveCanvas3D({
           </div>
         ))}
 
-        {/* DOCK ALAT BAWAH (gaya Figma): semua alat kanvas dalam satu dok melayang di bawah-tengah */}
-        <div className="absolute bottom-3 left-3 sm:left-1/2 sm:-translate-x-1/2 z-30 max-w-[calc(100%-4.75rem)] sm:max-w-[calc(100%-2rem)]">
-          <div className="flex items-center gap-0.5 sm:gap-1 p-1.5 rounded-2xl liquid-glass-popup border border-slate-200 dark:border-white/10 shadow-xl overflow-x-auto">
-            <button
-              type="button"
-              onClick={() => {
-                if (isTypingToolActive) {
-                  setIsTypingToolActive(false);
-                } else {
-                  setIsTypingToolActive(true);
-                  setIsDrawingToolActive(false);
-                }
-              }}
-              className={`h-10 px-2.5 flex items-center justify-center gap-1.5 rounded-xl text-xs transition cursor-pointer shrink-0 ${
+        {/* DOCK ALAT BAWAH: dock magnifikasi (framer-motion) + aksi dinamis sesuai konteks seleksi */}
+        <div className="absolute bottom-2 left-3 sm:left-1/2 sm:-translate-x-1/2 z-30 max-w-[calc(100%-4.75rem)] sm:max-w-[calc(100%-2rem)]">
+          <Dock
+            className="items-end pb-2 gap-1.5 sm:gap-2 px-2.5 liquid-glass-popup border border-slate-200 dark:border-white/10 shadow-xl rounded-[26px]"
+            panelHeight={58}
+            magnification={70}
+            distance={110}
+          >
+            {/* Ketik Rumus / Teks */}
+            <DockItem
+              className={`aspect-square rounded-full border ${
                 isTypingToolActive
-                  ? "bg-amber-500 text-white shadow-sm font-semibold"
-                  : "text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.08]"
+                  ? "bg-amber-500 text-white border-amber-400 shadow-lg shadow-amber-500/30"
+                  : "bg-slate-100/90 dark:bg-white/[0.07] text-slate-700 dark:text-zinc-200 border-slate-200/70 dark:border-white/[0.08]"
               }`}
-              title="Mode Ketik di Kanvas (Klik di mana saja pada papan untuk mengetik rumus/teks)"
             >
-              <Type className="w-[18px] h-[18px]" />
-              <span className="text-[11px] font-mono font-medium hidden md:inline">Ketik Rumus</span>
-            </button>
+              <DockLabel>{isTypingToolActive ? "Mode Ketik Aktif" : "Ketik Rumus / Teks"}</DockLabel>
+              <DockIcon>
+                <Type className="w-full h-full" />
+                <button
+                  type="button"
+                  aria-label="Ketik Rumus / Teks"
+                  onClick={() => {
+                    if (isTypingToolActive) {
+                      setIsTypingToolActive(false);
+                    } else {
+                      setIsTypingToolActive(true);
+                      setIsDrawingToolActive(false);
+                    }
+                  }}
+                  className="absolute inset-0 rounded-full cursor-pointer"
+                />
+              </DockIcon>
+            </DockItem>
 
-            <button
-              type="button"
-              onClick={() => {
-                setIsTypingToolActive(false);
-                if (isDrawingToolActive && drawingMode === "pen") setIsDrawingToolActive(false);
-                else {
-                  setIsDrawingToolActive(true);
-                  setDrawingMode("pen");
-                }
-              }}
-              className={`h-10 min-w-10 px-1 flex items-center justify-center rounded-xl text-xs transition cursor-pointer shrink-0 ${
+            {/* Pena */}
+            <DockItem
+              className={`aspect-square rounded-full border ${
                 isDrawingToolActive && drawingMode === "pen"
-                  ? "bg-slate-900 text-white dark:bg-white dark:text-zinc-950 shadow-sm font-semibold"
-                  : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.08]"
+                  ? "bg-slate-900 dark:bg-white text-white dark:text-zinc-900 border-slate-900 dark:border-white shadow-md"
+                  : "bg-slate-100/90 dark:bg-white/[0.07] text-slate-600 dark:text-zinc-300 border-slate-200/70 dark:border-white/[0.08]"
               }`}
-              title="Pena Kapur Tulis"
             >
-              <Pencil className="w-[18px] h-[18px]" />
-            </button>
+              <DockLabel>Pena Kapur</DockLabel>
+              <DockIcon>
+                <Pencil className="w-full h-full" />
+                <button
+                  type="button"
+                  aria-label="Pena Kapur"
+                  onClick={() => {
+                    setIsTypingToolActive(false);
+                    if (isDrawingToolActive && drawingMode === "pen") setIsDrawingToolActive(false);
+                    else {
+                      setIsDrawingToolActive(true);
+                      setDrawingMode("pen");
+                    }
+                  }}
+                  className="absolute inset-0 rounded-full cursor-pointer"
+                />
+              </DockIcon>
+            </DockItem>
 
-            <button
-              type="button"
-              onClick={() => {
-                if (isDrawingToolActive && drawingMode === "eraser") setIsDrawingToolActive(false);
-                else {
-                  setIsDrawingToolActive(true);
-                  setDrawingMode("eraser");
-                }
-              }}
-              className={`h-10 min-w-10 px-1 flex items-center justify-center rounded-xl text-xs transition cursor-pointer shrink-0 ${
+            {/* Penghapus */}
+            <DockItem
+              className={`aspect-square rounded-full border ${
                 isDrawingToolActive && drawingMode === "eraser"
-                  ? "bg-slate-800 text-white shadow-sm font-semibold"
-                  : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.08]"
+                  ? "bg-slate-700 text-white border-slate-600 shadow-md"
+                  : "bg-slate-100/90 dark:bg-white/[0.07] text-slate-600 dark:text-zinc-300 border-slate-200/70 dark:border-white/[0.08]"
               }`}
-              title="Penghapus Kapur"
             >
-              <Eraser className="w-[18px] h-[18px]" />
-            </button>
+              <DockLabel>Penghapus Kapur</DockLabel>
+              <DockIcon>
+                <Eraser className="w-full h-full" />
+                <button
+                  type="button"
+                  aria-label="Penghapus Kapur"
+                  onClick={() => {
+                    if (isDrawingToolActive && drawingMode === "eraser") setIsDrawingToolActive(false);
+                    else {
+                      setIsDrawingToolActive(true);
+                      setDrawingMode("eraser");
+                    }
+                  }}
+                  className="absolute inset-0 rounded-full cursor-pointer"
+                />
+              </DockIcon>
+            </DockItem>
 
+            {/* Hapus coretan (dinamis: hanya saat ada coretan) */}
             {hasDrawings && (
-              <button
-                type="button"
-                onClick={clearBoardShared}
-                className="h-10 min-w-10 px-1 flex items-center justify-center rounded-xl text-xs transition cursor-pointer shrink-0 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.08]"
-                title="Hapus Semua Coretan"
-              >
-                <Trash2 className="w-[18px] h-[18px]" />
-              </button>
+              <DockItem className="aspect-square rounded-full border bg-slate-100/90 dark:bg-white/[0.07] text-slate-600 dark:text-zinc-300 border-slate-200/70 dark:border-white/[0.08]">
+                <DockLabel>Hapus Semua Coretan</DockLabel>
+                <DockIcon>
+                  <Trash2 className="w-full h-full" />
+                  <button
+                    type="button"
+                    aria-label="Hapus Semua Coretan"
+                    onClick={clearBoardShared}
+                    className="absolute inset-0 rounded-full cursor-pointer"
+                  />
+                </DockIcon>
+              </DockItem>
             )}
 
+            {/* Grup 3D (dinamis: hanya saat model 3D aktif) */}
             {is3DModel && (
               <>
-                <div className="w-px self-stretch my-1 bg-slate-200 dark:bg-white/10 mx-0.5 shrink-0" />
-                <button
-                  type="button"
-                  onClick={() => setWireframe(!wireframe)}
-                  className={`h-10 min-w-10 px-1 flex items-center justify-center rounded-xl text-xs transition cursor-pointer shrink-0 border ${
+                <div className="w-px h-8 bg-slate-300/70 dark:bg-white/10 mx-0.5 self-center shrink-0" />
+                <DockItem
+                  className={`aspect-square rounded-full border ${
                     wireframe
-                      ? "bg-slate-200 dark:bg-white/[0.16] text-slate-900 dark:text-white border-slate-300 dark:border-white/[0.2]"
-                      : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border-transparent"
+                      ? "bg-slate-300 dark:bg-white/[0.18] text-slate-900 dark:text-white border-slate-400/50 dark:border-white/20"
+                      : "bg-slate-100/90 dark:bg-white/[0.07] text-slate-600 dark:text-zinc-300 border-slate-200/70 dark:border-white/[0.08]"
                   }`}
-                  title="Toggle Wireframe Rangka Kawat"
                 >
-                  <Layers className="w-[18px] h-[18px]" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setAutoRotate(!autoRotate)}
-                  className={`h-10 min-w-10 px-1 flex items-center justify-center rounded-xl text-xs transition cursor-pointer shrink-0 border ${
+                  <DockLabel>Wireframe</DockLabel>
+                  <DockIcon>
+                    <Layers className="w-full h-full" />
+                    <button
+                      type="button"
+                      aria-label="Toggle Wireframe"
+                      onClick={() => setWireframe(!wireframe)}
+                      className="absolute inset-0 rounded-full cursor-pointer"
+                    />
+                  </DockIcon>
+                </DockItem>
+                <DockItem
+                  className={`aspect-square rounded-full border ${
                     autoRotate
-                      ? "bg-slate-200 dark:bg-white/[0.16] text-slate-900 dark:text-white border-slate-300 dark:border-white/[0.2]"
-                      : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border-transparent"
+                      ? "bg-slate-300 dark:bg-white/[0.18] text-slate-900 dark:text-white border-slate-400/50 dark:border-white/20"
+                      : "bg-slate-100/90 dark:bg-white/[0.07] text-slate-600 dark:text-zinc-300 border-slate-200/70 dark:border-white/[0.08]"
                   }`}
-                  title="Toggle Rotasi Otomatis 360°"
                 >
-                  <RotateCw className="w-[18px] h-[18px]" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setIsHudVisible(!isHudVisible)}
-                  className={`h-10 min-w-10 px-1 flex items-center justify-center rounded-xl text-xs transition cursor-pointer shrink-0 border ${
+                  <DockLabel>Rotasi Otomatis</DockLabel>
+                  <DockIcon>
+                    <RotateCw className="w-full h-full" />
+                    <button
+                      type="button"
+                      aria-label="Toggle Rotasi Otomatis"
+                      onClick={() => setAutoRotate(!autoRotate)}
+                      className="absolute inset-0 rounded-full cursor-pointer"
+                    />
+                  </DockIcon>
+                </DockItem>
+                <DockItem
+                  className={`aspect-square rounded-full border ${
                     isHudVisible
-                      ? "bg-slate-200 dark:bg-white/[0.16] text-slate-900 dark:text-white border-slate-300 dark:border-white/[0.2]"
-                      : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border-transparent"
+                      ? "bg-slate-300 dark:bg-white/[0.18] text-slate-900 dark:text-white border-slate-400/50 dark:border-white/20"
+                      : "bg-slate-100/90 dark:bg-white/[0.07] text-slate-600 dark:text-zinc-300 border-slate-200/70 dark:border-white/[0.08]"
                   }`}
-                  title={isHudVisible ? "Sembunyikan Panel Kontrol Metrik" : "Tampilkan Panel Kontrol Metrik"}
                 >
-                  {isHudVisible ? <Eye className="w-[18px] h-[18px]" /> : <EyeOff className="w-[18px] h-[18px]" />}
-                </button>
+                  <DockLabel>{isHudVisible ? "Sembunyikan Panel Metrik" : "Tampilkan Panel Metrik"}</DockLabel>
+                  <DockIcon>
+                    {isHudVisible ? <Eye className="w-full h-full" /> : <EyeOff className="w-full h-full" />}
+                    <button
+                      type="button"
+                      aria-label="Toggle Panel Metrik"
+                      onClick={() => setIsHudVisible(!isHudVisible)}
+                      className="absolute inset-0 rounded-full cursor-pointer"
+                    />
+                  </DockIcon>
+                </DockItem>
               </>
             )}
 
+            {/* AKSI DINAMIS: muncul saat ada catatan terpilih */}
+            <AnimatePresence>
+              {selectedNote && (
+                <motion.div
+                  key="dock-note-actions"
+                  className="flex items-center gap-1.5 sm:gap-2"
+                  initial={{ opacity: 0, scale: 0.6 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.6 }}
+                  transition={{ duration: 0.18 }}
+                >
+                  <div className="w-px h-8 bg-amber-400/60 mx-0.5 self-center shrink-0" />
+                  {(selectedDetected === "graph" ||
+                    selectedNote.latex.includes("x") ||
+                    selectedNote.latex.includes("sin") ||
+                    (!selectedDetected && selectedNoteIsMath)) && (
+                    <DockItem className="aspect-square rounded-full border bg-blue-500/15 text-blue-600 dark:text-blue-300 border-blue-500/30">
+                      <DockLabel>Ubah ke Grafik 2D</DockLabel>
+                      <DockIcon>
+                        <Sparkles className="w-full h-full" />
+                        <button
+                          type="button"
+                          aria-label="Ubah ke Grafik 2D"
+                          onClick={() => handleTransformToGraph(selectedNote.rawText || selectedNote.latex)}
+                          className="absolute inset-0 rounded-full cursor-pointer"
+                        />
+                      </DockIcon>
+                    </DockItem>
+                  )}
+                  {(selectedDetected === "3d" ||
+                    /kubus|prisma|limas|balok|bola|tabung/i.test(selectedNote.rawText || "") ||
+                    (!selectedDetected && selectedNoteIsMath)) && (
+                    <DockItem className="aspect-square rounded-full border bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/30">
+                      <DockLabel>Ubah ke Model 3D</DockLabel>
+                      <DockIcon>
+                        <Box className="w-full h-full" />
+                        <button
+                          type="button"
+                          aria-label="Ubah ke Model 3D"
+                          onClick={() => handleTransformTo3D(selectedNote.rawText || selectedNote.latex)}
+                          className="absolute inset-0 rounded-full cursor-pointer"
+                        />
+                      </DockIcon>
+                    </DockItem>
+                  )}
+                  {(selectedDetected === "2d_shape" ||
+                    /jaring|persegi|segitiga|lingkaran/i.test(selectedNote.rawText || "")) && (
+                    <DockItem className="aspect-square rounded-full border bg-purple-500/15 text-purple-600 dark:text-purple-300 border-purple-500/30">
+                      <DockLabel>Ubah ke Diagram 2D</DockLabel>
+                      <DockIcon>
+                        <Layers className="w-full h-full" />
+                        <button
+                          type="button"
+                          aria-label="Ubah ke Diagram 2D"
+                          onClick={() => handleTransformTo2D(selectedNote.rawText || selectedNote.latex)}
+                          className="absolute inset-0 rounded-full cursor-pointer"
+                        />
+                      </DockIcon>
+                    </DockItem>
+                  )}
+                  <DockItem className="aspect-square rounded-full border bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30">
+                    <DockLabel>{selectedNoteIsMath ? "Jadikan Teks Biasa" : "Jadikan KaTeX"}</DockLabel>
+                    <DockIcon>
+                      <Type className="w-full h-full" />
+                      <button
+                        type="button"
+                        aria-label={selectedNoteIsMath ? "Jadikan Teks Biasa" : "Jadikan KaTeX"}
+                        onClick={() =>
+                          setFormulaNotes((prev) =>
+                            prev.map((n) =>
+                              n.id === selectedNote.id
+                                ? selectedNoteIsMath
+                                  ? { ...n, kind: "text" }
+                                  : { ...n, kind: "math", latex: autoFormatToLatex(n.rawText || n.latex) }
+                                : n
+                            )
+                          )
+                        }
+                        className="absolute inset-0 rounded-full cursor-pointer"
+                      />
+                    </DockIcon>
+                  </DockItem>
+                  <DockItem className="aspect-square rounded-full border bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/30">
+                    <DockLabel>Hapus Catatan</DockLabel>
+                    <DockIcon>
+                      <Trash2 className="w-full h-full" />
+                      <button
+                        type="button"
+                        aria-label="Hapus Catatan"
+                        onClick={() => handleDeleteFormula(selectedNote.id)}
+                        className="absolute inset-0 rounded-full cursor-pointer"
+                      />
+                    </DockIcon>
+                  </DockItem>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Reset total (dinamis: hanya saat papan tidak kosong) */}
             {(activeModel !== "empty" || hasDrawings || formulaNotes.length > 0) && (
               <>
-                <div className="w-px self-stretch my-1 bg-slate-200 dark:bg-white/10 mx-0.5 shrink-0" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    clearBoardShared();
-                    setFormulaNotes([]);
-                    setSelectedFormulaId(null);
-                    setInlineComposer(null);
-                    setIsTypingToolActive(false);
-                    setIsDrawingToolActive(false);
-                    setZoom2D(1);
-                    setPan2D({ x: 0, y: 0 });
-                    selectModel("empty");
-                  }}
-                  className="h-10 min-w-10 px-1 flex items-center justify-center rounded-xl text-xs transition cursor-pointer shrink-0 text-slate-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10"
-                  title="Reset / Bersihkan Seluruh Kanvas"
-                >
-                  <RotateCcw className="w-[18px] h-[18px]" />
-                </button>
+                <div className="w-px h-8 bg-slate-300/70 dark:bg-white/10 mx-0.5 self-center shrink-0" />
+                <DockItem className="aspect-square rounded-full border bg-slate-100/90 dark:bg-white/[0.07] text-slate-500 dark:text-zinc-400 border-slate-200/70 dark:border-white/[0.08] hover:!bg-rose-500/15">
+                  <DockLabel>Reset / Bersihkan Kanvas</DockLabel>
+                  <DockIcon>
+                    <RotateCcw className="w-full h-full" />
+                    <button
+                      type="button"
+                      aria-label="Reset / Bersihkan Seluruh Kanvas"
+                      onClick={() => {
+                        clearBoardShared();
+                        setFormulaNotes([]);
+                        setSelectedFormulaId(null);
+                        setInlineComposer(null);
+                        setIsTypingToolActive(false);
+                        setIsDrawingToolActive(false);
+                        setZoom2D(1);
+                        setPan2D({ x: 0, y: 0 });
+                        selectModel("empty");
+                      }}
+                      className="absolute inset-0 rounded-full cursor-pointer"
+                    />
+                  </DockIcon>
+                </DockItem>
               </>
             )}
-          </div>
+          </Dock>
         </div>
 
         {/* G. KATEX FORMULA COMPOSER MODAL */}
