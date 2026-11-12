@@ -1919,18 +1919,10 @@ export default function ZAPApp() {
     };
   }, [router]);
 
-  // Keyboard shortcuts (Ctrl + Alt + P untuk Workspace files, Ctrl + ` untuk New terminal)
+  // Keyboard shortcut (Escape keluar dari panel layar penuh; pintasan files/terminal dicabut pada audit fitur 12 Nov 2026)
   useEffect(() => {
     const handleGlobalKey = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "p") {
-        e.preventDefault();
-        setShowRightPane(true);
-        setRightPaneTab("files");
-      } else if (e.ctrlKey && e.key === "`") {
-        e.preventDefault();
-        setShowRightPane(true);
-        setRightPaneTab("terminal");
-      } else if (e.key === "Escape" && rightPaneFullscreen) {
+      if (e.key === "Escape" && rightPaneFullscreen) {
         setRightPaneFullscreen(false);
       }
     };
@@ -5053,56 +5045,7 @@ export default function ZAPApp() {
 
                 {/* Centered Stack of Action Cards */}
                 <div className="w-full max-w-[420px] px-4 space-y-2.5 relative z-10">
-                  {/* Card 1: Workspace files */}
-                  <button
-                    type="button"
-                    onClick={() => setRightPaneTab("files")}
-                    className="w-full text-left flex items-center justify-between p-3.5 rounded-xl bg-white dark:bg-[#1b1c21] hover:bg-slate-50 dark:hover:bg-[#21232a] border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] transition cursor-pointer group shadow-sm"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/[0.06] flex items-center justify-center text-slate-700 dark:text-zinc-300 flex-shrink-0">
-                        <Folder className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="font-medium text-xs text-slate-800 dark:text-zinc-200 group-hover:text-slate-900 dark:group-hover:text-white">
-                          Workspace files
-                        </div>
-                        <div className="text-xs text-slate-500 dark:text-zinc-400">
-                          Browse files in this session&apos;s workspace
-                        </div>
-                      </div>
-                    </div>
-                    <span className="hidden min-[430px]:inline-block shrink-0 whitespace-nowrap text-xs font-mono text-slate-600 dark:text-zinc-400 bg-slate-100 dark:bg-white/[0.04] px-2 py-0.5 rounded border border-slate-200 dark:border-white/[0.06]">
-                      Ctrl + Alt + P
-                    </span>
-                  </button>
-
-                  {/* Card 2: New terminal */}
-                  <button
-                    type="button"
-                    onClick={() => setRightPaneTab("terminal")}
-                    className="w-full text-left flex items-center justify-between p-3.5 rounded-xl bg-white dark:bg-[#1b1c21] hover:bg-slate-50 dark:hover:bg-[#21232a] border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] transition cursor-pointer group shadow-sm"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/[0.06] flex items-center justify-center text-slate-700 dark:text-zinc-300 flex-shrink-0">
-                        <Terminal className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="font-medium text-xs text-slate-800 dark:text-zinc-200 group-hover:text-slate-900 dark:group-hover:text-white flex items-center gap-1">
-                          <span>New terminal</span>
-                          <ChevronDown className="w-3 h-3 text-slate-500 dark:text-zinc-400" />
-                        </div>
-                        <div className="text-xs text-slate-500 dark:text-zinc-400">
-                          Run commands in the Session workspace
-                        </div>
-                      </div>
-                    </div>
-                    <span className="hidden min-[430px]:inline-block shrink-0 whitespace-nowrap text-xs font-mono text-slate-600 dark:text-zinc-400 bg-slate-100 dark:bg-white/[0.04] px-2 py-0.5 rounded border border-slate-200 dark:border-white/[0.06]">
-                      Ctrl + `
-                    </span>
-                  </button>
-
-                  {/* Card 3: Papan Tulis Pintar */}
+                  {/* Card 1: Papan Tulis Pintar */}
                   <button
                     type="button"
                     onClick={() => {
@@ -5142,7 +5085,7 @@ export default function ZAPApp() {
                           More tools
                         </div>
                         <div className="text-xs text-slate-500 dark:text-zinc-400">
-                          Modul kalkulus, terminal, dan konektor
+                          Modul kalkulus dan konektor
                         </div>
                       </div>
                     </div>

@@ -1013,6 +1013,12 @@ export default function LandingPage() {
               >
                 {lang === "id" ? "Konektor BYOK" : "BYOK Connector"}
               </Link>
+              <Link prefetch={false}
+                href="/docs"
+                className="px-3 py-1.5 rounded-full whitespace-nowrap shrink-0 hover:text-black dark:hover:text-white hover:bg-zinc-900/[0.03] dark:hover:bg-white/[0.06] transition-colors"
+              >
+                {lang === "id" ? "Dokumentasi" : "Docs"}
+              </Link>
               <a
                 href="#faq"
                 onClick={(e) => scrollToSection(e, "#faq")}
