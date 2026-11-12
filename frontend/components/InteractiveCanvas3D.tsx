@@ -27,6 +27,9 @@ import {
   Check,
   ZoomIn,
   ZoomOut,
+  Users,
+  Copy,
+  LogOut,
 } from "lucide-react";
 import { useTheme } from "@/utils/theme";
 import MathView from "@/components/MathView";
@@ -218,6 +221,7 @@ interface InteractiveCanvas3DProps {
   isProjectorMode?: boolean;
   onToggleProjector?: () => void;
   onClose?: () => void;
+  collabName?: string;
 }
 
 const GRID_Y = -1.5;
@@ -230,8 +234,8 @@ function createCornerBracketGeometry(
   dx: number,
   dy: number,
   dz: number,
-  armLen = 0.28,
-  armThick = 0.038
+  armLen = 0.32,
+  armThick = 0.05
 ): THREE.BufferGeometry {
   const geoX = new THREE.BoxGeometry(armLen, armThick, armThick);
   geoX.translate((dx * armLen) / 2, 0, 0);
@@ -244,11 +248,13 @@ function createCornerBracketGeometry(
 
   const geoCorner = new THREE.BoxGeometry(armThick * 1.6, armThick * 1.6, armThick * 1.6);
 
-  const merged = BufferGeometryUtils.mergeGeometries([geoX, geoY, geoZ, geoCorner]);
+  const geoKnob = new THREE.SphereGeometry(0.062, 12, 12);
+  const merged = BufferGeometryUtils.mergeGeometries([geoX, geoY, geoZ, geoCorner, geoKnob]);
   geoX.dispose();
   geoY.dispose();
   geoZ.dispose();
   geoCorner.dispose();
+  geoKnob.dispose();
   return merged;
 }
 
@@ -376,6 +382,7 @@ export default function InteractiveCanvas3D({
   isProjectorMode = false,
   onToggleProjector,
   onClose,
+  collabName = "Tamu",
 }: InteractiveCanvas3DProps) {
   // Main mode: "empty" | "2d_graph" | "3d_model"
   const [activeModel, setActiveModel] = useState<MathModelType>(initialModel);
@@ -454,6 +461,29 @@ export default function InteractiveCanvas3D({
   const [isTypingToolActive, setIsTypingToolActive] = useState(false);
   const [selectedFormulaId, setSelectedFormulaId] = useState<string | null>(null);
 
+  // Kolaborasi realtime (papan bersama via WebSocket)
+  type CollabPeer = { id: string; name: string; color: string };
+  type CollabSeg = { kind?: string; x0?: number; y0?: number; x1?: number; y1?: number; color?: string; size?: number };
+  type CollabState = { model?: string; solid?: string; plane?: string; a?: number; b?: number; c?: number; unit?: string; slice?: boolean };
+  type CollabMsg = CollabState & { t?: string; id?: string; from?: string; color?: string; name?: string; x?: number; y?: number; peer?: CollabPeer; peers?: CollabPeer[]; strokes?: CollabSeg[]; notes?: BoardFormulaItem[]; state?: CollabState };
+  const [collabRoom, setCollabRoom] = useState<string | null>(null);
+  const [collabPeers, setCollabPeers] = useState<{ id: string; name: string; color: string }[]>([]);
+  const [myCollabId, setMyCollabId] = useState<string | null>(null);
+  const [myColor, setMyColor] = useState<string>("#f59e0b");
+  const [remoteCursors, setRemoteCursors] = useState<Record<string, { x: number; y: number; name: string; color: string; ts: number }>>({});
+  const [showSharePanel, setShowSharePanel] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
+  const [shareCopied, setShareCopied] = useState(false);
+  const wsRef = useRef<WebSocket | null>(null);
+  const collabRoomRef = useRef<string | null>(null);
+  const myColorRef = useRef<string>("#f59e0b");
+  const applyingRemoteNotesRef = useRef(false);
+  const applyingRemoteStateRef = useRef(false);
+  const lastPointRef = useRef<{ x: number; y: number } | null>(null);
+  const syncReadyRef = useRef(false);
+  const collabHandlerRef = useRef<((msg: CollabMsg) => void) | null>(null);
+  const isTypingToolActiveRef = useRef<boolean>(false);
+
   // Inline On-Canvas Composer (creates/edits directly where clicked on the canvas)
   const [inlineComposer, setInlineComposer] = useState<{
     x: number; // percentage
@@ -485,6 +515,10 @@ export default function InteractiveCanvas3D({
 
   // Interactive corner handles for direct mouse drag resizing
   const cornerHandlesRef = useRef<THREE.Mesh[]>([]);
+  const draggingVisualRef = useRef<THREE.Mesh | null>(null);
+  const framingFactorRef = useRef(1);
+  const selectedSolidRef = useRef(false);
+  const selectionBoxRef = useRef<THREE.BoxHelper | null>(null);
   const isDraggingCornerRef = useRef<boolean>(false);
   const dragStartDataRef = useRef<{ clientX: number; clientY: number; initialParamA: number }>({
     clientX: 0,
@@ -602,6 +636,174 @@ export default function InteractiveCanvas3D({
     setHasDrawings(false);
   };
 
+  // =========================================================================
+  // KOLABORASI PAPAN REALTIME: coretan, catatan, bangun, dan kursor bersama
+  // =========================================================================
+  const collabSend = (obj: Record<string, unknown>) => {
+    const ws = wsRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      try { ws.send(JSON.stringify(obj)); } catch { /* abaikan */ }
+    }
+  };
+
+  const clearBoardShared = () => {
+    clearDrawCanvas();
+    if (collabRoomRef.current) collabSend({ t: "clear" });
+  };
+
+  const drawRemoteSegment = (seg: CollabSeg) => {
+    const canvas = drawCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.save();
+    if (seg.kind === "erase") {
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.beginPath();
+      ctx.arc((seg.x1 ?? 0) * w, (seg.y1 ?? 0) * h, ((seg.size || 0.05) * w) / 2, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = seg.color || "#f8fafc";
+      ctx.lineWidth = Math.max(1, (seg.size || 0.004) * w);
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo((seg.x0 ?? 0) * w, (seg.y0 ?? 0) * h);
+      ctx.lineTo((seg.x1 ?? 0) * w, (seg.y1 ?? 0) * h);
+      ctx.stroke();
+    }
+    ctx.restore();
+    setHasDrawings(true);
+  };
+
+  const applyRemoteState = (msg: CollabState) => {
+    applyingRemoteStateRef.current = true;
+    if (msg.model) selectModel(msg.model as MathModelType);
+    if (msg.solid) { setSolidKind(msg.solid as SolidKind); onSolidKindChange?.(msg.solid as SolidKind); }
+    if (msg.plane) { setPlaneShapeKind(msg.plane as PlaneShapeKind); onPlaneShapeChange?.(msg.plane as PlaneShapeKind); }
+    if (typeof msg.a === "number") setParamA(msg.a);
+    if (typeof msg.b === "number") setParamB(msg.b);
+    if (typeof msg.c === "number") setParamC(msg.c);
+    if (msg.unit) setUnit(msg.unit as string);
+    if (typeof msg.slice === "boolean") setShowSlicePlane(msg.slice);
+    // Samakan state halaman agar bila kanvas dirakit ulang (ganti bangun), nilai remote tidak tertimpa nilai lama
+    const a2 = typeof msg.a === "number" ? msg.a : paramARef.current;
+    const b2 = typeof msg.b === "number" ? msg.b : paramBRef.current;
+    const c2 = typeof msg.c === "number" ? msg.c : paramCRef.current;
+    onParamsChange?.(a2, b2, c2, msg.unit);
+    setTimeout(() => { applyingRemoteStateRef.current = false; }, 400);
+  };
+
+  const handleCollabMessage = (msg: CollabMsg) => {
+    if (!msg || typeof msg !== "object") return;
+    switch (msg.t) {
+      case "welcome": {
+        setMyCollabId(msg.id ?? null);
+        myColorRef.current = msg.color || "#f59e0b";
+        setMyColor(msg.color || "#f59e0b");
+        setCollabPeers(Array.isArray(msg.peers) ? msg.peers : []);
+        if (Array.isArray(msg.strokes)) msg.strokes.forEach((s) => drawRemoteSegment(s));
+        if (Array.isArray(msg.notes) && msg.notes.length > 0) {
+          applyingRemoteNotesRef.current = true;
+          setFormulaNotes(msg.notes);
+          setTimeout(() => { applyingRemoteNotesRef.current = false; }, 400);
+        }
+        if (msg.state) applyRemoteState(msg.state);
+        break;
+      }
+      case "join": {
+        if (msg.peer) setCollabPeers((prev) => [...prev.filter((p) => p.id !== msg.peer!.id), msg.peer!]);
+        // Anggota lama mendorong keadaan papan terkini agar pendatang langsung melihat bangun + catatan yang sama
+        setTimeout(() => {
+          if (collabRoomRef.current) {
+            collabSend({ t: "notes", notes: formulaNotes });
+            collabSend({ t: "state", model: activeModel, solid: solidKind, plane: planeShapeKind, a: paramA, b: paramB, c: paramC, unit, slice: showSlicePlane });
+          }
+        }, 350);
+        break;
+      }
+      case "leave": {
+        const lid = msg.id;
+        setCollabPeers((prev) => prev.filter((p) => p.id !== lid));
+        if (lid) setRemoteCursors((prev) => { const n = { ...prev }; delete n[lid]; return n; });
+        break;
+      }
+      case "seg":
+        drawRemoteSegment(msg);
+        break;
+      case "clear":
+        clearDrawCanvas();
+        break;
+      case "notes":
+        applyingRemoteNotesRef.current = true;
+        setFormulaNotes(msg.notes || []);
+        setTimeout(() => { applyingRemoteNotesRef.current = false; }, 400);
+        break;
+      case "state":
+        applyRemoteState(msg);
+        break;
+      case "cursor": {
+        const fid = msg.from;
+        if (fid) {
+          setRemoteCursors((prev) => ({
+            ...prev,
+            [fid]: { x: msg.x ?? 0, y: msg.y ?? 0, name: msg.name || "Tamu", color: msg.color || "#f59e0b", ts: Date.now() },
+          }));
+        }
+        break;
+      }
+    }
+  };
+  collabHandlerRef.current = handleCollabMessage;
+
+  const disconnectBoard = () => {
+    if (wsRef.current) {
+      try { wsRef.current.onclose = null; wsRef.current.close(); } catch { /* abaikan */ }
+      wsRef.current = null;
+    }
+    collabRoomRef.current = null;
+    setCollabRoom(null);
+    setCollabPeers([]);
+    setRemoteCursors({});
+    setMyCollabId(null);
+    try { sessionStorage.removeItem("zap_board_code"); } catch { /* abaikan */ }
+  };
+
+  const connectBoard = (roomRaw: string) => {
+    const room = roomRaw.trim().replace(/[^A-Za-z0-9_-]/g, "").slice(0, 24);
+    if (!room) return;
+    disconnectBoard();
+    const base = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
+    const wsBase = base.replace(/^http/, "ws");
+    const name = (collabName || "Tamu").slice(0, 24);
+    let ws: WebSocket;
+    try {
+      ws = new WebSocket(`${wsBase}/api/v1/board/${room}?name=${encodeURIComponent(name)}`);
+    } catch { return; }
+    wsRef.current = ws;
+    collabRoomRef.current = room;
+    setCollabRoom(room);
+    try { window.history.replaceState(null, "", `#board=${room}`); } catch { /* abaikan */ }
+    ws.onmessage = (ev) => {
+      try { collabHandlerRef.current?.(JSON.parse(ev.data)); } catch { /* abaikan */ }
+    };
+    ws.onclose = () => {
+      if (wsRef.current === ws) {
+        wsRef.current = null;
+        collabRoomRef.current = null;
+        setCollabRoom(null);
+        setCollabPeers([]);
+        setRemoteCursors({});
+      }
+    };
+  };
+
+  const genBoardCode = () =>
+    Array.from({ length: 6 }, () => "ABCDEFGHJKMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 31)]).join("");
+
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawingToolActive) return;
     const canvas = drawCanvasRef.current;
@@ -635,6 +837,16 @@ export default function InteractiveCanvas3D({
     }
     ctx.restore();
     setHasDrawings(true);
+    lastPointRef.current = { x, y };
+    if (collabRoomRef.current) {
+      const rw = rect.width || 1;
+      const rh = rect.height || 1;
+      if (drawingMode === "pen") {
+        collabSend({ t: "seg", kind: "pen", x0: x / rw, y0: y / rh, x1: x / rw, y1: y / rh, color: drawColor, size: brushSize / rw });
+      } else {
+        collabSend({ t: "seg", kind: "erase", x1: x / rw, y1: y / rh, size: eraserSize / rw });
+      }
+    }
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -646,6 +858,16 @@ export default function InteractiveCanvas3D({
     setPointerPos({ x, y });
 
     if (!isDrawing || !isDrawingToolActive) return;
+    if (collabRoomRef.current && lastPointRef.current) {
+      const rw = rect.width || 1;
+      const rh = rect.height || 1;
+      if (drawingMode === "pen") {
+        collabSend({ t: "seg", kind: "pen", x0: lastPointRef.current.x / rw, y0: lastPointRef.current.y / rh, x1: x / rw, y1: y / rh, color: drawColor, size: brushSize / rw });
+      } else {
+        collabSend({ t: "seg", kind: "erase", x1: x / rw, y1: y / rh, size: eraserSize / rw });
+      }
+    }
+    lastPointRef.current = { x, y };
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -669,6 +891,7 @@ export default function InteractiveCanvas3D({
 
   const handlePointerUp = () => {
     setIsDrawing(false);
+    lastPointRef.current = null;
   };
 
   const handlePointerLeave = () => {
@@ -705,6 +928,84 @@ export default function InteractiveCanvas3D({
     observer.observe(parent);
     return () => observer.disconnect();
   }, []);
+
+  // Cerminkan status alat ketik ke ref untuk handler kanvas 3D
+  useEffect(() => {
+    isTypingToolActiveRef.current = isTypingToolActive;
+  }, [isTypingToolActive]);
+
+  // Sinkronisasi catatan rumus ke ruang kolaborasi
+  useEffect(() => {
+    if (!syncReadyRef.current || applyingRemoteNotesRef.current) return;
+    if (collabRoomRef.current) collabSend({ t: "notes", notes: formulaNotes });
+  }, [formulaNotes]);
+
+  // Sinkronisasi bangun + parameter ke ruang kolaborasi
+  useEffect(() => {
+    if (!syncReadyRef.current || applyingRemoteStateRef.current) return;
+    if (collabRoomRef.current) {
+      collabSend({ t: "state", model: activeModel, solid: solidKind, plane: planeShapeKind, a: paramA, b: paramB, c: paramC, unit, slice: showSlicePlane });
+    }
+  }, [activeModel, solidKind, planeShapeKind, paramA, paramB, paramC, unit, showSlicePlane]);
+
+  // Siapkan sinkronisasi, gabung otomatis dari tautan #board=KODE, bersihkan kursor basi
+  useEffect(() => {
+    syncReadyRef.current = true;
+    const m = window.location.hash.match(/board=([A-Za-z0-9_-]{3,24})/);
+    let code = m ? m[1] : undefined;
+    if (!code) {
+      try { code = sessionStorage.getItem("zap_board_code") || undefined; } catch { /* abaikan */ }
+    }
+    if (code) connectBoard(code);
+    const cursorTimer = window.setInterval(() => {
+      setRemoteCursors((prev) => {
+        const now = Date.now();
+        const keys = Object.keys(prev);
+        if (!keys.some((k) => now - prev[k].ts >= 4000)) return prev;
+        const next: typeof prev = {};
+        keys.forEach((k) => { if (now - prev[k].ts < 4000) next[k] = prev[k]; });
+        return next;
+      });
+    }, 2000);
+    return () => {
+      window.clearInterval(cursorTimer);
+      disconnectBoard();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Pancarkan posisi kursor sendiri ke kolaborator (maks ~20x/detik)
+  useEffect(() => {
+    const el = boardWorkspaceRef.current;
+    if (!el) return;
+    let last = 0;
+    const onMove = (e: PointerEvent) => {
+      if (!collabRoomRef.current) return;
+      const now = performance.now();
+      if (now - last < 50) return;
+      last = now;
+      const rect = el.getBoundingClientRect();
+      collabSend({ t: "cursor", x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height, name: collabName || "Tamu", color: myColorRef.current });
+    };
+    el.addEventListener("pointermove", onMove);
+    return () => el.removeEventListener("pointermove", onMove);
+  }, [collabName]);
+
+  // Keyboard untuk catatan terpilih: Delete menghapus, Esc melepas pilihan
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!selectedFormulaId || inlineComposer) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        handleDeleteFormula(selectedFormulaId);
+      }
+      if (e.key === "Escape") setSelectedFormulaId(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedFormulaId, inlineComposer]);
 
   // =========================================================================
   // 2. PARSE FORMULA OR TEXT QUERY -> AUTOMATIC 2D/3D GENERATION
@@ -3238,6 +3539,24 @@ export default function InteractiveCanvas3D({
         group.add(mesh);
       }
     }
+
+    // Proxy sentuh tak terlihat di tiap bracket sudut: area tangkap tarik jauh lebih besar
+    if (cornerHandlesRef.current.length > 0) {
+      const proxies: THREE.Mesh[] = [];
+      cornerHandlesRef.current.forEach((bracket) => {
+        const parent = bracket.parent as THREE.Group | null;
+        if (!parent) return;
+        const proxy = new THREE.Mesh(
+          new THREE.BoxGeometry(0.5, 0.5, 0.5),
+          new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+        );
+        proxy.position.copy(bracket.position);
+        proxy.userData = { isCornerHandle: true, bracketRef: bracket };
+        parent.add(proxy);
+        proxies.push(proxy);
+      });
+      cornerHandlesRef.current = [...cornerHandlesRef.current, ...proxies];
+    }
   }, [activeModel, solidKind, showSlicePlane, sliceProgress, wireframe, is3DModel, paramA, paramB, paramC, isDark, unit]);
 
   // Init Three.js container
@@ -3299,6 +3618,7 @@ export default function InteractiveCanvas3D({
     const animate = () => {
       animFrameIdRef.current = requestAnimationFrame(animate);
       controls.update();
+      if (selectionBoxRef.current && selectedSolidRef.current) selectionBoxRef.current.update();
       renderer.render(scene, camera);
     };
     animate();
@@ -3310,7 +3630,7 @@ export default function InteractiveCanvas3D({
       if (isDraggingCornerRef.current) {
         const dx = e.clientX - dragStartDataRef.current.clientX;
         const dy = e.clientY - dragStartDataRef.current.clientY;
-        const diff = (dx - dy) * 0.06;
+        const diff = (dx - dy) * 0.045;
         const newA = Math.max(1, Math.min(50, Math.round(dragStartDataRef.current.initialParamA + diff)));
         if (newA !== paramARef.current) {
           paramARef.current = newA;
@@ -3329,28 +3649,26 @@ export default function InteractiveCanvas3D({
       const intersects = raycasterRef.current.intersectObjects(cornerHandlesRef.current, false);
 
       if (intersects.length > 0) {
-        const hit = intersects[0].object as THREE.Mesh;
+        const hitObj = intersects[0].object as THREE.Mesh;
+        const hit = (hitObj.userData.bracketRef as THREE.Mesh) || hitObj;
         container.style.cursor = "nwse-resize";
         if (hoveredCornerRef.current !== hit) {
           if (hoveredCornerRef.current) {
             hoveredCornerRef.current.scale.set(1, 1, 1);
             const m = hoveredCornerRef.current.material as THREE.MeshStandardMaterial;
-            m.emissive.setHex(0x38bdf8);
-            m.emissiveIntensity = 0.4;
+            if (m && m.emissive) { m.emissive.setHex(0x38bdf8); m.emissiveIntensity = 0.4; }
           }
           hoveredCornerRef.current = hit;
           hit.scale.set(1.6, 1.6, 1.6);
           const m = hit.material as THREE.MeshStandardMaterial;
-          m.emissive.setHex(0xf43f5e);
-          m.emissiveIntensity = 0.9;
+          if (m && m.emissive) { m.emissive.setHex(0xf43f5e); m.emissiveIntensity = 0.9; }
         }
       } else {
         container.style.cursor = isDrawingToolActiveRef.current ? "crosshair" : "default";
         if (hoveredCornerRef.current) {
           hoveredCornerRef.current.scale.set(1, 1, 1);
           const m = hoveredCornerRef.current.material as THREE.MeshStandardMaterial;
-          m.emissive.setHex(0x38bdf8);
-          m.emissiveIntensity = 0.4;
+          if (m && m.emissive) { m.emissive.setHex(0x38bdf8); m.emissiveIntensity = 0.4; }
           hoveredCornerRef.current = null;
         }
       }
@@ -3372,6 +3690,12 @@ export default function InteractiveCanvas3D({
           clientY: e.clientY,
           initialParamA: paramARef.current,
         };
+        const hitObj = intersects[0].object as THREE.Mesh;
+        const visual = (hitObj.userData.bracketRef as THREE.Mesh) || hitObj;
+        draggingVisualRef.current = visual;
+        visual.scale.set(1.8, 1.8, 1.8);
+        const vm = visual.material as THREE.MeshStandardMaterial;
+        if (vm && vm.emissive) { vm.emissive.setHex(0xf43f5e); vm.emissiveIntensity = 1.15; }
         controls.enabled = false;
         container.style.cursor = "nwse-resize";
       }
@@ -3381,14 +3705,69 @@ export default function InteractiveCanvas3D({
       if (isDraggingCornerRef.current) {
         isDraggingCornerRef.current = false;
         controls.enabled = true;
+        if (draggingVisualRef.current) {
+          draggingVisualRef.current.scale.set(1, 1, 1);
+          const vm = draggingVisualRef.current.material as THREE.MeshStandardMaterial;
+          if (vm && vm.emissive) { vm.emissive.setHex(0x38bdf8); vm.emissiveIntensity = 0.5; }
+          draggingVisualRef.current = null;
+        }
         if (container) {
           container.style.cursor = isDrawingToolActiveRef.current ? "crosshair" : "default";
         }
       }
     };
 
+    // Klik objek 3D = terpilih (kotak penanda mengikuti bentuk); klik area kosong = lepas
+    const selectDownPos = { x: 0, y: 0 };
+    const onSelectDown = (e: PointerEvent) => {
+      selectDownPos.x = e.clientX;
+      selectDownPos.y = e.clientY;
+    };
+    const clearSelectionBox = () => {
+      if (selectionBoxRef.current) {
+        scene.remove(selectionBoxRef.current);
+        selectionBoxRef.current.geometry.dispose();
+        (selectionBoxRef.current.material as THREE.Material).dispose();
+        selectionBoxRef.current = null;
+      }
+      selectedSolidRef.current = false;
+    };
+    const onSelectUp = (e: PointerEvent) => {
+      if (isDraggingCornerRef.current || isDrawingToolActiveRef.current || isTypingToolActiveRef.current) return;
+      if (Math.hypot(e.clientX - selectDownPos.x, e.clientY - selectDownPos.y) > 6 || !container || !camera) return;
+      const rect = container.getBoundingClientRect();
+      if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) return;
+      mouseVecRef.current.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouseVecRef.current.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycasterRef.current.setFromCamera(mouseVecRef.current, camera);
+      const group = meshGroupRef.current;
+      let hitSolid = false;
+      if (group) {
+        const hits = raycasterRef.current.intersectObjects(group.children, true);
+        hitSolid = hits.some((h) => {
+          const o = h.object as THREE.Mesh & { isSprite?: boolean; isLine?: boolean };
+          if (!o.isMesh || o.isSprite || o.isLine) return false;
+          if (o.userData && o.userData.isCornerHandle) return false;
+          const om = o.material as THREE.Material | undefined;
+          if (om && !Array.isArray(om) && om.transparent && om.opacity === 0) return false;
+          return true;
+        });
+      }
+      if (hitSolid && group) {
+        clearSelectionBox();
+        const box = new THREE.BoxHelper(group, new THREE.Color(myColorRef.current));
+        scene.add(box);
+        selectionBoxRef.current = box;
+        selectedSolidRef.current = true;
+      } else {
+        clearSelectionBox();
+      }
+    };
+
     container.addEventListener("pointermove", onPointerMove);
     container.addEventListener("pointerdown", onPointerDown);
+    container.addEventListener("pointerdown", onSelectDown);
+    window.addEventListener("pointerup", onSelectUp);
     window.addEventListener("pointerup", onPointerUp);
     window.addEventListener("pointercancel", onPointerUp);
 
@@ -3399,6 +3778,13 @@ export default function InteractiveCanvas3D({
       cameraRef.current.aspect = w / h;
       cameraRef.current.updateProjectionMatrix();
       rendererRef.current.setSize(w, h);
+      // Panel sempit: jauhkan kamera sedikit agar label dimensi tidak terpotong tepi kanvas
+      const f = w < 540 ? 1.3 : 1.0;
+      if (framingFactorRef.current !== f) {
+        const off = camera.position.clone().sub(controls.target).multiplyScalar(f / framingFactorRef.current);
+        camera.position.copy(controls.target).add(off);
+        framingFactorRef.current = f;
+      }
     };
     const observer = new ResizeObserver(handleResize);
     observer.observe(container);
@@ -3414,6 +3800,8 @@ export default function InteractiveCanvas3D({
       if (animFrameIdRef.current) cancelAnimationFrame(animFrameIdRef.current);
       container.removeEventListener("pointermove", onPointerMove);
       container.removeEventListener("pointerdown", onPointerDown);
+      container.removeEventListener("pointerdown", onSelectDown);
+      window.removeEventListener("pointerup", onSelectUp);
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("pointercancel", onPointerUp);
       controls.dispose();
@@ -3594,7 +3982,7 @@ export default function InteractiveCanvas3D({
   return (
     <div className={`relative w-full h-full flex flex-col dark:bg-[#080a0f] bg-slate-50 dark:text-zinc-100 text-slate-800 select-none overflow-hidden font-sans ${className}`}>
       {/* 1. TOP HEADER RAMPING: pemilih mode saja - semua ALAT pindah ke dock bawah (gaya Figma) */}
-      <div className="h-12 px-2.5 sm:px-4 border-b dark:border-white/[0.08] border-slate-200 dark:bg-[#0d0f17] bg-white flex items-center justify-between gap-1.5 sm:gap-2 shrink-0 z-20">
+      <div className="h-12 px-2.5 sm:px-4 border-b dark:border-white/[0.08] border-slate-200 dark:bg-[#0d0f17] bg-white flex items-center justify-between gap-1.5 sm:gap-2 shrink-0 z-[35]">
         {/* Left: Mode Picker Segmented Buttons */}
         <div className="flex items-center gap-1.5 shrink-0">
           <div className="flex items-center dark:bg-white/[0.04] bg-slate-100 p-0.5 rounded-xl border dark:border-white/[0.08] border-slate-200">
@@ -3643,6 +4031,111 @@ export default function InteractiveCanvas3D({
 
         {/* Right: Proyektor + Tutup saja */}
         <div className="flex items-center gap-1 shrink-0">
+          {/* Bagikan Papan: kolaborasi realtime satu ruang */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowSharePanel((v) => !v)}
+              className={`h-9 ${collabRoom ? "w-auto px-2.5" : "w-9"} flex items-center justify-center gap-1.5 rounded-xl border transition cursor-pointer ${
+                collabRoom
+                  ? "text-white border-transparent shadow-sm"
+                  : "dark:bg-white/[0.04] bg-slate-100 text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white dark:border-white/[0.06] border-slate-200"
+              }`}
+              style={collabRoom ? { background: myColor } : undefined}
+              title={collabRoom ? `Ruang ${collabRoom}: ${collabPeers.length} orang sedang di papan` : "Bagikan papan: gambar bareng teman secara realtime"}
+            >
+              <Users className="w-4 h-4" />
+              {collabRoom && <span className="text-[11px] font-bold">{collabPeers.length}</span>}
+            </button>
+
+            {showSharePanel && (
+              <div className="absolute right-0 top-[calc(100%+8px)] w-72 max-w-[calc(100vw-2rem)] p-3.5 rounded-2xl liquid-glass-popup border border-slate-200 dark:border-white/10 shadow-2xl z-50 text-left animate-liquid-pop origin-top-right text-slate-800 dark:text-zinc-200">
+                {!collabRoom ? (
+                  <>
+                    <div className="text-xs font-semibold text-slate-900 dark:text-white">Gambar Bareng di Papan Ini</div>
+                    <p className="text-[11px] leading-relaxed text-slate-500 dark:text-zinc-400 mt-1">
+                      Buat ruang kolaborasi lalu bagikan kodenya ke teman. Coretan, catatan rumus, bangun 3D, dan kursor kalian terlihat realtime. Siapa pun yang punya kode bisa ikut menggambar.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => connectBoard(genBoardCode())}
+                      className="mt-2.5 w-full py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold transition cursor-pointer shadow-sm"
+                    >
+                      Buat Ruang Kolaborasi
+                    </button>
+                    <div className="flex items-center gap-2 my-2.5">
+                      <div className="flex-1 h-px bg-slate-200 dark:bg-white/10" />
+                      <span className="text-[10px] text-slate-400 dark:text-zinc-500">atau gabung pakai kode</span>
+                      <div className="flex-1 h-px bg-slate-200 dark:bg-white/10" />
+                    </div>
+                    <div className="flex gap-1.5">
+                      <input
+                        value={joinCode}
+                        onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                        placeholder="Kode ruang, mis. K7X2PQ"
+                        className="flex-1 min-w-0 px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-xs font-mono uppercase placeholder:normal-case placeholder:font-sans focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                      />
+                      <button
+                        type="button"
+                        disabled={!joinCode.trim()}
+                        onClick={() => { connectBoard(joinCode); setShowSharePanel(false); }}
+                        className="px-3 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-zinc-950 text-xs font-semibold disabled:opacity-40 transition cursor-pointer"
+                      >
+                        Gabung
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        Ruang {collabRoom}
+                      </div>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md text-white" style={{ background: myColor }}>
+                        warna kamu
+                      </span>
+                    </div>
+                    <div className="mt-2 space-y-1">
+                      {collabPeers.map((peer) => (
+                        <div key={peer.id} className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-zinc-300">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: peer.color }} />
+                          <span className="truncate">{peer.name}{peer.id === myCollabId ? " (kamu)" : ""}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        try {
+                          navigator.clipboard.writeText(`${window.location.origin}/chat#board=${collabRoom}`);
+                          setShareCopied(true);
+                          setTimeout(() => setShareCopied(false), 2000);
+                        } catch { /* abaikan */ }
+                      }}
+                      className="mt-3 w-full py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm"
+                    >
+                      {shareCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      {shareCopied ? "Tautan Tersalin" : "Salin Tautan Gabung"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        disconnectBoard();
+                        setShowSharePanel(false);
+                        try { window.history.replaceState(null, "", window.location.pathname); } catch { /* abaikan */ }
+                      }}
+                      className="mt-1.5 w-full py-2 rounded-xl text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      Keluar Ruang
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
           {onToggleProjector && (
             <button
               type="button"
@@ -4420,7 +4913,7 @@ export default function InteractiveCanvas3D({
                 <>
                   <div
                     onClick={(e) => e.stopPropagation()}
-                    className="absolute -top-11 left-0 flex items-center gap-1 p-1 rounded-xl liquid-glass-popup border border-slate-200/90 dark:border-white/15 shadow-2xl z-30 animate-fadeIn whitespace-nowrap text-xs text-slate-800 dark:text-zinc-200"
+                    className={`absolute left-0 flex items-center gap-1 p-1 rounded-xl liquid-glass-popup border border-slate-200/90 dark:border-white/15 shadow-2xl z-30 animate-fadeIn whitespace-nowrap text-xs text-slate-800 dark:text-zinc-200 ${note.y < 18 ? "top-[calc(100%+10px)]" : "-top-11"}`}
                   >
                     {/* Transform to 2D Graph */}
                     {(detected === "graph" || note.latex.includes("x") || note.latex.includes("sin")) && (
@@ -4512,10 +5005,10 @@ export default function InteractiveCanvas3D({
                   </div>
 
                   {/* 4 Corner Anchors for Active Selection (Matching Smartboard in Video) */}
-                  <span className="absolute -top-1.5 -left-1.5 w-3 h-3 rounded-full bg-amber-500 ring-2 ring-white dark:ring-[#080a0f] pointer-events-none" />
-                  <span className="absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full bg-amber-500 ring-2 ring-white dark:ring-[#080a0f] pointer-events-none" />
-                  <span className="absolute -bottom-1.5 -left-1.5 w-3 h-3 rounded-full bg-amber-500 ring-2 ring-white dark:ring-[#080a0f] pointer-events-none" />
-                  <span className="absolute -bottom-1.5 -right-1.5 w-3 h-3 rounded-full bg-amber-500 ring-2 ring-white dark:ring-[#080a0f] pointer-events-none" />
+                  <span className="absolute -top-[7px] -left-[7px] w-3.5 h-3.5 rounded-[4px] bg-white border-2 border-amber-500 shadow pointer-events-none" />
+                  <span className="absolute -top-[7px] -right-[7px] w-3.5 h-3.5 rounded-[4px] bg-white border-2 border-amber-500 shadow pointer-events-none" />
+                  <span className="absolute -bottom-[7px] -left-[7px] w-3.5 h-3.5 rounded-[4px] bg-white border-2 border-amber-500 shadow pointer-events-none" />
+                  <span className="absolute -bottom-[7px] -right-[7px] w-3.5 h-3.5 rounded-[4px] bg-white border-2 border-amber-500 shadow pointer-events-none" />
                 </>
               )}
 
@@ -4817,6 +5310,22 @@ export default function InteractiveCanvas3D({
           )}
         </div>
 
+        {/* Kursor kolaborator (gaya Figma: panah berwarna + label nama) */}
+        {Object.entries(remoteCursors).map(([pid, c]) => (
+          <div
+            key={pid}
+            className="absolute z-40 pointer-events-none"
+            style={{ left: `${c.x * 100}%`, top: `${c.y * 100}%`, transition: "left 70ms linear, top 70ms linear" }}
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.35))" }}>
+              <path d="M4 2 L20 11.5 L12.2 13.2 L9.2 21 Z" fill={c.color} stroke="#ffffff" strokeWidth="1.4" />
+            </svg>
+            <span className="absolute left-3.5 top-3.5 px-1.5 py-0.5 rounded-md text-[10px] font-semibold text-white whitespace-nowrap shadow" style={{ background: c.color }}>
+              {c.name}
+            </span>
+          </div>
+        ))}
+
         {/* DOCK ALAT BAWAH (gaya Figma): semua alat kanvas dalam satu dok melayang di bawah-tengah */}
         <div className="absolute bottom-3 left-3 sm:left-1/2 sm:-translate-x-1/2 z-30 max-w-[calc(100%-4.75rem)] sm:max-w-[calc(100%-2rem)]">
           <div className="flex items-center gap-0.5 sm:gap-1 p-1.5 rounded-2xl liquid-glass-popup border border-slate-200 dark:border-white/10 shadow-xl overflow-x-auto">
@@ -4883,7 +5392,7 @@ export default function InteractiveCanvas3D({
             {hasDrawings && (
               <button
                 type="button"
-                onClick={clearDrawCanvas}
+                onClick={clearBoardShared}
                 className="h-10 min-w-10 px-1 flex items-center justify-center rounded-xl text-xs transition cursor-pointer shrink-0 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.08]"
                 title="Hapus Semua Coretan"
               >
@@ -4941,7 +5450,7 @@ export default function InteractiveCanvas3D({
                 <button
                   type="button"
                   onClick={() => {
-                    clearDrawCanvas();
+                    clearBoardShared();
                     setFormulaNotes([]);
                     setSelectedFormulaId(null);
                     setInlineComposer(null);

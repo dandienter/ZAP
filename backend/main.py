@@ -11,7 +11,7 @@ import sys
 import uuid
 from typing import Any
 import sympy as sp
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -526,3 +526,95 @@ def harness_memory_stats():
         "memory": mem_stats,
         "corpus": agent_harness.corpus_store.get_statistics(),
     }
+
+
+# =========================================================================
+# PAPAN KOLABORASI REALTIME (WebSocket relay + log sinkronisasi per ruang)
+# Ruang bersifat sementara di memori server; kode ruang adalah satu-satunya
+# kunci akses - siapa pun yang memegang kode dapat ikut menggambar.
+# =========================================================================
+BOARD_COLORS = ["#f43f5e", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316"]
+_board_rooms: dict = {}
+
+
+def _board_room(room_key: str) -> dict:
+    return _board_rooms.setdefault(
+        room_key, {"peers": {}, "strokes": [], "notes": [], "state": None, "seq": 0}
+    )
+
+
+@app.websocket("/api/v1/board/{room_id}")
+async def board_socket(websocket: WebSocket, room_id: str):
+    room_key = re.sub(r"[^A-Za-z0-9_-]", "", room_id)[:24] or "umum"
+    room = _board_room(room_key)
+    await websocket.accept()
+    room["seq"] += 1
+    peer_id = f"u{room['seq']}"
+    color = BOARD_COLORS[(room["seq"] - 1) % len(BOARD_COLORS)]
+    name = (websocket.query_params.get("name") or "Tamu")[:24]
+    room["peers"][peer_id] = {"ws": websocket, "name": name, "color": color}
+    peers_payload = [
+        {"id": pid, "name": p["name"], "color": p["color"]}
+        for pid, p in room["peers"].items()
+    ]
+    try:
+        await websocket.send_json(
+            {
+                "t": "welcome",
+                "id": peer_id,
+                "color": color,
+                "peers": peers_payload,
+                "strokes": room["strokes"][-4000:],
+                "notes": room["notes"],
+                "state": room["state"],
+            }
+        )
+    except Exception:
+        room["peers"].pop(peer_id, None)
+        return
+    for pid, p in list(room["peers"].items()):
+        if pid != peer_id:
+            try:
+                await p["ws"].send_json(
+                    {"t": "join", "peer": {"id": peer_id, "name": name, "color": color}}
+                )
+            except Exception:
+                pass
+    try:
+        while True:
+            msg = await websocket.receive_json()
+            if not isinstance(msg, dict):
+                continue
+            kind = msg.get("t")
+            if kind == "seg":
+                room["strokes"].append(msg)
+                if len(room["strokes"]) > 6000:
+                    del room["strokes"][:2000]
+            elif kind == "clear":
+                room["strokes"] = []
+            elif kind == "notes":
+                if isinstance(msg.get("notes"), list):
+                    room["notes"] = msg["notes"][:60]
+            elif kind == "state":
+                room["state"] = msg
+            out = dict(msg)
+            out["from"] = peer_id
+            for pid, p in list(room["peers"].items()):
+                if pid != peer_id:
+                    try:
+                        await p["ws"].send_json(out)
+                    except Exception:
+                        pass
+    except WebSocketDisconnect:
+        pass
+    except Exception:
+        pass
+    finally:
+        room["peers"].pop(peer_id, None)
+        for p in list(room["peers"].values()):
+            try:
+                await p["ws"].send_json({"t": "leave", "id": peer_id})
+            except Exception:
+                pass
+        if not room["peers"]:
+            _board_rooms.pop(room_key, None)

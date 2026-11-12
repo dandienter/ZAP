@@ -1393,6 +1393,20 @@ export default function ZAPApp() {
   const [showRightPane, setShowRightPane] = useState<boolean>(false);
   const [rightPaneFullscreen, setRightPaneFullscreen] = useState<boolean>(false);
   const [rightPaneTab, setRightPaneTab] = useState<"start" | "files" | "terminal" | "canvas">("start");
+  // Buka papan otomatis bila tiba lewat tautan kolaborasi #board=KODE
+  useEffect(() => {
+    const check = () => {
+      const m = window.location.hash.match(/board=([A-Za-z0-9_-]{3,24})/);
+      if (m) {
+        try { sessionStorage.setItem("zap_board_code", m[1]); } catch { /* abaikan */ }
+        setShowRightPane(true);
+        setRightPaneTab("canvas");
+      }
+    };
+    check();
+    window.addEventListener("hashchange", check);
+    return () => window.removeEventListener("hashchange", check);
+  }, []);
 
   // Active problem context
   const [activeProblemFirstStep, setActiveProblemFirstStep] = useState<string | null>(null);
@@ -5268,6 +5282,7 @@ export default function ZAPApp() {
                   isProjectorMode={isProjectorMode}
                   onToggleProjector={() => setIsProjectorMode(!isProjectorMode)}
                   onClose={() => setRightPaneTab("start")}
+                  collabName={currentUser?.name || "Siswa Tamu"}
                 />
               </div>
             )}
