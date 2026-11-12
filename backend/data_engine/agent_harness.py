@@ -607,6 +607,12 @@ class ZAPAgentHarness:
                 tokens = set(phrase.split())
                 if not tokens:
                     continue
+                # Angka adalah identitas bangun (segi 8 != segi 9): pola yang
+                # mengandung angka hanya boleh cocok bila angkanya persis sama.
+                pattern_digits = {tok for tok in tokens if tok.isdigit()}
+                query_digits = {tok for tok in query_tokens if tok.isdigit()}
+                if pattern_digits and pattern_digits != query_digits:
+                    continue
                 overlap = len(tokens & query_tokens) / len(tokens)
                 if overlap < 0.8:
                     continue
