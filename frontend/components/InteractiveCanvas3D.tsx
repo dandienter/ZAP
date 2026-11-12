@@ -49,7 +49,7 @@ export type MathModelType =
   | "solids"
   | "surface";
 
-export type SolidKind = "kubus" | "balok" | "bola" | "kerucut" | "prisma" | "prisma_segilima" | "prisma_segienam" | "limas";
+export type SolidKind = "kubus" | "balok" | "bola" | "kerucut" | "prisma" | "prisma_segilima" | "prisma_segienam" | "prisma_poligon" | "limas" | "limas_poligon";
 
 export type PlaneShapeKind =
   | "jajar_genjang"
@@ -66,7 +66,8 @@ export type PlaneShapeKind =
   | "jaring_balok"
   | "jaring_tabung"
   | "segilima"
-  | "segienam";
+  | "segienam"
+  | "poligon";
 
 export interface BoardFormulaItem {
   id: string;
@@ -324,6 +325,8 @@ const SOLID_LABELS: Record<SolidKind, string> = {
   prisma_segilima: "Prisma Segilima 3D",
   prisma_segienam: "Prisma Segienam 3D",
   limas: "Limas Segi Empat 3D (Piramida)",
+  prisma_poligon: "Prisma Poligon 3D",
+  limas_poligon: "Limas Poligon 3D (Piramida)",
 };
 
 // Quick formula suggestions
@@ -962,29 +965,62 @@ export default function InteractiveCanvas3D({
       return;
     }
 
-    if (/(segienam|segi enam|segi-6|hexagon|heksagon)/i.test(raw)) {
-      const p = parsedA || 8;
+    // Ekstraksi jumlah sisi poligon dari teks mentah (dipakai semua cabang di bawah)
+    const segiN = (() => {
+      const d = raw.match(/(?:^|[^a-z])segi[\s-]?(\d{1,3})\b/i);
+      if (d) return parseInt(d[1], 10);
+      const named: Array<[RegExp, number]> = [
+        [/segitiga/, 3], [/segiempat/, 4], [/segilima/, 5], [/segienam/, 6],
+        [/segitujuh/, 7], [/segidelapan/, 8], [/segisembilan/, 9], [/segisepuluh/, 10],
+        [/\bhexagon\b|\bheksagon\b/, 6], [/\bpentagon\b/, 5], [/\boctagon\b|\boktagon\b/, 8], [/\bheptagon\b/, 7],
+      ];
+      for (const [re, n] of named) if (re.test(raw)) return n;
+      return null;
+    })();
+
+    // Keluarga LIMAS diproses PALING DULU: "piramida segi enam" adalah limas, bukan prisma segienam
+    if (raw.includes("limas") || raw.includes("piramida") || raw.includes("piramid") || raw.includes("pyramid")) {
+      const s = parsedA || 8;
       const t = 10;
-      setParamA(p);
+      const n = segiN ?? 4;
+      setParamA(s);
       setParamB(t);
       setUnit(parsedUnit);
-      setSolidKind("prisma_segienam");
+      if (n === 4) {
+        setSolidKind("limas");
+        onParamsChange?.(s, t, paramC, parsedUnit);
+      } else {
+        setParamC(n);
+        setSolidKind("limas_poligon");
+        onParamsChange?.(s, t, n, parsedUnit);
+      }
       setShowSlicePlane(wantsSlice);
       selectModel("solids");
-      onParamsChange?.(p, t, paramC, parsedUnit);
       return;
     }
 
-    if (/(segilima|segi lima|segi-5|pentagon)/i.test(raw)) {
+    if (segiN !== null) {
       const p = parsedA || 8;
       const t = 10;
       setParamA(p);
       setParamB(t);
       setUnit(parsedUnit);
-      setSolidKind("prisma_segilima");
+      if (segiN === 5) {
+        setSolidKind("prisma_segilima");
+        onParamsChange?.(p, t, paramC, parsedUnit);
+      } else if (segiN === 6) {
+        setSolidKind("prisma_segienam");
+        onParamsChange?.(p, t, paramC, parsedUnit);
+      } else if (segiN === 3) {
+        setSolidKind("prisma");
+        onParamsChange?.(p, t, paramC, parsedUnit);
+      } else {
+        setParamC(segiN);
+        setSolidKind("prisma_poligon");
+        onParamsChange?.(p, t, segiN, parsedUnit);
+      }
       setShowSlicePlane(wantsSlice);
       selectModel("solids");
-      onParamsChange?.(p, t, paramC, parsedUnit);
       return;
     }
 
@@ -998,19 +1034,6 @@ export default function InteractiveCanvas3D({
       setShowSlicePlane(wantsSlice);
       selectModel("solids");
       onParamsChange?.(p, t, paramC, parsedUnit);
-      return;
-    }
-
-    if (raw.includes("limas") || raw.includes("piramida") || raw.includes("piramid") || raw.includes("pyramid")) {
-      const s = parsedA || 8;
-      const t = 10;
-      setParamA(s);
-      setParamB(t);
-      setUnit(parsedUnit);
-      setSolidKind("limas");
-      setShowSlicePlane(wantsSlice);
-      selectModel("solids");
-      onParamsChange?.(s, t, paramC, parsedUnit);
       return;
     }
 
@@ -1699,9 +1722,9 @@ export default function InteractiveCanvas3D({
           ctx.arc(vx, vy, 2, 0, Math.PI * 2);
           ctx.fill();
         });
-      } else if (planeShapeKind === "segilima" || planeShapeKind === "segienam") {
+      } else if (planeShapeKind === "segilima" || planeShapeKind === "segienam" || planeShapeKind === "poligon") {
         const s = paramA || 10;
-        const n = planeShapeKind === "segilima" ? 5 : 6;
+        const n = planeShapeKind === "segilima" ? 5 : planeShapeKind === "segienam" ? 6 : (paramC || 6);
         const R = s / (2 * Math.sin(Math.PI / n));
         const sc = Math.min((width * 0.62) / (2 * R), (height * 0.58) / (2 * R));
         const Rpx = R * sc;
@@ -2325,9 +2348,9 @@ export default function InteractiveCanvas3D({
             { label: "Panjang Diagonal", formula: "d = s√2", value: `${fmt(Number(diagonal.toFixed(2)))} ${u}` },
           ],
         };
-      } else if (planeShapeKind === "segilima" || planeShapeKind === "segienam") {
+      } else if (planeShapeKind === "segilima" || planeShapeKind === "segienam" || planeShapeKind === "poligon") {
         const s = paramA !== undefined ? paramA : 10;
-        const n = planeShapeKind === "segilima" ? 5 : 6;
+        const n = planeShapeKind === "segilima" ? 5 : planeShapeKind === "segienam" ? 6 : (paramC || 6);
         const luas = (n * s * s) / (4 * Math.tan(Math.PI / n));
         const keliling = n * s;
         const apotema = s / (2 * Math.tan(Math.PI / n));
@@ -2336,7 +2359,7 @@ export default function InteractiveCanvas3D({
           surface: luas,
           rows: [
             { label: "Panjang Sisi (s)", formula: "s", value: `${fmt(s)} ${u}` },
-            { label: `Luas ${n === 5 ? "Segilima" : "Segienam"}`, formula: "L = n·s²/(4·tan(π/n))", value: `${fmt(luas)} ${u}²` },
+            { label: `Luas ${n === 5 ? "Segilima" : n === 6 ? "Segienam" : `Segi-${n}`}`, formula: "L = n·s²/(4·tan(π/n))", value: `${fmt(luas)} ${u}²` },
             { label: "Keliling", formula: `K = ${n}s`, value: `${fmt(keliling)} ${u}` },
             { label: "Apotema", formula: "a = s/(2·tan(π/n))", value: `${fmt(apotema)} ${u}` },
           ],
@@ -2524,16 +2547,17 @@ export default function InteractiveCanvas3D({
         };
       }
       case "prisma_segilima":
-      case "prisma_segienam": {
+      case "prisma_segienam":
+      case "prisma_poligon": {
         const s = A;
         const h = B || Math.round(A * 1.25);
-        const n = solidKind === "prisma_segilima" ? 5 : 6;
+        const n = solidKind === "prisma_segilima" ? 5 : solidKind === "prisma_segienam" ? 6 : (paramC || 6);
         const luasAlas = (n * s * s) / (4 * Math.tan(Math.PI / n));
         const kelilingAlas = n * s;
         const luasSelimut = kelilingAlas * h;
         const lp = 2 * luasAlas + luasSelimut;
         const v = luasAlas * h;
-        const namaAlas = n === 5 ? "Segilima" : "Segienam";
+        const namaAlas = n === 5 ? "Segilima" : n === 6 ? "Segienam" : `Segi-${n}`;
         return {
           volume: v,
           surface: lp,
@@ -2563,6 +2587,28 @@ export default function InteractiveCanvas3D({
             { label: "Tinggi Limas", formula: "t", value: `${fmt(h)} ${u}` },
             { label: "Luas Permukaan", formula: "s² + 4·(½s·hs)", value: `${fmt(lp)} ${u}²` },
             { label: "Volume", formula: "⅓ · s² · t", value: `${fmt(v)} ${u}³` },
+          ],
+        };
+      }
+      case "limas_poligon": {
+        const s = A;
+        const h = B || Math.round(A * 1.25);
+        const n = paramC || 6;
+        const luasAlas = (n * s * s) / (4 * Math.tan(Math.PI / n));
+        const apotema = s / (2 * Math.tan(Math.PI / n));
+        const tinggiSegitiga = Math.sqrt(h ** 2 + apotema ** 2);
+        const luasSelimut = (n * s * tinggiSegitiga) / 2;
+        const lp = luasAlas + luasSelimut;
+        const v = (1 / 3) * luasAlas * h;
+        return {
+          volume: v,
+          surface: lp,
+          rows: [
+            { label: `Sisi Alas Segi-${n}`, formula: "s", value: `${fmt(s)} ${u}` },
+            { label: "Tinggi Limas", formula: "t", value: `${fmt(h)} ${u}` },
+            { label: "Luas Alas", formula: "n·s²/(4·tan(π/n))", value: `${fmt(luasAlas)} ${u}²` },
+            { label: "Luas Permukaan", formula: "La + (n·s·ts)/2", value: `${fmt(lp)} ${u}²` },
+            { label: "Volume", formula: "⅓ · La · t", value: `${fmt(v)} ${u}³` },
           ],
         };
       }
@@ -2947,8 +2993,8 @@ export default function InteractiveCanvas3D({
         const dimT = createDimensionSprite(`t = ${tVal} ${u}`, isDark);
         dimT.position.set(0.38, coneH / 2 + GRID_Y, 0);
         group.add(dimT);
-      } else if (solidKind === "prisma" || solidKind === "prisma_segilima" || solidKind === "prisma_segienam") {
-        const prismSides = solidKind === "prisma" ? 3 : solidKind === "prisma_segilima" ? 5 : 6;
+      } else if (solidKind === "prisma" || solidKind === "prisma_segilima" || solidKind === "prisma_segienam" || solidKind === "prisma_poligon") {
+        const prismSides = solidKind === "prisma" ? 3 : solidKind === "prisma_segilima" ? 5 : solidKind === "prisma_segienam" ? 6 : (paramC || 6);
         const prismR = Math.max(1.2, Math.min(3.5, (paramA / 8) * 1.8));
         const prismH = Math.max(1.8, Math.min(5.0, ((paramB || 10) / 10) * 3.0));
         geo = new THREE.CylinderGeometry(prismR, prismR, prismH, prismSides);
@@ -3117,6 +3163,67 @@ export default function InteractiveCanvas3D({
           addEdges(sliceMesh, sliceGeo, 0xffffff);
           group.add(sliceMesh);
         }
+      } else if (solidKind === "limas_poligon") {
+        const nSeg = paramC || 6;
+        const pyrR = Math.max(1.4, Math.min(3.8, (paramA / 8) * 2.0));
+        const pyrH = Math.max(1.8, Math.min(5.0, ((paramB || 10) / 10) * 3.0));
+        geo = new THREE.ConeGeometry(pyrR, pyrH, nSeg);
+        const mat = new THREE.MeshStandardMaterial({
+          color: 0x0284c7,
+          transparent: true,
+          opacity: wireframe ? 0.05 : 0.45,
+          roughness: 0.15,
+          metalness: 0.08,
+          depthWrite: false,
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(0, pyrH / 2 + GRID_Y, 0);
+        mesh.rotation.y = Math.PI / nSeg;
+        addEdges(mesh, geo, 0x38bdf8);
+        group.add(mesh);
+
+        cornerHandlesRef.current = [];
+        const apexGeo = new THREE.ConeGeometry(0.12, 0.22, 4);
+        const apexMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x38bdf8, emissiveIntensity: 0.6 });
+        const apex = new THREE.Mesh(apexGeo, apexMat);
+        apex.position.set(0, pyrH + GRID_Y + 0.1, 0);
+        apex.userData = { isCornerHandle: true, index: 0 };
+        group.add(apex);
+        cornerHandlesRef.current.push(apex);
+
+        for (let i = 0; i < nSeg; i++) {
+          const angle = (i * 2 * Math.PI) / nSeg + Math.PI / nSeg;
+          const bx = pyrR * Math.sin(angle);
+          const bz = pyrR * Math.cos(angle);
+          const dx = -Math.sign(bx) || 1;
+          const dz = -Math.sign(bz) || 1;
+          const bGeo = createCornerBracketGeometry(dx, 1, dz, 0.24, 0.035);
+          const bMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x38bdf8, emissiveIntensity: 0.5 });
+          const bMesh = new THREE.Mesh(bGeo, bMat);
+          bMesh.position.set(bx, GRID_Y, bz);
+          bMesh.userData = { isCornerHandle: true, index: i + 1 };
+          group.add(bMesh);
+          cornerHandlesRef.current.push(bMesh);
+        }
+
+        const u = unit || "cm";
+        const sVal = paramA || 8;
+        const tVal = paramB || 10;
+        const frontEdgeZ = pyrR * Math.cos(Math.PI / nSeg);
+        const dimBase = createDimensionSprite(`s = ${sVal} ${u}`, isDark);
+        dimBase.position.set(0, GRID_Y + 0.14, frontEdgeZ + 0.10);
+        group.add(dimBase);
+
+        const pyrHPts = [new THREE.Vector3(0, GRID_Y, 0), new THREE.Vector3(0, pyrH + GRID_Y, 0)];
+        const pyrHGeo = new THREE.BufferGeometry().setFromPoints(pyrHPts);
+        const pyrHMat = new THREE.LineDashedMaterial({ color: 0x38bdf8, dashSize: 0.12, gapSize: 0.08 });
+        const pyrHLine = new THREE.Line(pyrHGeo, pyrHMat);
+        pyrHLine.computeLineDistances();
+        group.add(pyrHLine);
+
+        const dimHeight = createDimensionSprite(`t = ${tVal} ${u}`, isDark);
+        dimHeight.position.set(0.38, pyrH / 2 + GRID_Y, 0);
+        group.add(dimHeight);
       } else {
         geo = new THREE.BoxGeometry(2.5, 2.5, 2.5);
         const mat = new THREE.MeshStandardMaterial({

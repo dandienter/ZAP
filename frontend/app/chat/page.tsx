@@ -384,19 +384,25 @@ function detectSmartboardItem(
   // 0. Prioritaskan Universal Token-Based Geometric Intent Resolver
   // Memastikan resolusi token 2D vs 3D deterministik (contoh: "2d prisma" -> jaring_prisma 2D, "3d prisma" -> prisma 3D)
   const resolved = resolveGeometricIntent(text, conversationHistory);
-  if (resolved) {
+  if (resolved && !resolved.smartboardItem) {
+    // Hasil pemrosesan berupa klarifikasi: server mengirim balasannya,
+    // panel TIDAK dibuka dan detektor legacy tidak boleh menimpa.
+    return null;
+  }
+  const resolvedItem = resolved?.smartboardItem;
+  if (resolved && resolvedItem) {
     return {
-      model: resolved.smartboardItem.model as MathModelType,
-      solidKind: (resolved.smartboardItem.solidKind as SolidKind) || undefined,
-      planeShapeKind: (resolved.smartboardItem.planeShapeKind as PlaneShapeKind) || undefined,
-      label: resolved.smartboardItem.label,
-      desc: resolved.smartboardItem.desc,
-      paramA: resolved.smartboardItem.paramA,
-      paramB: resolved.smartboardItem.paramB,
-      paramC: resolved.smartboardItem.paramC,
-      unit: resolved.smartboardItem.unit,
-      hasSlice: resolved.smartboardItem.hasSlice,
-      targetTab: resolved.smartboardItem.targetTab,
+      model: resolvedItem.model as MathModelType,
+      solidKind: (resolvedItem.solidKind as SolidKind) || undefined,
+      planeShapeKind: (resolvedItem.planeShapeKind as PlaneShapeKind) || undefined,
+      label: resolvedItem.label,
+      desc: resolvedItem.desc,
+      paramA: resolvedItem.paramA,
+      paramB: resolvedItem.paramB,
+      paramC: resolvedItem.paramC,
+      unit: resolvedItem.unit,
+      hasSlice: resolvedItem.hasSlice,
+      targetTab: resolvedItem.targetTab,
     };
   }
 

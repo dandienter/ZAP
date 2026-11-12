@@ -777,6 +777,14 @@ async function handleChatPost(req: Request) {
     // Prioritas Khusus: Jika pengguna meminta visualisasi/pemodelan geometri 2D atau 3D
     // Layani secara deterministik via ZAP Universal Geometry & Spatial Engine (KaTeX rapi, konfirmasi smartboard tepat dimensi)
     const resolvedGeom = resolveGeometricIntent(rawMessage, conversationHistory);
+    if (resolvedGeom && !resolvedGeom.smartboardItem) {
+      // Pemrosesan intent menghasilkan klarifikasi (bukan render): balas tanpa membuka smartboard
+      return NextResponse.json({
+        reply: sanitizeZeroAnswer(resolvedGeom.reply),
+        model: "ChatZAP Geometry Engine",
+        source: "geometry-clarify",
+      });
+    }
     if (resolvedGeom) {
       const engineName = resolvedGeom.dimension === "3D" ? "ChatZAP Spatial 3D Engine" : "ChatZAP Geometry Engine";
       return NextResponse.json({
