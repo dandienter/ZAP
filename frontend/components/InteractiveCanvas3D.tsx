@@ -3593,9 +3593,9 @@ export default function InteractiveCanvas3D({
   // =========================================================================
   return (
     <div className={`relative w-full h-full flex flex-col dark:bg-[#080a0f] bg-slate-50 dark:text-zinc-100 text-slate-800 select-none overflow-hidden font-sans ${className}`}>
-      {/* 1. TOP HEADER & SMART COMMAND BAR (Zero Button Collision) */}
+      {/* 1. TOP HEADER RAMPING: pemilih mode saja - semua ALAT pindah ke dock bawah (gaya Figma) */}
       <div className="h-12 px-2.5 sm:px-4 border-b dark:border-white/[0.08] border-slate-200 dark:bg-[#0d0f17] bg-white flex items-center justify-between gap-1.5 sm:gap-2 shrink-0 z-20">
-        {/* Left: Mode Picker Segmented Buttons + Reset */}
+        {/* Left: Mode Picker Segmented Buttons */}
         <div className="flex items-center gap-1.5 shrink-0">
           <div className="flex items-center dark:bg-white/[0.04] bg-slate-100 p-0.5 rounded-xl border dark:border-white/[0.08] border-slate-200">
             <button
@@ -3637,160 +3637,24 @@ export default function InteractiveCanvas3D({
             </button>
           </div>
 
-          {(activeModel !== "empty" || hasDrawings || formulaNotes.length > 0) && (
-            <button
-              type="button"
-              onClick={() => {
-                clearDrawCanvas();
-                setFormulaNotes([]);
-                setSelectedFormulaId(null);
-                setInlineComposer(null);
-                setIsTypingToolActive(false);
-                setIsDrawingToolActive(false);
-                setZoom2D(1);
-                setPan2D({ x: 0, y: 0 });
-                selectModel("empty");
-              }}
-              className="p-1.5 rounded-xl dark:bg-white/[0.04] bg-slate-100 hover:bg-slate-200 dark:hover:bg-white/[0.08] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border dark:border-white/[0.08] border-slate-200 transition cursor-pointer"
-              title="Reset / Bersihkan Seluruh Kanvas"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-          )}
         </div>
 
-        {/* Center: Flexible Spacer (Komponen teks status di header telah dihapus sesuai permintaan) */}
         <div className="flex-1" />
 
-        {/* Right: Tools Cluster */}
+        {/* Right: Proyektor + Tutup saja */}
         <div className="flex items-center gap-1 shrink-0">
-          {/* Tombol Mode Ketik Langsung di Kanvas */}
-          <button
-            type="button"
-            onClick={() => {
-              if (isTypingToolActive) {
-                setIsTypingToolActive(false);
-              } else {
-                setIsTypingToolActive(true);
-                setIsDrawingToolActive(false);
-              }
-            }}
-            className={`p-1.5 px-2.5 rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer ${
-              isTypingToolActive
-                ? "bg-amber-500 text-white shadow-sm font-semibold"
-                : "dark:bg-white/[0.04] bg-slate-100 text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white border dark:border-white/[0.06] border-slate-200"
-            }`}
-            title="Mode Ketik di Kanvas (Klik di mana saja pada papan untuk mengetik rumus/teks)"
-          >
-            <Type className="w-3.5 h-3.5" />
-            <span className="text-[11px] font-mono font-medium hidden sm:inline">Ketik Rumus</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setIsTypingToolActive(false);
-              if (isDrawingToolActive && drawingMode === "pen") setIsDrawingToolActive(false);
-              else {
-                setIsDrawingToolActive(true);
-                setDrawingMode("pen");
-              }
-            }}
-            className={`p-1.5 rounded-xl text-xs transition cursor-pointer ${
-              isDrawingToolActive && drawingMode === "pen"
-                ? "bg-slate-900 text-white dark:bg-white dark:text-zinc-950 shadow-sm font-semibold"
-                : "dark:bg-white/[0.04] bg-slate-100 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border dark:border-white/[0.06] border-slate-200"
-            }`}
-            title="Pena Kapur Tulis"
-          >
-            <Pencil className="w-3.5 h-3.5" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              if (isDrawingToolActive && drawingMode === "eraser") setIsDrawingToolActive(false);
-              else {
-                setIsDrawingToolActive(true);
-                setDrawingMode("eraser");
-              }
-            }}
-            className={`p-1.5 rounded-xl text-xs transition cursor-pointer ${
-              isDrawingToolActive && drawingMode === "eraser"
-                ? "bg-slate-800 text-white shadow-sm font-semibold"
-                : "dark:bg-white/[0.04] bg-slate-100 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border dark:border-white/[0.06] border-slate-200"
-            }`}
-            title="Penghapus Kapur"
-          >
-            <Eraser className="w-3.5 h-3.5" />
-          </button>
-
-          {hasDrawings && (
-            <button
-              type="button"
-              onClick={clearDrawCanvas}
-              className="p-1.5 rounded-xl dark:bg-white/[0.04] bg-slate-100 hover:bg-slate-200 dark:hover:bg-white/[0.08] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border dark:border-white/[0.06] border-slate-200 transition cursor-pointer"
-              title="Hapus Semua Coretan"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          )}
-
-          {is3DModel && (
-            <>
-              <button
-                type="button"
-                onClick={() => setWireframe(!wireframe)}
-                className={`p-1.5 rounded-xl text-xs transition border cursor-pointer ${
-                  wireframe
-                    ? "bg-slate-200 dark:bg-white/[0.16] text-slate-900 dark:text-white border-slate-300 dark:border-white/[0.2]"
-                    : "dark:bg-white/[0.04] bg-slate-100 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white dark:border-white/[0.06] border-slate-200"
-                }`}
-                title="Toggle Wireframe Rangka Kawat"
-              >
-                <Layers className="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setAutoRotate(!autoRotate)}
-                className={`p-1.5 rounded-xl text-xs transition border cursor-pointer ${
-                  autoRotate
-                    ? "bg-slate-200 dark:bg-white/[0.16] text-slate-900 dark:text-white border-slate-300 dark:border-white/[0.2]"
-                    : "dark:bg-white/[0.04] bg-slate-100 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white dark:border-white/[0.06] border-slate-200"
-                }`}
-                title="Toggle Rotasi Otomatis 360°"
-              >
-                <RotateCw className="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsHudVisible(!isHudVisible)}
-                className={`p-1.5 rounded-xl text-xs transition border cursor-pointer ${
-                  isHudVisible
-                    ? "bg-slate-200 dark:bg-white/[0.16] text-slate-900 dark:text-white border-slate-300 dark:border-white/[0.2]"
-                    : "dark:bg-white/[0.04] bg-slate-100 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white dark:border-white/[0.06] border-slate-200"
-                }`}
-                title={isHudVisible ? "Sembunyikan Panel Kontrol Metrik" : "Tampilkan Panel Kontrol Metrik"}
-              >
-                {isHudVisible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-              </button>
-            </>
-          )}
-
           {onToggleProjector && (
             <button
               type="button"
               onClick={onToggleProjector}
-              className={`p-1.5 rounded-xl border transition cursor-pointer ${
+              className={`h-9 w-9 flex items-center justify-center rounded-xl border transition cursor-pointer ${
                 isProjectorMode
                   ? "bg-slate-200 dark:bg-white/[0.16] text-slate-900 dark:text-white border-slate-300 dark:border-white/[0.2]"
-                  : "bg-white/[0.04] text-zinc-400 hover:text-white border-white/[0.06]"
+                  : "dark:bg-white/[0.04] bg-slate-100 text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white dark:border-white/[0.06] border-slate-200"
               }`}
               title="Mode Layar Proyektor"
             >
-              <Tv className="w-3.5 h-3.5" />
+              <Tv className="w-4 h-4" />
             </button>
           )}
 
@@ -3798,10 +3662,10 @@ export default function InteractiveCanvas3D({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-xl bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/[0.06] transition cursor-pointer"
+              className="h-9 w-9 flex items-center justify-center rounded-xl dark:bg-white/[0.04] bg-slate-100 hover:bg-slate-200 dark:hover:bg-white/[0.08] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border dark:border-white/[0.06] border-slate-200 transition cursor-pointer"
               title="Tutup Papan Tulis"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-4 h-4" />
             </button>
           )}
         </div>
@@ -4022,7 +3886,7 @@ export default function InteractiveCanvas3D({
 
         {/* 3D Geometry HUD Overlay Card (With Minimize/Hide Toggle) */}
         {activeModel === "3d_empty" && (
-          <div className="absolute top-3 right-3 p-3.5 rounded-2xl liquid-glass-popup z-20 text-xs w-64 space-y-2.5 text-slate-800 dark:text-zinc-200 animate-liquid-pop origin-top-right">
+          <div className="absolute top-3 right-3 max-sm:top-auto max-sm:bottom-[4.75rem] max-sm:left-3 max-sm:right-3 max-sm:w-auto p-3.5 rounded-2xl liquid-glass-popup z-20 text-xs w-64 space-y-2.5 text-slate-800 dark:text-zinc-200 animate-liquid-pop origin-top-right max-h-[calc(100%-6rem)] overflow-y-auto">
             <div className="flex items-center justify-between border-b dark:border-white/[0.08] border-slate-200/80 pb-2">
               <span className="font-semibold dark:text-white text-slate-900 flex items-center gap-1.5">
                 <Box className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-300" />
@@ -4110,7 +3974,7 @@ export default function InteractiveCanvas3D({
               </button>
             </div>
           ) : (
-            <div className="absolute top-3 right-3 p-3.5 rounded-2xl liquid-glass-popup z-20 text-xs w-64 space-y-2.5 text-slate-800 dark:text-zinc-200 animate-liquid-pop origin-top-right">
+            <div className="absolute top-3 right-3 max-sm:top-auto max-sm:bottom-[4.75rem] max-sm:left-3 max-sm:right-3 max-sm:w-auto p-3.5 rounded-2xl liquid-glass-popup z-20 text-xs w-64 space-y-2.5 text-slate-800 dark:text-zinc-200 animate-liquid-pop origin-top-right max-h-[calc(100%-6rem)] overflow-y-auto">
               <div className="flex items-center justify-between border-b dark:border-white/[0.08] border-slate-200/80 pb-2">
                 <span className="font-semibold dark:text-white text-slate-900 flex items-center gap-1.5">
                   <Box className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-300" />
@@ -4951,6 +4815,150 @@ export default function InteractiveCanvas3D({
               </div>
             </button>
           )}
+        </div>
+
+        {/* DOCK ALAT BAWAH (gaya Figma): semua alat kanvas dalam satu dok melayang di bawah-tengah */}
+        <div className="absolute bottom-3 left-3 sm:left-1/2 sm:-translate-x-1/2 z-30 max-w-[calc(100%-4.75rem)] sm:max-w-[calc(100%-2rem)]">
+          <div className="flex items-center gap-0.5 sm:gap-1 p-1.5 rounded-2xl liquid-glass-popup border border-slate-200 dark:border-white/10 shadow-xl overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => {
+                if (isTypingToolActive) {
+                  setIsTypingToolActive(false);
+                } else {
+                  setIsTypingToolActive(true);
+                  setIsDrawingToolActive(false);
+                }
+              }}
+              className={`h-10 px-2.5 flex items-center justify-center gap-1.5 rounded-xl text-xs transition cursor-pointer shrink-0 ${
+                isTypingToolActive
+                  ? "bg-amber-500 text-white shadow-sm font-semibold"
+                  : "text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.08]"
+              }`}
+              title="Mode Ketik di Kanvas (Klik di mana saja pada papan untuk mengetik rumus/teks)"
+            >
+              <Type className="w-[18px] h-[18px]" />
+              <span className="text-[11px] font-mono font-medium hidden md:inline">Ketik Rumus</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsTypingToolActive(false);
+                if (isDrawingToolActive && drawingMode === "pen") setIsDrawingToolActive(false);
+                else {
+                  setIsDrawingToolActive(true);
+                  setDrawingMode("pen");
+                }
+              }}
+              className={`h-10 min-w-10 px-1 flex items-center justify-center rounded-xl text-xs transition cursor-pointer shrink-0 ${
+                isDrawingToolActive && drawingMode === "pen"
+                  ? "bg-slate-900 text-white dark:bg-white dark:text-zinc-950 shadow-sm font-semibold"
+                  : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.08]"
+              }`}
+              title="Pena Kapur Tulis"
+            >
+              <Pencil className="w-[18px] h-[18px]" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (isDrawingToolActive && drawingMode === "eraser") setIsDrawingToolActive(false);
+                else {
+                  setIsDrawingToolActive(true);
+                  setDrawingMode("eraser");
+                }
+              }}
+              className={`h-10 min-w-10 px-1 flex items-center justify-center rounded-xl text-xs transition cursor-pointer shrink-0 ${
+                isDrawingToolActive && drawingMode === "eraser"
+                  ? "bg-slate-800 text-white shadow-sm font-semibold"
+                  : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.08]"
+              }`}
+              title="Penghapus Kapur"
+            >
+              <Eraser className="w-[18px] h-[18px]" />
+            </button>
+
+            {hasDrawings && (
+              <button
+                type="button"
+                onClick={clearDrawCanvas}
+                className="h-10 min-w-10 px-1 flex items-center justify-center rounded-xl text-xs transition cursor-pointer shrink-0 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.08]"
+                title="Hapus Semua Coretan"
+              >
+                <Trash2 className="w-[18px] h-[18px]" />
+              </button>
+            )}
+
+            {is3DModel && (
+              <>
+                <div className="w-px self-stretch my-1 bg-slate-200 dark:bg-white/10 mx-0.5 shrink-0" />
+                <button
+                  type="button"
+                  onClick={() => setWireframe(!wireframe)}
+                  className={`h-10 min-w-10 px-1 flex items-center justify-center rounded-xl text-xs transition cursor-pointer shrink-0 border ${
+                    wireframe
+                      ? "bg-slate-200 dark:bg-white/[0.16] text-slate-900 dark:text-white border-slate-300 dark:border-white/[0.2]"
+                      : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border-transparent"
+                  }`}
+                  title="Toggle Wireframe Rangka Kawat"
+                >
+                  <Layers className="w-[18px] h-[18px]" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAutoRotate(!autoRotate)}
+                  className={`h-10 min-w-10 px-1 flex items-center justify-center rounded-xl text-xs transition cursor-pointer shrink-0 border ${
+                    autoRotate
+                      ? "bg-slate-200 dark:bg-white/[0.16] text-slate-900 dark:text-white border-slate-300 dark:border-white/[0.2]"
+                      : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border-transparent"
+                  }`}
+                  title="Toggle Rotasi Otomatis 360°"
+                >
+                  <RotateCw className="w-[18px] h-[18px]" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsHudVisible(!isHudVisible)}
+                  className={`h-10 min-w-10 px-1 flex items-center justify-center rounded-xl text-xs transition cursor-pointer shrink-0 border ${
+                    isHudVisible
+                      ? "bg-slate-200 dark:bg-white/[0.16] text-slate-900 dark:text-white border-slate-300 dark:border-white/[0.2]"
+                      : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border-transparent"
+                  }`}
+                  title={isHudVisible ? "Sembunyikan Panel Kontrol Metrik" : "Tampilkan Panel Kontrol Metrik"}
+                >
+                  {isHudVisible ? <Eye className="w-[18px] h-[18px]" /> : <EyeOff className="w-[18px] h-[18px]" />}
+                </button>
+              </>
+            )}
+
+            {(activeModel !== "empty" || hasDrawings || formulaNotes.length > 0) && (
+              <>
+                <div className="w-px self-stretch my-1 bg-slate-200 dark:bg-white/10 mx-0.5 shrink-0" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearDrawCanvas();
+                    setFormulaNotes([]);
+                    setSelectedFormulaId(null);
+                    setInlineComposer(null);
+                    setIsTypingToolActive(false);
+                    setIsDrawingToolActive(false);
+                    setZoom2D(1);
+                    setPan2D({ x: 0, y: 0 });
+                    selectModel("empty");
+                  }}
+                  className="h-10 min-w-10 px-1 flex items-center justify-center rounded-xl text-xs transition cursor-pointer shrink-0 text-slate-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                  title="Reset / Bersihkan Seluruh Kanvas"
+                >
+                  <RotateCcw className="w-[18px] h-[18px]" />
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* G. KATEX FORMULA COMPOSER MODAL */}

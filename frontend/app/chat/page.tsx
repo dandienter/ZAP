@@ -3845,7 +3845,7 @@ export default function ZAPApp() {
         {/* Main Body of Chat */}
         {messages.length === 0 ? (
           /* EMPTY HERO STATE (Persis seperti Screenshot 0 dan 1) */
-          <div className="flex-1 overflow-y-auto px-4 flex flex-col justify-between">
+          <div className="flex-1 overflow-y-auto px-4 flex flex-col justify-center">
             <div className="my-auto flex flex-col items-center justify-center text-center py-8">
               {/* Logo + Title: Into the Unknown + Preview */}
               <div className="flex items-center justify-center gap-2 sm:gap-3 mb-5 px-1">
@@ -3857,9 +3857,9 @@ export default function ZAPApp() {
               </div>
 
               {/* Dropdown Pills above Composer (Interactive Workspace & Pedagogical Mode) */}
-              <div className="w-full max-w-3xl lg:max-w-4xl flex items-center gap-2 mb-2 px-1 text-xs text-slate-500 dark:text-zinc-400 justify-start relative">
+              <div className="w-full max-w-3xl lg:max-w-4xl flex flex-wrap items-center gap-2 mb-2 px-1 text-xs text-slate-500 dark:text-zinc-400 justify-start relative">
                 {/* 1. Workspace Pill */}
-                <div className="relative shrink-0" ref={pillWorkspaceRef}>
+                <div className="relative shrink min-w-0" ref={pillWorkspaceRef}>
                   <button
                     type="button"
                     onClick={() => {
@@ -3873,7 +3873,7 @@ export default function ZAPApp() {
                     }`}
                   >
                     <Folder className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
-                    <span className="max-w-[132px] sm:max-w-none truncate whitespace-nowrap">
+                    <span className="max-w-[100px] min-[380px]:max-w-[132px] sm:max-w-none truncate whitespace-nowrap">
                       {workspaces.find((w) => w.id === activeWorkspaceId)?.name || (workspaces.length === 0 ? "Workspace (Opsional)" : "Pilih Workspace")}
                     </span>
                     <ChevronDown className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
@@ -3944,7 +3944,7 @@ export default function ZAPApp() {
                 </div>
 
                 {/* 2. Mode Pill */}
-                <div className="relative shrink-0" ref={pillModeRef}>
+                <div className="relative shrink min-w-0" ref={pillModeRef}>
                   <button
                     type="button"
                     onClick={() => {
@@ -3958,7 +3958,7 @@ export default function ZAPApp() {
                     }`}
                   >
                     <Atom className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
-                    <span className="whitespace-nowrap max-w-[118px] min-[420px]:max-w-none truncate">
+                    <span className="whitespace-nowrap max-w-[96px] min-[380px]:max-w-[118px] min-[420px]:max-w-none truncate">
                       {interactionMode === "standard"
                         ? "Standard mode"
                         : interactionMode === "strict"
