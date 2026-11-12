@@ -64,9 +64,13 @@ interface HarnessContextResult {
 
 async function fetchHarnessMemoryContext(query: string, userId?: string): Promise<HarnessContextResult> {
   try {
+    const harnessSecret = process.env.ZAP_HARNESS_SECRET || "";
     const res = await fetch(`${API_BASE}/api/v1/harness/context`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(harnessSecret ? { "X-Harness-Secret": harnessSecret } : {}),
+      },
       body: JSON.stringify({ query: query.slice(0, 300), limit: 3, user_id: userId || undefined }),
       signal: AbortSignal.timeout(1200),
     });
@@ -596,9 +600,9 @@ Jadikan konteks coretan di atas sebagai rujukan utama jika siswa bertanya tentan
   }
 
   if (workspaceMode === "read") {
-    prompt += `\n\nMODE WORKSPACE: READ-ONLY (Hanya lakukan bimbingan Sokratik dan verifikasi matematis tanpa menulis atau memodifikasi berkas workspace).`;
+    prompt += `\n\nMODE BACA SAJA: Hanya lakukan bimbingan Sokratik dan verifikasi matematis; jangan menyusun draf catatan atau rumus baru.`;
   } else {
-    prompt += `\n\nMODE WORKSPACE: WRITE (Anda berwenang mendraf berkas rumus, membuat skrip aljabar, dan memodifikasi catatan di workspace).`;
+    prompt += `\n\nMODE CATATAN: Anda boleh menyusun draf rumus dan catatan belajar di dalam percakapan ini. Jangan mengklaim telah menulis atau mengubah berkas apa pun di luar percakapan.`;
   }
 
   return prompt;

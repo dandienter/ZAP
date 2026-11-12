@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ApiPlayground from "@/components/ApiPlayground";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -194,10 +195,11 @@ function Section({
 }
 
 const endpoints: Array<[string, string, string]> = [
-  ["POST", "/api/v1/verify", "Verifikasi satu langkah pengerjaan siswa terhadap CAS. Mengembalikan status langkah dan diagnosis deterministik, tanpa jawaban akhir."],
+  ["POST", "/api/v1/verify", "Memeriksa kesetaraan dua ekspresi aljabar lewat CAS SymPy (left vs right). Mengembalikan isEquivalent, verified, method, dan message."],
   ["GET", "/api/v1/harness/stats", "Agregat korpus: jumlah record per tier dan jumlah pola geometri yang dipelajari."],
   ["POST", "/api/v1/harness/learn", "Satu giliran percakapan dilatih ke memori episodik: redaksi PII, ekstraksi langkah, diagnosis CFL, promosi korpus bila ALL_STEPS_VALID. Wajib header X-Harness-Secret."],
-  ["POST", "/api/v1/harness/context", "Mengambil konteks harness untuk satu kueri: memori episodik relevan, contoh korpus terverifikasi, dan rumus geometri untuk prompt chat."],
+  ["POST", "/api/v1/harness/context", "Mengambil konteks harness untuk satu kueri: memori episodik relevan, contoh korpus terverifikasi, dan rumus geometri untuk prompt chat. Wajib header X-Harness-Secret (server-ke-server) karena respons memuat cuplikan memori pengguna."],
+  ["GET", "/api/v1/harness/profile", "Profil belajar agregat per pengguna (topik, langkah valid, miskonsepsi). Wajib header X-Harness-Secret; bukan data publik."],
   ["POST", "/api/v1/harness/geometry-match", "Mencocokkan frasa permintaan geometri ke pola yang sudah dipelajari (dengan penjaga angka)."],
   ["POST", "/api/v1/harness/geometry-pattern", "Menyimpan pola geometri baru yang sudah lolos validator. Wajib header X-Harness-Secret."],
   ["GET", "/api/v1/harness/geometry-patterns", "Daftar pola geometri yang tersimpan."],
@@ -424,9 +426,11 @@ export default function DocsPage() {
           </p>
           <CodeBlock title="agent_harness.py - match_geometry_pattern (kode asli, inti)" code={matchSnippet} />
           <p>
-            Seluruh endpoint belajar dan pola bersifat secret-gated (header X-Harness-Secret) dan fail-closed:
-            tanpa secret yang benar, server menjawab 503. Statistik publik (GET /api/v1/harness/stats) hanya
-            membaca agregat.
+            Endpoint tulis (learn, simpan pola) dan endpoint baca data pengguna (context, profile) bersifat
+            secret-gated (header X-Harness-Secret) dan fail-closed: bila secret terpasang, permintaan tanpa
+            secret yang cocok ditolak 401; bila mode production berjalan tanpa secret, endpoint menolak 503.
+            Yang publik hanya baca agregat dan pola: statistik (GET /api/v1/harness/stats), daftar pola
+            geometri, pencocokan pola, dan verifikasi CAS.
           </p>
         </Section>
 
@@ -460,6 +464,14 @@ export default function DocsPage() {
             (utama) atau <em>lines</em> (alias), dan <em>target_variable</em> (utama) atau{" "}
             <em>target_var</em> (alias) - keduanya default None agar nilai alias tidak tertimpa.
           </p>
+          <h3 className="text-base font-bold text-zinc-900 dark:text-white pt-4">Coba langsung dari halaman ini</h3>
+          <p>
+            Endpoint baca agregat dan periksa di bawah ini bisa dieksekusi langsung dari peramban ke API
+            yang sedang berjalan - tanpa kunci, tanpa perantara. Endpoint tulis yang mengubah memori dan
+            korpus, serta endpoint context yang membaca memori episodik pengguna, sengaja dikunci
+            server-side karena wajib secret bersama.
+          </p>
+          <ApiPlayground />
         </Section>
 
         <Section id="keamanan" title="7. Keamanan: hasil audit yang sudah diperbaiki">

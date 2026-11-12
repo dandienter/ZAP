@@ -767,7 +767,6 @@ class ZAPAgentHarness:
             "by_topic": by_topic,
             "by_misconception": by_misconception,
             "jsonl_records": jsonl_count,
-            "memory_jsonl_path": self.memory_jsonl_path,
         }
 
 

@@ -454,18 +454,27 @@ def harness_learn_from_conversation(req: HarnessLearnRequest, http_request: Requ
 
 
 @app.post("/api/v1/harness/context", status_code=status.HTTP_200_OK, tags=["Agent Harness"])
-def harness_retrieve_context(req: HarnessContextRequest):
+def harness_retrieve_context(req: HarnessContextRequest, http_request: Request):
     """
     Mengambil konteks memori relevan (<ZAP_AGENT_HARNESS_CONTEXT>) dari Episodic Memory,
     MathCorpusStore, dan 2D/3D Geometry Database untuk disuntikkan ke prompt agen.
+
+    Keamanan: endpoint ini server-to-server dan secret-gated karena responsnya
+    memuat cuplikan memori episodik pengguna (user_query dan langkah yang
+    diekstrak). Rute chat Next.js adalah satu-satunya pemanggil yang sah.
     """
+    _require_harness_secret(http_request)
     effective_limit = req.limit or req.top_k or 3
     return agent_harness.build_harness_context(query=req.query, limit=effective_limit, user_id=req.user_id)
 
 
 @app.get("/api/v1/harness/profile", status_code=status.HTTP_200_OK, tags=["Agent Harness"])
-def harness_learner_profile(user_id: str):
-    """Ringkasan profil belajar per pengguna (agregat topik, langkah valid, dan miskonsepsi)."""
+def harness_learner_profile(user_id: str, http_request: Request):
+    """Ringkasan profil belajar per pengguna (agregat topik, langkah valid, dan miskonsepsi).
+
+    Secret-gated: profil belajar adalah data per pengguna, bukan data publik.
+    """
+    _require_harness_secret(http_request)
     profile = agent_harness.get_learner_profile(user_id)
     return {"status": "success", "learner_profile": profile}
 

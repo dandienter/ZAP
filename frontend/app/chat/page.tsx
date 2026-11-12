@@ -68,7 +68,6 @@ import {
   X,
   Folder,
   FolderPlus,
-  Terminal,
   LayoutGrid,
   ChevronDown,
   Atom,
@@ -1061,7 +1060,7 @@ function PromptActionBarLeft({
                   >
                     <Folder className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-400 flex-shrink-0" />
                     <div>
-                      <div className="font-medium text-slate-800 dark:text-zinc-200">Berkas Workspace</div>
+                      <div className="font-medium text-slate-800 dark:text-zinc-200">Lampiran Sesi</div>
                       <div className="text-[10px] text-slate-400 dark:text-zinc-500">{workspaceFilesCount} berkas tersimpan</div>
                     </div>
                   </button>
@@ -1116,7 +1115,7 @@ function PromptActionBarLeft({
           className="absolute left-6 bottom-full mb-2.5 w-72 liquid-glass-popup rounded-2xl p-2 z-50 text-xs text-slate-700 dark:text-zinc-300 animate-liquid-pop origin-bottom-left"
         >
           <div className="px-2.5 py-1.5 flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] text-slate-500 dark:text-zinc-400 font-medium text-[11px]">
-            <span className="text-slate-800 dark:text-zinc-200">Mode &amp; Izin Workspace</span>
+            <span className="text-slate-800 dark:text-zinc-200">Mode Catatan &amp; Proyek Belajar</span>
             <button
               type="button"
               onClick={() => setShowWorkspaceMenu(false)}
@@ -1147,11 +1146,11 @@ function PromptActionBarLeft({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-xs flex items-center justify-between">
-                  <span>Workspace Write</span>
+                  <span>Mode Catatan</span>
                   {workspaceMode === "write" && <Check className="w-3.5 h-3.5 text-slate-900 dark:text-white" />}
                 </div>
                 <div className="text-[10px] text-slate-400 dark:text-zinc-400 leading-tight mt-0.5">
-                  AI dapat menyimpan catatan, mengeksekusi perhitungan CAS &amp; membuat berkas
+                  Tutor boleh menyusun draf rumus dan catatan belajar di dalam percakapan
                 </div>
               </div>
             </button>
@@ -1176,11 +1175,11 @@ function PromptActionBarLeft({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-xs flex items-center justify-between">
-                  <span>Workspace Read-Only</span>
+                  <span>Mode Baca Saja</span>
                   {workspaceMode === "read" && <Check className="w-3.5 h-3.5 text-slate-900 dark:text-white" />}
                 </div>
                 <div className="text-[10px] text-slate-400 dark:text-zinc-400 leading-tight mt-0.5">
-                  Hanya diskusi Sokratik &amp; verifikasi matematika tanpa memodifikasi berkas
+                  Hanya bimbingan Sokratik dan verifikasi matematika, tanpa draf catatan baru
                 </div>
               </div>
             </button>
@@ -1191,12 +1190,12 @@ function PromptActionBarLeft({
           {/* Section 2: Pilih Active Workspace */}
           <div className="px-2 py-1">
             <div className="text-[10px] font-semibold text-slate-400 dark:text-zinc-500 uppercase tracking-wider mb-1">
-              Ruang Kerja Aktif
+              Proyek Belajar Aktif
             </div>
             <div className="space-y-0.5 max-h-32 overflow-y-auto">
               {workspaces.length === 0 ? (
                 <div className="px-2 py-1.5 text-xs text-slate-400 dark:text-zinc-500 italic">
-                  Belum ada workspace
+                  Belum ada proyek belajar
                 </div>
               ) : (
                 <>
@@ -1212,7 +1211,7 @@ function PromptActionBarLeft({
                         : "hover:bg-slate-50 dark:hover:bg-white/[0.04] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
                     }`}
                   >
-                    <span className="truncate">Tanpa Workspace</span>
+                    <span className="truncate">Tanpa Proyek</span>
                     {!activeWorkspaceId && <Check className="w-3 h-3 text-slate-900 dark:text-white flex-shrink-0" />}
                   </button>
                   {workspaces.map((ws) => (
@@ -1254,7 +1253,7 @@ function PromptActionBarLeft({
           >
             <div className="flex items-center gap-2">
               <Folder className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
-              <span>Buka Berkas Workspace ({workspaceFilesCount})</span>
+              <span>Buka Lampiran Sesi ({workspaceFilesCount})</span>
             </div>
             <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500" />
           </button>
@@ -1292,8 +1291,8 @@ function PromptActionBarLeft({
             ? "bg-slate-200 dark:bg-white/[0.1] text-slate-900 dark:text-white"
             : "hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
         }`}
-        title="Atur izin & ruang kerja aktif"
-        aria-label="Atur izin dan ruang kerja aktif"
+        title="Atur mode catatan & proyek belajar aktif"
+        aria-label="Atur mode catatan dan proyek belajar aktif"
         aria-expanded={showWorkspaceMenu}
       >
         {workspaceMode === "write" ? (
@@ -1301,8 +1300,8 @@ function PromptActionBarLeft({
         ) : (
           <Eye className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
         )}
-        <span className="hidden min-[430px]:inline whitespace-nowrap">{workspaceMode === "write" ? "Workspace Write" : "Workspace Read"}</span>
-        <span className="min-[430px]:hidden whitespace-nowrap">{workspaceMode === "write" ? "Write" : "Read"}</span>
+        <span className="hidden min-[430px]:inline whitespace-nowrap">{workspaceMode === "write" ? "Mode Catatan" : "Mode Baca"}</span>
+        <span className="min-[430px]:hidden whitespace-nowrap">{workspaceMode === "write" ? "Catatan" : "Baca"}</span>
         <ChevronDown className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
       </button>
     </div>
@@ -1379,7 +1378,6 @@ export default function ZAPApp() {
 
   const [loading, setLoading] = useState<boolean>(false);
   const [loadingStatus, setLoadingStatus] = useState<string>("Menganalisis langkah...");
-  const [backendStatus, setBackendStatus] = useState<"checking" | "online" | "offline">("checking");
 
   // Panel layout states persis seperti screenshot 0, 1, dan 2 (Tertutup default di mobile < 640px agar tidak menutupi chat)
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
@@ -1390,7 +1388,7 @@ export default function ZAPApp() {
   });
   const [showRightPane, setShowRightPane] = useState<boolean>(false);
   const [rightPaneFullscreen, setRightPaneFullscreen] = useState<boolean>(false);
-  const [rightPaneTab, setRightPaneTab] = useState<"start" | "files" | "terminal" | "canvas">("start");
+  const [rightPaneTab, setRightPaneTab] = useState<"start" | "files" | "canvas">("start");
   // Buka papan otomatis bila tiba lewat tautan kolaborasi #board=KODE
   useEffect(() => {
     const check = () => {
@@ -1529,15 +1527,6 @@ export default function ZAPApp() {
     { id: "log-1", name: "SymPy Deterministic CAS Watchdog", time: "Aktif (Realtime)", status: "success" },
     { id: "log-2", name: "Zero-Answer Policy Guardrail", time: "Aktif (Censor Enabled)", status: "success" },
   ]);
-
-  // Terminal state for interactive CLI
-  const [terminalHistory, setTerminalHistory] = useState<Array<{ cmd: string; out: string }>>([
-    {
-      cmd: "welcome",
-      out: "ChatZAP Session v2.4 (Python 3.15 + SymPy CAS)\nKetik 'help' untuk daftar perintah.",
-    },
-  ]);
-  const [terminalInput, setTerminalInput] = useState<string>("");
 
   // Memory chat: daftar percakapan tersimpan + percakapan aktif
   const [conversations, setConversations] = useState<StoredConv[]>([]);
@@ -1898,25 +1887,6 @@ export default function ZAPApp() {
       }
     }
     setMemoryReady(true);
-    // Cek status backend hanya indikator, bukan penentu tampilan awal:
-    // tunda sampai browser idle agar tidak merebut main thread saat boot.
-    let idleHandle: number | undefined;
-    let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
-    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-      idleHandle = (
-        window as unknown as {
-          requestIdleCallback: (cb: () => void, opts?: { timeout: number }) => number;
-        }
-      ).requestIdleCallback(() => checkHealth(), { timeout: 2000 });
-    } else {
-      timeoutHandle = setTimeout(() => checkHealth(), 1200);
-    }
-    return () => {
-      if (idleHandle !== undefined && typeof window !== "undefined" && "cancelIdleCallback" in window) {
-        (window as unknown as { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(idleHandle);
-      }
-      if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
-    };
   }, [router]);
 
   // Keyboard shortcut (Escape keluar dari panel layar penuh; pintasan files/terminal dicabut pada audit fitur 12 Nov 2026)
@@ -2036,20 +2006,6 @@ export default function ZAPApp() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
-
-  const checkHealth = async () => {
-    setBackendStatus("checking");
-    try {
-      const res = await fetch(`${BACKEND_URL}/health`, { signal: AbortSignal.timeout(3000) });
-      if (res.ok) {
-        setBackendStatus("online");
-      } else {
-        setBackendStatus("offline");
-      }
-    } catch {
-      setBackendStatus("offline");
-    }
-  };
 
   const handleLogout = async () => {
     if (currentUser) {
@@ -2924,50 +2880,6 @@ export default function ZAPApp() {
     }
   };
 
-  const handleTerminalSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cmd = terminalInput.trim();
-    if (!cmd) return;
-    let out = "";
-    if (cmd === "clear") {
-      setTerminalHistory([]);
-      setTerminalInput("");
-      return;
-    } else if (cmd === "help") {
-      out = "Perintah tersedia: help, status, diagnose [expr], sympy, unban, reset-security, clear, exit";
-    } else if (cmd === "unban" || cmd === "unsuspend" || cmd === "reset-security" || cmd === "reset-strikes") {
-      setIsAccountSuspended(false);
-      setJailbreakStrikes(0);
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("zap_account_suspended");
-        localStorage.removeItem("zap_jailbreak_strikes");
-      }
-      if (currentUser?.email) {
-        fetch("/api/admin/security", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "unban", email: currentUser.email, adminEmail: "wakhidpangestu1@gmail.com" }),
-        }).catch(() => {});
-      }
-      out = "✅ Status penangguhan akun berhasil dicabut! Strike keamanan direset ke 0.";
-    } else if (cmd === "status") {
-      out = `CAS Engine: ${backendStatus}\nActive Model: ${selectedModel.name}\nEffort: ${reasoningEffort}`;
-    } else if (cmd.startsWith("diagnose ")) {
-      const step = cmd.replace("diagnose ", "");
-      handleSend([step]);
-      out = `Menjalankan diagnosa CAS untuk: ${step}`;
-    } else if (cmd === "sympy") {
-      out = "Python 3.15 + SymPy 1.13.3 (ZAP CFL Engine: OK)";
-    } else if (cmd === "exit") {
-      setRightPaneTab("start");
-      return;
-    } else {
-      out = `Perintah tidak dikenal: '${cmd}'. Ketik 'help' untuk panduan.`;
-    }
-    setTerminalHistory((prev) => [...prev, { cmd, out }]);
-    setTerminalInput("");
-  };
-
   // Handler siswa untuk menukarkan Token/Kode Pemulihan dari Admin
   const handleRedeemUserRecoveryCode = async () => {
     const code = userRecoveryCodeInput.trim();
@@ -3240,26 +3152,9 @@ export default function ZAPApp() {
           </button>
         </div>
 
-        {/* Navigation Items */}
+        {/* Navigation Items: Plugins dan Automation tasks dipindah ke modal More
+            (audit fitur 12 Nov 2026) agar menu utama fokus ke alur belajar. */}
         <div className="px-3 space-y-0.5">
-          <button
-            type="button"
-            onClick={() => setShowPluginModal(true)}
-            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13.5px] font-medium text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.05] transition text-left cursor-pointer"
-          >
-            <Sparkles className="w-4 h-4 text-slate-500 dark:text-zinc-400" />
-            <span>Plugins</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowTasksModal(true)}
-            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13.5px] font-medium text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.05] transition text-left cursor-pointer"
-          >
-            <Clock className="w-4 h-4 text-slate-500 dark:text-zinc-400" />
-            <span>Automation tasks</span>
-          </button>
-
           <button
             type="button"
             onClick={() => setShowMoreModal(true)}
@@ -3498,14 +3393,14 @@ export default function ZAPApp() {
         <div className="border-t border-slate-200/70 dark:border-white/[0.06] pt-2.5 pb-2 shrink-0">
           <div className="flex items-center justify-between px-3.5 pb-1.5 text-slate-500 dark:text-zinc-400">
             <span className="text-xs font-semibold uppercase tracking-wider font-mono text-slate-600 dark:text-zinc-400">
-              Workspaces
+              Proyek Belajar
             </span>
             <button
               type="button"
               onClick={() => setShowNewWorkspaceModal(true)}
               className="p-1.5 min-w-[26px] min-h-[26px] flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
-              title="Buat workspace baru"
-              aria-label="Buat workspace baru"
+              title="Buat proyek belajar baru"
+              aria-label="Buat proyek belajar baru"
             >
               <FolderPlus className="w-3.5 h-3.5" />
             </button>
@@ -3519,7 +3414,7 @@ export default function ZAPApp() {
                 className="w-full flex items-center justify-center gap-2 px-3 py-1.5 min-h-[30px] rounded-lg border border-dashed border-slate-300 dark:border-white/[0.08] hover:border-slate-400 dark:hover:border-white/[0.15] text-[12px] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer group"
               >
                 <FolderPlus className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 group-hover:text-amber-500 transition" />
-                <span>+ Buat Workspace</span>
+                <span>+ Buat Proyek</span>
               </button>
             </div>
           ) : (
@@ -3562,8 +3457,8 @@ export default function ZAPApp() {
                           handleDeleteWorkspace(ws.id);
                         }}
                         className="hidden group-hover:block p-1 text-slate-500 hover:text-rose-500 transition"
-                        title="Hapus workspace"
-                        aria-label={`Hapus workspace ${ws.name}`}
+                        title="Hapus proyek"
+                        aria-label={`Hapus proyek ${ws.name}`}
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -3874,7 +3769,7 @@ export default function ZAPApp() {
                   >
                     <Folder className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
                     <span className="max-w-[100px] min-[380px]:max-w-[132px] sm:max-w-none truncate whitespace-nowrap">
-                      {workspaces.find((w) => w.id === activeWorkspaceId)?.name || (workspaces.length === 0 ? "Workspace (Opsional)" : "Pilih Workspace")}
+                      {workspaces.find((w) => w.id === activeWorkspaceId)?.name || (workspaces.length === 0 ? "Proyek Belajar (Opsional)" : "Pilih Proyek")}
                     </span>
                     <ChevronDown className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
                   </button>
@@ -3883,11 +3778,11 @@ export default function ZAPApp() {
                   {showPillWorkspaceMenu && (
                     <div className="absolute left-0 top-full mt-1.5 w-60 liquid-glass-popup rounded-2xl py-1.5 z-50 text-xs animate-liquid-pop origin-top-left text-left">
                       <div className="px-3 py-1.5 text-[10px] uppercase font-mono tracking-wider text-slate-400 dark:text-zinc-500 border-b border-slate-100 dark:border-white/[0.06] mb-1">
-                        Pilih Ruang Kerja
+                        Pilih Proyek Belajar
                       </div>
                       {workspaces.length === 0 ? (
                         <div className="px-3 py-2 text-center text-xs text-slate-400 dark:text-zinc-500 italic">
-                          Belum ada workspace
+                          Belum ada proyek belajar
                         </div>
                       ) : (
                         <div className="max-h-44 overflow-y-auto px-1 space-y-0.5">
@@ -3903,7 +3798,7 @@ export default function ZAPApp() {
                                 : "text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-white/[0.04] hover:text-slate-900 dark:hover:text-zinc-200"
                             }`}
                           >
-                            <span className="truncate">Tanpa Workspace</span>
+                            <span className="truncate">Tanpa Proyek</span>
                             {!activeWorkspaceId && <Check className="w-3.5 h-3.5 text-slate-700 dark:text-zinc-300" />}
                           </button>
                           {workspaces.map((ws) => (
@@ -3936,7 +3831,7 @@ export default function ZAPApp() {
                           className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
                         >
                           <FolderPlus className="w-3.5 h-3.5 text-amber-500" />
-                          <span>Buat Workspace Baru</span>
+                          <span>Buat Proyek Baru</span>
                         </button>
                       </div>
                     </div>
@@ -4201,7 +4096,7 @@ export default function ZAPApp() {
                   placeholder={
                     isAccountSuspended
                       ? "Akun Anda telah ditangguhkan. Hubungi wakhidpangestu1@gmail.com untuk permohonan pemulihan akses."
-                      : "Describe what you want to build, / commands, @ files or sessions (atau paste/drag gambar ke sini)"
+                      : "Tulis soal, langkah pengerjaan, atau pertanyaan matematikamu di sini... (atau tempel/seret gambar ke sini)"
                   }
                   className="w-full bg-transparent text-[15px] sm:text-base text-slate-900 dark:text-zinc-100 placeholder-slate-500 dark:placeholder-zinc-400 focus:outline-none focus-visible:ring-0 resize-none font-sans leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed"
                 />
@@ -4890,7 +4785,7 @@ export default function ZAPApp() {
                   placeholder={
                     isAccountSuspended
                       ? "Akun Anda telah ditangguhkan. Hubungi wakhidpangestu1@gmail.com untuk permohonan pemulihan akses."
-                      : "Describe what you want to build, / commands, @ files or sessions (atau paste/drag gambar ke sini)"
+                      : "Tulis soal, langkah pengerjaan, atau pertanyaan matematikamu di sini... (atau tempel/seret gambar ke sini)"
                   }
                 className="w-full bg-transparent text-[15px] sm:text-base text-slate-900 dark:text-zinc-100 placeholder-slate-500 dark:placeholder-zinc-400 focus:outline-none focus-visible:ring-0 resize-none font-sans leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed"
               />
@@ -4975,9 +4870,7 @@ export default function ZAPApp() {
                 {rightPaneTab === "start"
                   ? "Start"
                   : rightPaneTab === "files"
-                  ? "Workspace files"
-                  : rightPaneTab === "terminal"
-                  ? "Terminal"
+                  ? "Lampiran Sesi"
                   : "Papan Tulis Pintar"}
               </span>
               {rightPaneTab !== "start" && (
@@ -5101,7 +4994,7 @@ export default function ZAPApp() {
                   <span className="font-medium text-xs text-slate-800 dark:text-zinc-200 flex items-center gap-2 truncate">
                     <Folder className="w-4 h-4 text-slate-500 dark:text-zinc-400 flex-shrink-0" />
                     <span className="truncate">
-                      Workspace: {workspaces.find((w) => w.id === activeWorkspaceId)?.name || "Tanpa Workspace"}
+                      Proyek: {workspaces.find((w) => w.id === activeWorkspaceId)?.name || "Tanpa Proyek"}
                     </span>
                     <span className="text-xs text-slate-600 dark:text-zinc-400 font-mono bg-slate-200/60 dark:bg-white/[0.04] px-1.5 py-0.5 rounded flex-shrink-0">
                       {workspaceFiles.length} berkas
@@ -5150,50 +5043,7 @@ export default function ZAPApp() {
               </div>
             )}
 
-            {/* SUB-VIEW 3: TERMINAL */}
-            {rightPaneTab === "terminal" && (
-              <div className="w-full h-full flex flex-col p-4 bg-slate-50 dark:bg-[#0a0b0e] font-mono text-xs transition-colors">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-white/[0.06] text-slate-600 dark:text-zinc-400">
-                  <span className="flex items-center gap-2">
-                    <Terminal className="w-3.5 h-3.5 text-slate-700 dark:text-zinc-300" />
-                    <span>zap-session@chatzap: ~</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setTerminalHistory([])}
-                    className="text-xs px-2 py-1 min-h-[26px] rounded hover:bg-slate-200/70 dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-white cursor-pointer transition"
-                  >
-                    Clear
-                  </button>
-                </div>
-                <div className="flex-1 overflow-y-auto py-3 space-y-2 text-slate-800 dark:text-zinc-300">
-                  {terminalHistory.map((item, idx) => (
-                    <div key={idx} className="space-y-1">
-                      <div className="text-slate-600 dark:text-zinc-400">
-                        <span className="text-slate-900 dark:text-zinc-200 font-semibold">zap@logicodix</span>:<span>~</span>$ {item.cmd}
-                      </div>
-                      <pre className="text-slate-700 dark:text-zinc-400 whitespace-pre-wrap leading-relaxed text-xs">
-                        {item.out}
-                      </pre>
-                    </div>
-                  ))}
-                </div>
-                <form onSubmit={handleTerminalSubmit} className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-white/[0.06]">
-                  <span className="text-slate-600 dark:text-zinc-400 font-bold">$</span>
-                  <input
-                    type="text"
-                    aria-label="Perintah terminal SymPy CAS"
-                    value={terminalInput}
-                    onChange={(e) => setTerminalInput(e.target.value)}
-                    placeholder="Ketik perintah (contoh: diagnose (x+3)^2-4)..."
-                    className="flex-1 bg-transparent text-slate-900 dark:text-zinc-100 placeholder:text-slate-500 dark:placeholder:text-zinc-400 focus:outline-none text-xs"
-                    autoFocus
-                  />
-                </form>
-              </div>
-            )}
-
-            {/* SUB-VIEW 4: SMARTBOARD VIRTUAL (2D / 3D / CHALKBOARD) */}
+            {/* SUB-VIEW 3: SMARTBOARD VIRTUAL (2D / 3D / CHALKBOARD) */}
             {rightPaneTab === "canvas" && (
               <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-[#080a0f] relative">
                 <InteractiveCanvas3D
@@ -5447,14 +5297,25 @@ export default function ZAPApp() {
                 type="button"
                 onClick={() => {
                   setShowMoreModal(false);
-                  setShowRightPane(true);
-                  setRightPaneTab("terminal");
+                  setShowPluginModal(true);
                 }}
                 className="p-3.5 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-[#1c1d24] dark:hover:bg-[#252732] border border-slate-200 dark:border-white/[0.06] text-left transition cursor-pointer"
               >
-                <Terminal className="w-4 h-4 text-slate-700 dark:text-zinc-300 mb-1" />
-                <div className="font-medium text-slate-900 dark:text-white">Terminal CLI</div>
-                <div className="text-xs text-slate-500 dark:text-zinc-400">SymPy CAS command shell</div>
+                <Sparkles className="w-4 h-4 text-slate-700 dark:text-zinc-300 mb-1" />
+                <div className="font-medium text-slate-900 dark:text-white">Plugins &amp; Konektor</div>
+                <div className="text-xs text-slate-500 dark:text-zinc-400">Kunci model dan konektor BYOK</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMoreModal(false);
+                  setShowTasksModal(true);
+                }}
+                className="p-3.5 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-[#1c1d24] dark:hover:bg-[#252732] border border-slate-200 dark:border-white/[0.06] text-left transition cursor-pointer"
+              >
+                <Clock className="w-4 h-4 text-slate-700 dark:text-zinc-300 mb-1" />
+                <div className="font-medium text-slate-900 dark:text-white">Automation Tasks</div>
+                <div className="text-xs text-slate-500 dark:text-zinc-400">Audit CAS dan pembersihan lokal</div>
               </button>
             </div>
           </div>
@@ -5468,7 +5329,7 @@ export default function ZAPApp() {
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/[0.08] pb-3">
               <div className="flex items-center gap-2">
                 <FolderPlus className="w-4 h-4 text-slate-700 dark:text-zinc-300" />
-                <h2 className="font-semibold text-sm text-slate-900 dark:text-white">Buat Workspace Baru</h2>
+                <h2 className="font-semibold text-sm text-slate-900 dark:text-white">Buat Proyek Belajar Baru</h2>
               </div>
               <button
                 type="button"
@@ -5480,11 +5341,11 @@ export default function ZAPApp() {
               </button>
             </div>
             <div className="space-y-2">
-              <label htmlFor="new-workspace-name" className="text-xs text-slate-600 dark:text-zinc-400">Nama Workspace</label>
+              <label htmlFor="new-workspace-name" className="text-xs text-slate-600 dark:text-zinc-400">Nama Proyek</label>
               <input
                 id="new-workspace-name"
                 type="text"
-                aria-label="Nama Workspace Baru"
+                aria-label="Nama Proyek Baru"
                 value={newWorkspaceName}
                 onChange={(e) => setNewWorkspaceName(e.target.value)}
                 onKeyDown={(e) => {
@@ -5513,7 +5374,7 @@ export default function ZAPApp() {
                     : "bg-slate-200 dark:bg-[#282a32] text-slate-400 dark:text-zinc-500 cursor-not-allowed"
                 }`}
               >
-                Buat Workspace
+                Buat Proyek
               </button>
             </div>
           </div>
@@ -5588,8 +5449,8 @@ export default function ZAPApp() {
                       setPreviewFile(null);
                     }}
                     className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition cursor-pointer"
-                    title="Hapus berkas dari workspace"
-                    aria-label="Hapus berkas dari workspace"
+                    title="Hapus berkas dari lampiran sesi"
+                    aria-label="Hapus berkas dari lampiran sesi"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -6079,7 +5940,7 @@ export default function ZAPApp() {
                         </div>
                       </div>
                       <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed">
-                        Semua data sesi belajar, preferensi tema ({theme}), konfigurasi model AI, dan berkas workspace otomatis dicadangkan setiap kali Anda berinteraksi.
+                        Semua data sesi belajar, preferensi tema ({theme}), konfigurasi model AI, dan lampiran sesi otomatis dicadangkan setiap kali Anda berinteraksi.
                       </p>
                     </div>
 
